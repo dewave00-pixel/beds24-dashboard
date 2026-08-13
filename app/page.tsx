@@ -133,57 +133,62 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-wrapper">
 
-        {/* 상단 헤더 */}
+        {/* 상단 헤더 카드 (모바일 최적화 레이아웃) */}
         <div className="dashboard-header-card">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">숙소 예약 현황 대시보드</h1>
-            <p className="text-sm text-gray-500 mt-1">플랫폼 범례:
-              <span className="ml-2 px-2 py-0.5 rounded text-xs text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
-              <span className="ml-1 px-2 py-0.5 rounded text-xs text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
-              <span className="ml-1 px-2 py-0.5 rounded text-xs text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
-              <span className="ml-1 px-2 py-0.5 rounded text-xs text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
-              <span className="ml-1 px-2 py-0.5 rounded text-xs text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">숙소 예약 현황 대시보드</h1>
+            <p className="text-xs md:text-sm text-gray-500 flex flex-wrap items-center gap-1">
+              <span>플랫폼:</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <div className="stat-badge stat-badge-blue">
-              <span className="stat-badge-title-blue">오늘 체크인</span>
-              <span className="stat-badge-value-blue">{todayCheckIns.length}건</span>
-            </div>
-            <div className="stat-badge stat-badge-orange">
-              <span className="stat-badge-title-orange">오늘 체크아웃</span>
-              <span className="stat-badge-value-orange">{todayCheckOuts.length}건</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 요약 배지 그룹 */}
+            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
+              <div className="stat-badge stat-badge-blue">
+                <span className="stat-badge-title-blue">오늘 체크인</span>
+                <span className="stat-badge-value-blue">{todayCheckIns.length}건</span>
+              </div>
+              <div className="stat-badge stat-badge-orange">
+                <span className="stat-badge-title-orange">오늘 체크아웃</span>
+                <span className="stat-badge-value-orange">{todayCheckOuts.length}건</span>
+              </div>
+
+              <div className="stat-badge bg-sky-50 border border-sky-100">
+                <span className="text-xs text-sky-600 font-semibold block">내일 체크인</span>
+                <span className="text-lg font-bold text-sky-700">{tomorrowCheckIns.length}건</span>
+              </div>
+              <div className="stat-badge bg-amber-50 border border-amber-100">
+                <span className="text-xs text-amber-600 font-semibold block">내일 체크아웃</span>
+                <span className="text-lg font-bold text-amber-700">{tomorrowCheckOuts.length}건</span>
+              </div>
             </div>
 
-            <div className="stat-badge bg-sky-50 border border-sky-100">
-              <span className="text-xs text-sky-600 font-semibold block">내일 체크인</span>
-              <span className="text-lg font-bold text-sky-700">{tomorrowCheckIns.length}건</span>
+            {/* 버튼 그룹 */}
+            <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0 w-full md:w-auto justify-end">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1"
+              >
+                🔍 예약 검색
+              </button>
+
+              <button
+                onClick={() => setIsTotalNotesOpen(true)}
+                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1"
+              >
+                🔥 총 특이사항 모아보기
+              </button>
+
+              <button onClick={fetchData} disabled={loading} className="btn-primary">
+                {loading ? '갱신 중...' : '새로고침'}
+              </button>
             </div>
-            <div className="stat-badge bg-amber-50 border border-amber-100">
-              <span className="text-xs text-amber-600 font-semibold block">내일 체크아웃</span>
-              <span className="text-lg font-bold text-amber-700">{tomorrowCheckOuts.length}건</span>
-            </div>
-
-            {/* 🔍 통합 검색 버튼 */}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1 ml-1"
-            >
-              🔍 예약 검색
-            </button>
-
-            {/* 🔥 총 특이사항 모아보기 버튼 */}
-            <button
-              onClick={() => setIsTotalNotesOpen(true)}
-              className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1"
-            >
-              🔥 총 특이사항 모아보기
-            </button>
-
-            <button onClick={fetchData} disabled={loading} className="btn-primary">
-              {loading ? '갱신 중...' : '새로고침'}
-            </button>
           </div>
         </div>
 
@@ -195,10 +200,10 @@ export default function Dashboard() {
 
         {/* 대시보드 메인 패널 */}
         <div className="dashboard-panel">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="text-sm font-bold text-gray-700">
-                📅 조회 기간: <span className="text-blue-600">{timelineDates[0]}</span> ~ <span className="text-blue-600">{timelineDates[timelineDates.length - 1]}</span>
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="text-xs md:text-sm font-bold text-gray-700">
+                📅 조회: <span className="text-blue-600">{timelineDates[0]}</span> ~ <span className="text-blue-600">{timelineDates[timelineDates.length - 1]}</span>
               </div>
               {selectedDate && (
                 <button onClick={() => setSelectedDate(null)} className="btn-reset-highlight">
@@ -206,7 +211,7 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
               <button onClick={goToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
               <button onClick={() => moveDays(7)} className="btn-secondary">다음주 ▶</button>
@@ -225,7 +230,7 @@ export default function Dashboard() {
                 {PROPERTY_GROUPS.map((group) => (
                   <div
                     key={group.name}
-                    className={`p-2 flex items-center justify-center font-extrabold text-sm ${group.themeClass}`}
+                    className={`p-2 flex items-center justify-center font-extrabold text-xs md:text-sm ${group.themeClass}`}
                     style={{ gridColumn: `span ${group.units.length}` }}
                   >
                     {group.name}
@@ -238,11 +243,11 @@ export default function Dashboard() {
                 className="grid-row-header-2 divide-x divide-gray-300"
                 style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
               >
-                <div className="p-2 flex items-center justify-center bg-gray-200 text-gray-600">날짜 / 호실</div>
+                <div className="p-2 flex items-center justify-center bg-gray-200 text-gray-600 text-xs">날짜 / 호실</div>
                 {ALL_UNITS.map((col) => (
                   <div key={col.key} className="p-2 flex flex-col justify-center min-h-[45px]">
                     {col.subName && <span className="text-[10px] text-gray-400 font-normal">{col.subName}</span>}
-                    <span className="text-sm text-gray-900 font-bold">{col.displayName}</span>
+                    <span className="text-xs md:text-sm text-gray-900 font-bold">{col.displayName}</span>
                   </div>
                 ))}
               </div>
