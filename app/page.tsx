@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react';
 import './dashboard.css';
 import { Booking } from './types';
-import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle } from './config';
+import { getChannelStyle } from './config';
 import BookingModal from './components/BookingModal';
 import TotalNotesModal from './components/TotalNotesModal';
 import SearchModal from './components/SearchModal';
+import VerticalTimeline from './components/VerticalTimeline';
+import HorizontalTimeline from './components/HorizontalTimeline';
 
 const ROW_HEIGHT = 65;
+const COL_WIDTH_HORIZ = 110;
 
 export default function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -16,6 +19,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // 📱/🖥️ 뷰 모드 상태 ('vertical' | 'horizontal')
+  const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
 
   // 모달 상태 관리
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
@@ -42,7 +48,17 @@ export default function Dashboard() {
         console.error('메모 불러오기 실패:', e);
       }
     }
+
+    const savedMode = localStorage.getItem('beds24_view_mode');
+    if (savedMode === 'horizontal' || savedMode === 'vertical') {
+      setViewMode(savedMode);
+    }
   }, []);
+
+  const toggleViewMode = (mode: 'vertical' | 'horizontal') => {
+    setViewMode(mode);
+    localStorage.setItem('beds24_view_mode', mode);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -133,65 +149,70 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-wrapper">
 
-        {/* 상단 헤더 카드 (모바일 최적화 레이아웃) */}
+        {/* 상단 헤더 카드 (컴팩트 슬림화) */}
         <div className="dashboard-header-card">
-          <div className="space-y-1">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">숙소 예약 현황 대시보드</h1>
-            <p className="text-xs md:text-sm text-gray-500 flex flex-wrap items-center gap-1">
-              <span>플랫폼:</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-base md:text-lg font-extrabold text-gray-900 shrink-0">숙소 예약 현황</h1>
+
+            {/* 플랫폼 색상 배지 */}
+            <div className="text-[10px] text-gray-500 flex flex-wrap items-center gap-1">
+              <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
+              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
+              <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
+              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
+              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* 요약 배지 그룹 */}
-            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
-              <div className="stat-badge stat-badge-blue">
-                <span className="stat-badge-title-blue">오늘 체크인</span>
-                <span className="stat-badge-value-blue">{todayCheckIns.length}건</span>
+            {/* 오늘/내일 체크인/체크아웃 초슬림 가로 1줄 배지 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+              <div className="stat-badge-mini stat-badge-blue">
+                <span>오늘 입실</span>
+                <span className="text-sm font-extrabold">{todayCheckIns.length}</span>
               </div>
-              <div className="stat-badge stat-badge-orange">
-                <span className="stat-badge-title-orange">오늘 체크아웃</span>
-                <span className="stat-badge-value-orange">{todayCheckOuts.length}건</span>
+              <div className="stat-badge-mini stat-badge-orange">
+                <span>오늘 퇴실</span>
+                <span className="text-sm font-extrabold">{todayCheckOuts.length}</span>
               </div>
-
-              <div className="stat-badge bg-sky-50 border border-sky-100">
-                <span className="text-xs text-sky-600 font-semibold block">내일 체크인</span>
-                <span className="text-lg font-bold text-sky-700">{tomorrowCheckIns.length}건</span>
+              <div className="stat-badge-mini stat-badge-sky">
+                <span>내일 입실</span>
+                <span className="text-sm font-extrabold">{tomorrowCheckIns.length}</span>
               </div>
-              <div className="stat-badge bg-amber-50 border border-amber-100">
-                <span className="text-xs text-amber-600 font-semibold block">내일 체크아웃</span>
-                <span className="text-lg font-bold text-amber-700">{tomorrowCheckOuts.length}건</span>
+              <div className="stat-badge-mini stat-badge-amber">
+                <span>내일 퇴실</span>
+                <span className="text-sm font-extrabold">{tomorrowCheckOuts.length}</span>
               </div>
             </div>
 
-            {/* 버튼 그룹 */}
-            <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0 w-full md:w-auto justify-end">
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1"
-              >
-                🔍 예약 검색
-              </button>
-
-              <button
-                onClick={() => setIsTotalNotesOpen(true)}
-                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1"
-              >
-                🔥 총 특이사항 모아보기
-              </button>
-
+            {/* 우측 주요 버튼들 */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <div className="bg-gray-100 p-0.5 rounded-md border border-gray-300 flex gap-0.5">
+                <button
+                  onClick={() => toggleViewMode('vertical')}
+                  className={`px-2 py-1 text-xs font-extrabold rounded transition ${viewMode === 'vertical'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  📱 세로
+                </button>
+                <button
+                  onClick={() => toggleViewMode('horizontal')}
+                  className={`px-2 py-1 text-xs font-extrabold rounded transition ${viewMode === 'horizontal'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  🖥️ 가로
+                </button>
+              </div>
               <button onClick={fetchData} disabled={loading} className="btn-primary">
-                {loading ? '갱신 중...' : '새로고침'}
+                {loading ? '...' : '새로고침'}
               </button>
             </div>
           </div>
         </div>
-
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
             🚨 {error}
@@ -200,210 +221,81 @@ export default function Dashboard() {
 
         {/* 대시보드 메인 패널 */}
         <div className="dashboard-panel">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="text-xs md:text-sm font-bold text-gray-700">
-                📅 조회: <span className="text-blue-600">{timelineDates[0]}</span> ~ <span className="text-blue-600">{timelineDates[timelineDates.length - 1]}</span>
+          {/* 메인 컨트롤 바 (날짜 표시 + 검색/특이사항 버튼 + 주간 이동 버튼) */}
+          <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              {/* 1. 조회 날짜 범위 */}
+              <div className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
+                <span>📅 조회:</span>
+                <span className="text-blue-600 font-extrabold">{timelineDates[0]}</span>
+                <span>~</span>
+                <span className="text-blue-600 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
               </div>
+
+              {/* 2. 날짜 강조 해제 버튼 (선택 시 노출) */}
               {selectedDate && (
                 <button onClick={() => setSelectedDate(null)} className="btn-reset-highlight">
                   🔍 {selectedDate} 강조 해제 ✖
                 </button>
               )}
+
+              {/* 3. 🔍 예약 검색 & 🔥 총 특이사항 버튼 (메인 패널 내부 배치) */}
+              <div className="flex items-center gap-1.5 ml-1">
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
+                >
+                  🔍 검색
+                </button>
+
+                <button
+                  onClick={() => setIsTotalNotesOpen(true)}
+                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
+                >
+                  🔥 특이사항
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1.5">
+
+            {/* 4. 지난주 / 오늘 / 다음주 이동 버튼 */}
+            <div className="flex gap-1.5 shrink-0">
               <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
               <button onClick={goToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
               <button onClick={() => moveDays(7)} className="btn-secondary">다음주 ▶</button>
             </div>
           </div>
 
-          <div className="grid-table-container">
-            <div className="min-w-max">
-
-              {/* 1단: 숙소 그룹 헤더 */}
-              <div
-                className="grid-row-header-1 divide-x divide-gray-300"
-                style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
-              >
-                <div className="cell-corner">숙소명</div>
-                {PROPERTY_GROUPS.map((group) => (
-                  <div
-                    key={group.name}
-                    className={`p-2 flex items-center justify-center font-extrabold text-xs md:text-sm ${group.themeClass}`}
-                    style={{ gridColumn: `span ${group.units.length}` }}
-                  >
-                    {group.name}
-                  </div>
-                ))}
-              </div>
-
-              {/* 2단: 세부 호실 헤더 */}
-              <div
-                className="grid-row-header-2 divide-x divide-gray-300"
-                style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
-              >
-                <div className="p-2 flex items-center justify-center bg-gray-200 text-gray-600 text-xs">날짜 / 호실</div>
-                {ALL_UNITS.map((col) => (
-                  <div key={col.key} className="p-2 flex flex-col justify-center min-h-[45px]">
-                    {col.subName && <span className="text-[10px] text-gray-400 font-normal">{col.subName}</span>}
-                    <span className="text-xs md:text-sm text-gray-900 font-bold">{col.displayName}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Y축 타임라인 레이어 */}
-              <div className="relative w-full">
-                {/* 1. 배경 날짜 셀 */}
-                {timelineDates.map((dStr) => {
-                  const dObj = new Date(dStr);
-                  const month = dObj.getMonth() + 1;
-                  const dayNum = dObj.getDate();
-                  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][dObj.getDay()];
-                  const isToday = dStr === todayStr;
-                  const isSelected = selectedDate === dStr;
-                  const isOtherSelected = selectedDate !== null && !isSelected;
-
-                  return (
-                    <div
-                      key={dStr}
-                      onClick={() => handleDateClick(dStr)}
-                      className={`grid divide-x divide-gray-300 border-b border-gray-300 transition-all duration-200 cursor-pointer ${isSelected
-                          ? 'row-selected'
-                          : isOtherSelected
-                            ? 'row-dimmed'
-                            : 'bg-white hover:bg-gray-50/80'
-                        }`}
-                      style={{
-                        gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
-                        height: `${ROW_HEIGHT}px`
-                      }}
-                    >
-                      <div className={`p-2 flex flex-col items-center justify-center font-bold text-xs transition-colors ${isSelected
-                          ? 'bg-amber-500 text-white font-extrabold'
-                          : isToday
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-50 text-gray-700'
-                        }`}>
-                        <div>{month}/{dayNum}</div>
-                        <div className="text-[10px] opacity-80">({dayOfWeek})</div>
-                      </div>
-
-                      {ALL_UNITS.map((col) => (
-                        <div key={`${dStr}-${col.key}`} className={`h-full ${isToday && !isSelected ? 'bg-blue-50/20' : ''}`} />
-                      ))}
-                    </div>
-                  );
-                })}
-
-                {/* 2. 예약 박스 레이어 */}
-                <div
-                  className="absolute top-0 left-0 w-full h-full pointer-events-none grid z-10"
-                  style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
-                >
-                  <div />
-
-                  {ALL_UNITS.map((col) => {
-                    const unitBookings = bookings.filter((b) => {
-                      const isRoomMatch = Number(b.roomId) === col.roomId;
-                      const isUnitMatch = col.unitId ? Number(b.unitId) === col.unitId : true;
-                      return isRoomMatch && isUnitMatch;
-                    });
-
-                    return (
-                      <div key={`overlay-${col.key}`} className="relative w-full h-full">
-                        {unitBookings.map((b) => {
-                          const startIndex = timelineDates.indexOf(b.arrival);
-                          const depDateObj = new Date(b.departure);
-                          depDateObj.setDate(depDateObj.getDate() - 1);
-                          const lastNightStr = depDateObj.toISOString().split('T')[0];
-                          const lastNightIndex = timelineDates.indexOf(lastNightStr);
-
-                          if (startIndex === -1 && lastNightIndex === -1) return null;
-
-                          const startRow = startIndex === -1 ? 0 : startIndex;
-                          const endRow = lastNightIndex === -1 ? displayDaysCount - 1 : lastNightIndex;
-                          const nightsCount = Math.max(1, endRow - startRow + 1);
-
-                          const topPos = startRow * ROW_HEIGHT + 3;
-                          const barHeight = nightsCount * ROW_HEIGHT - 6;
-
-                          const ch = getChannelStyle(b.apiSourceId);
-                          const guestName = b.firstName || b.lastName ? `${b.firstName || ''} ${b.lastName || ''}`.trim() : `예약 #${b.id}`;
-
-                          const isBookingInSelectedDate = selectedDate !== null && selectedDate >= b.arrival && selectedDate <= lastNightStr;
-                          const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
-                          const hasMemo = Boolean(bookingMemos[b.id]);
-
-                          return (
-                            <div
-                              key={b.id}
-                              onClick={(e) => handleBookingClick(e, b)}
-                              className={`absolute left-1 right-1 rounded-lg shadow-md p-1.5 flex flex-col justify-between font-bold text-xs pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/10 ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
-                                } ${hasMemo ? 'animate-pulse-memo' : ''}`}
-                              style={{
-                                top: `${topPos}px`,
-                                height: `${barHeight}px`,
-                                backgroundColor: ch.bg,
-                                color: ch.text,
-                              }}
-                              title={`${ch.name} | ${guestName} (${b.arrival} 체크인 ~ ${b.departure} 체크아웃, ${nightsCount}박)`}
-                            >
-                              <div className="flex flex-col gap-0.5 leading-tight">
-                                <div className="text-[11px] font-extrabold truncate">
-                                  📥 {guestName}
-                                </div>
-                                <div className="text-[9px] opacity-85 font-medium truncate">
-                                  {ch.name}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between text-[11px] font-extrabold mt-auto pt-0.5">
-                                <div>
-                                  {hasMemo && (
-                                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-300/90 px-1 py-0.5 rounded shadow-sm">
-                                      특이사항🔥
-                                    </span>
-                                  )}
-                                </div>
-                                <span>{nightsCount}박</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 3. 최상단 셀 격자선 레이어 */}
-                <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
-                  {timelineDates.map((dStr) => (
-                    <div
-                      key={`grid-line-${dStr}`}
-                      className="grid divide-x divide-gray-300/60 border-b border-gray-300/60"
-                      style={{
-                        gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
-                        height: `${ROW_HEIGHT}px`
-                      }}
-                    >
-                      <div />
-                      {ALL_UNITS.map((col) => (
-                        <div key={`grid-cell-${dStr}-${col.key}`} className="h-full" />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-
-            </div>
-          </div>
+          {/* 하단 타임라인 컴포넌트 (VerticalTimeline / HorizontalTimeline) */}
+          {viewMode === 'vertical' ? (
+            <VerticalTimeline
+              timelineDates={timelineDates}
+              todayStr={todayStr}
+              selectedDate={selectedDate}
+              bookings={bookings}
+              bookingMemos={bookingMemos}
+              ROW_HEIGHT={ROW_HEIGHT}
+              displayDaysCount={displayDaysCount}
+              onDateClick={handleDateClick}
+              onBookingClick={handleBookingClick}
+            />
+          ) : (
+            <HorizontalTimeline
+              timelineDates={timelineDates}
+              todayStr={todayStr}
+              selectedDate={selectedDate}
+              bookings={bookings}
+              bookingMemos={bookingMemos}
+              COL_WIDTH={COL_WIDTH_HORIZ}
+              ROW_HEIGHT={ROW_HEIGHT}
+              onDateClick={handleDateClick}
+              onBookingClick={handleBookingClick}
+            />
+          )}
         </div>
 
       </div>
 
-      {/* 모달 1: 개별 예약 상세 및 메모 수정 모달 */}
+      {/* 모달 1 */}
       {activeBooking && (
         <BookingModal
           booking={activeBooking}
@@ -415,7 +307,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 2: 총 특이사항 모아보기 모달 */}
+      {/* 모달 2 */}
       {isTotalNotesOpen && (
         <TotalNotesModal
           bookings={bookings}
@@ -428,7 +320,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 3: 통합 검색 모달 */}
+      {/* 모달 3 */}
       {isSearchOpen && (
         <SearchModal
           bookings={bookings}

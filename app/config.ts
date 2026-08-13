@@ -4,7 +4,7 @@ import { PropertyGroup } from './types';
 export const PROPERTY_GROUPS: PropertyGroup[] = [
     {
         name: 'Green',
-        themeClass: 'bg-theme-green',
+        themeClass: 'group-theme-greens',
         units: [
             { key: '560097', roomId: 560097, displayName: '4층' },
             { key: '560093', roomId: 560093, displayName: '3층' },
@@ -12,7 +12,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'Namsun',
-        themeClass: 'bg-theme-namsun',
+        themeClass: 'group-theme-namsuns',
         units: [
             { key: '560157', roomId: 560157, displayName: '1층' },
             { key: '557426', roomId: 557426, displayName: '2층' },
@@ -24,7 +24,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'WAVE A',
-        themeClass: 'bg-theme-wavea',
+        themeClass: 'group-theme-waves',
         units: [
             { key: '563864-1', roomId: 563864, unitId: 1, displayName: '401호' },
             { key: '563864-2', roomId: 563864, unitId: 2, displayName: '501호' },
@@ -32,7 +32,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'WAVE B',
-        themeClass: 'bg-theme-waveb',
+        themeClass: 'group-theme-waves',
         units: [
             { key: '563881-1', roomId: 563881, unitId: 1, displayName: '402호' },
             { key: '563881-2', roomId: 563881, unitId: 2, displayName: '502호' },
@@ -40,7 +40,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'WAVE C',
-        themeClass: 'bg-theme-wavec',
+        themeClass: 'group-theme-waves',
         units: [
             { key: '563954-1', roomId: 563954, unitId: 1, displayName: '403호' },
             { key: '563954-2', roomId: 563954, unitId: 2, displayName: '503호' },
@@ -48,7 +48,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'WAVE D',
-        themeClass: 'bg-theme-waved',
+        themeClass: 'group-theme-waves',
         units: [
             { key: '564027-1', roomId: 564027, unitId: 1, displayName: '404호' },
             { key: '564027-2', roomId: 564027, unitId: 2, displayName: '504호' },
@@ -56,7 +56,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'YEONNAM (쓰리룸)',
-        themeClass: 'bg-theme-yeonnam',
+        themeClass: 'group-theme-yeonnams',
         units: [
             { key: '559985-1', roomId: 559985, unitId: 1, displayName: '101호' },
             { key: '559985-2', roomId: 559985, unitId: 2, displayName: '201호' },
@@ -64,7 +64,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'YEONNAM (투룸)',
-        themeClass: 'bg-theme-yeonnam',
+        themeClass: 'group-theme-yeonnams',
         units: [
             { key: '560113-1', roomId: 560113, unitId: 1, displayName: '202호' },
             { key: '560113-2', roomId: 560113, unitId: 2, displayName: '102호' },
@@ -72,7 +72,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'YEONNAM (포룸)',
-        themeClass: 'bg-theme-yeonnam',
+        themeClass: 'group-theme-yeonnams',
         units: [
             { key: '560115-1', roomId: 560115, unitId: 1, displayName: '301호' },
         ],
@@ -105,3 +105,36 @@ export const getChannelStyle = (apiSourceId?: number) => {
             return { name: '기타', bg: 'rgb(120, 120, 120)', text: '#ffffff' };
     }
 };
+
+// 🇰🇷 주요 공휴일 지정 (YYYY-MM-DD)
+export const HOLIDAYS: { [key: string]: string } = {
+    '2026-01-01': '신정',
+    '2026-02-16': '설날 연휴',
+    '2026-02-17': '설날',
+    '2026-02-18': '설날 연휴',
+    '2026-03-01': '삼일절',
+    '2026-05-05': '어린이날',
+    '2026-05-24': '부처님오신날',
+    '2026-06-06': '현충일',
+    '2026-08-15': '광복절',
+    '2026-09-24': '추석 연휴',
+    '2026-09-25': '추석',
+    '2026-09-26': '추석 연휴',
+    '2026-10-03': '개천절',
+    '2026-10-09': '한글날',
+    '2026-12-25': '크리스마스',
+};
+
+export type DayType = 'weekday' | 'saturday' | 'sunday' | 'holiday';
+
+// 날짜 문자열(YYYY-MM-DD)을 받아 평일/토요일/일요일/공휴일 구분을 반환하는 함수
+export function getDayType(dateStr: string): { type: DayType; label?: string } {
+    if (HOLIDAYS[dateStr]) {
+        return { type: 'holiday', label: HOLIDAYS[dateStr] };
+    }
+    const d = new Date(dateStr);
+    const day = d.getDay(); // 0: 일, 6: 토
+    if (day === 0) return { type: 'sunday' };
+    if (day === 6) return { type: 'saturday' };
+    return { type: 'weekday' };
+}
