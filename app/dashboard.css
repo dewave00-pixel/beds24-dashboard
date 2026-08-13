@@ -1,0 +1,264 @@
+/* 숙소별 테마 헤더 색상 */
+.bg-theme-green {
+    background-color: #ecfdf5;
+    color: #047857;
+    border-bottom: 2px solid #059669;
+}
+
+.bg-theme-namsun {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border-bottom: 2px solid #2563eb;
+}
+
+.bg-theme-wavea {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border-bottom: 2px solid #16a34a;
+}
+
+.bg-theme-waveb {
+    background-color: #f0fdfa;
+    color: #0f766e;
+    border-bottom: 2px solid #0d9488;
+}
+
+.bg-theme-wavec {
+    background-color: #f0f9ff;
+    color: #0369a1;
+    border-bottom: 2px solid #0284c7;
+}
+
+.bg-theme-waved {
+    background-color: #f5f3ff;
+    color: #6d28d9;
+    border-bottom: 2px solid #7c3aed;
+}
+
+.bg-theme-yeonnam {
+    background-color: #fff1f2;
+    color: #be123c;
+    border-bottom: 2px solid #e11d48;
+}
+
+/* 레이아웃 & 상단 헤더 */
+.dashboard-container {
+    min-height: 100vh;
+    background-color: #f9fafb;
+    padding: 1.5rem;
+}
+
+.dashboard-wrapper {
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.dashboard-wrapper>*+* {
+    margin-top: 1.5rem;
+}
+
+.dashboard-header-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .dashboard-header-card {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
+/* 요약 배지 */
+.stat-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.stat-badge-blue {
+    background-color: #eff6ff;
+    border: 1px solid #dbeafe;
+}
+
+.stat-badge-orange {
+    background-color: #fff7ed;
+    border: 1px solid #ffedd5;
+}
+
+.stat-badge-title-blue {
+    font-size: 0.75rem;
+    color: #2563eb;
+    font-weight: 600;
+    display: block;
+}
+
+.stat-badge-title-orange {
+    font-size: 0.75rem;
+    color: #ea580c;
+    font-weight: 600;
+    display: block;
+}
+
+.stat-badge-value-blue {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1d4ed8;
+}
+
+.stat-badge-value-orange {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #c2410c;
+}
+
+/* 버튼 스타일 */
+.btn-primary {
+    margin-left: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #111827;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.btn-primary:hover {
+    background-color: #1f2937;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background-color: #ffffff;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.btn-secondary:hover {
+    background-color: #f9fafb;
+}
+
+.btn-secondary-blue {
+    color: #2563eb;
+}
+
+.btn-reset-highlight {
+    padding: 0.25rem 0.625rem;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    border: 1px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.btn-reset-highlight:hover {
+    background-color: #e5e7eb;
+}
+
+/* 대시보드 메인 그리드 및 패널 */
+.dashboard-panel {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-panel>*+* {
+    margin-top: 1rem;
+}
+
+.grid-table-container {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.grid-row-header-1 {
+    display: grid;
+    background-color: #f3f4f6;
+    border-bottom: 1px solid #d1d5db;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.grid-row-header-2 {
+    display: grid;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #d1d5db;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #374151;
+}
+
+.cell-corner {
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e5e7eb;
+    color: #374151;
+    font-weight: 700;
+}
+
+/* 강조/불투명 이벤트 클래스 */
+.row-selected {
+    background-color: rgba(254, 243, 199, 0.8) !important;
+    border-color: #f59e0b !important;
+    z-index: 10;
+}
+
+.row-dimmed {
+    opacity: 0.3;
+    background-color: #ffffff;
+}
+
+.booking-card-dimmed {
+    opacity: 0.2;
+    filter: grayscale(50%);
+}
+
+/* 메모 존재 예약 박스 은은한 깜빡임 애니메이션 (Pulse) */
+@keyframes memoPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.65;
+        transform: scale(0.99);
+    }
+}
+
+.animate-pulse-memo {
+    animation: memoPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
