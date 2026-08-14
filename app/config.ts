@@ -199,11 +199,11 @@ export function getUnitDisplayInfo(booking: {
 
     // 숙소 그룹별 선명한 고대비 전용 배경색 맵
     const colorMap: { [key: string]: { backgroundColor: string; color: string } } = {
-        'group-theme-green': { backgroundColor: '#047857', color: '#ffffff' }, // 진한 에메랄드 그린
-        'group-theme-wave': { backgroundColor: '#0369a1', color: '#ffffff' },  // 진한 웨이브 블루
-        'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#ffffff' }, // 진한 연남 퍼플
-        'group-theme-namsan': { backgroundColor: '#b45309', color: '#ffffff' }, // 진한 남산 앰버
-        'group-theme-default': { backgroundColor: '#334155', color: '#ffffff' }, // 다크 슬레이트
+        'group-theme-green': { backgroundColor: '#047857', color: '#000000' }, // 진한 에메랄드 그린
+        'group-theme-wave': { backgroundColor: '#0369a1', color: '#000000' },  // 진한 웨이브 블루
+        'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#000000' }, // 진한 연남 퍼플
+        'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남산 앰버
+        'group-theme-default': { backgroundColor: '#334155', color: '#000000' }, // 다크 슬레이트
     };
 
     // 1. PROPERTY_GROUPS 순회 매칭
