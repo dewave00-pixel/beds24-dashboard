@@ -1,7 +1,7 @@
 'use client';
 
-import { Booking } from '../types';
-import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../config';
+import { Booking } from '../../types';
+import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../../config';
 
 interface BookingNoteData {
     note: string;
@@ -61,10 +61,10 @@ export default function HorizontalTimeline({
                                 key={`h-header-${dStr}`}
                                 onClick={() => onDateClick(dStr)}
                                 className={`sticky-top-1 p-1.5 flex flex-col items-center justify-center cursor-pointer transition ${isSelected
-                                        ? 'bg-amber-500 text-white font-extrabold'
-                                        : isToday
-                                            ? 'bg-blue-600 text-white font-extrabold'
-                                            : dayColorClass
+                                    ? 'bg-amber-500 text-white font-extrabold'
+                                    : isToday
+                                        ? 'bg-blue-600 text-white font-extrabold'
+                                        : dayColorClass
                                     }`}
                             >
                                 <div>
@@ -119,14 +119,14 @@ export default function HorizontalTimeline({
                                                         key={`h-cell-${unit.key}-${dStr}`}
                                                         onClick={() => onDateClick(dStr)}
                                                         className={`h-full cursor-pointer ${isSelected
-                                                                ? 'bg-amber-100/60'
-                                                                : isToday
-                                                                    ? 'bg-blue-50/40'
-                                                                    : dayInfo.type === 'saturday'
-                                                                        ? 'bg-blue-50/20'
-                                                                        : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                                            ? 'bg-red-50/20'
-                                                                            : 'hover:bg-gray-50'
+                                                            ? 'bg-amber-100/60'
+                                                            : isToday
+                                                                ? 'bg-blue-50/40'
+                                                                : dayInfo.type === 'saturday'
+                                                                    ? 'bg-blue-50/20'
+                                                                    : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
+                                                                        ? 'bg-red-50/20'
+                                                                        : 'hover:bg-gray-50'
                                                             }`}
                                                     />
                                                 );

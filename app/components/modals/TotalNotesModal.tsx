@@ -1,7 +1,7 @@
 'use client';
 
-import { Booking } from '../types';
-import { ALL_UNITS, getChannelStyle, parseBookingTag } from '../config';
+import { Booking } from '../../types';
+import { ALL_UNITS, getChannelStyle, parseBookingTag } from '../../config';
 
 interface BookingNoteData {
     note: string;

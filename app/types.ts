@@ -21,13 +21,21 @@ export interface UnitConfig {
     key: string;
     roomId: number;
     unitId?: number;
+    propName?: string;
     displayName: string;
     subName?: string;
 }
-
 // 숙소 그룹 구조 정의
 export interface PropertyGroup {
     name: string;
     themeClass: string;
     units: UnitConfig[];
+}
+
+//  배정 데이터 모델
+export interface CleaningAssignment {
+    unitKey: string;     // 📌 호실 고유 키 (예: 'yeonnam_101')
+    staffName: string;   // 👤 담당자 이름 (예: '이모님A')
+    staffId: string;     // 🔑 계정 매칭용 권한 아이디 (예: 'staff_1')
+    assignedAt: string;  // 🕒 배정 시각 (예: '14:25')
 }

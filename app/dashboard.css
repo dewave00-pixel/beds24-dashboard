@@ -241,3 +241,49 @@ body {
 .animate-pulse-memo {
     animation: pulseMemo 2s infinite ease-in-out;
 }
+
+/* ========================================================
+   일일 입/퇴실 모달 PC 50:50 반반 분할 & 모바일 탭 완벽 고정 모듈
+   ======================================================== */
+
+/* 기본 (모바일 화면) */
+.daily-modal-desktop {
+    display: none !important;
+}
+
+.daily-modal-mobile {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.daily-modal-tabs-wrap {
+    display: block !important;
+}
+
+/* 🖥️ PC 및 태블릿 (가로 768px 이상) */
+@media (min-width: 768px) {
+    .daily-modal-tabs-wrap {
+        display: none !important;
+        /* PC에선 모바일 탭 완벽 제거 */
+    }
+
+    .daily-modal-mobile {
+        display: none !important;
+        /* PC에선 1열 단일 목록 숨김 */
+    }
+
+    .daily-modal-desktop {
+        display: flex !important;
+        /* PC에선 좌우 50:50 플렉스 강제 활성화 */
+        flex-direction: row !important;
+        gap: 1rem !important;
+        width: 100% !important;
+        align-items: flex-start !important;
+    }
+
+    .daily-modal-col-half {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+    }
+}

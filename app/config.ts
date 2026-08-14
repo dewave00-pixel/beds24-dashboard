@@ -1,4 +1,5 @@
-import { PropertyGroup } from './types';
+import type { UnitConfig, PropertyGroup } from './types';
+
 
 // 7개 숙소 및 세부 호실 매핑 표
 export const PROPERTY_GROUPS: PropertyGroup[] = [
@@ -80,7 +81,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
 ];
 
 // 화면에 나열할 전체 호실 목록 평탄화
-export const ALL_UNITS = PROPERTY_GROUPS.flatMap((group) =>
+export const ALL_UNITS: UnitConfig[] = PROPERTY_GROUPS.flatMap((group) =>
     group.units.map((unit) => ({
         ...unit,
         propName: group.name,
@@ -203,7 +204,7 @@ export function getUnitDisplayInfo(booking: {
         'group-theme-wave': { backgroundColor: '#0369a1', color: '#000000' },  // 진한 웨이브 블루
         'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#000000' }, // 진한 연남 퍼플
         'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남산 앰버
-        'group-theme-default': { backgroundColor: '#334155', color: '#000000' }, // 다크 슬레이트
+        'group-theme-default': { backgroundColor: '#78aaf1ff', color: '#000000' }, // 다크 슬레이트
     };
 
     // 1. PROPERTY_GROUPS 순회 매칭
@@ -245,4 +246,22 @@ export function getUnitDisplayInfo(booking: {
         themeClass: 'group-theme-default',
         badgeStyle: colorMap['group-theme-default'],
     };
+}
+
+// 스태프 4인 계정 및 담당자 이름 매핑 설정
+export interface StaffAccount {
+    id: string;        // 'staff_1' ~ 'staff_4'
+    name: string;      // '이모님A', '이모님B', '삼촌C', '매니저'
+}
+
+export const STAFF_ACCOUNTS: StaffAccount[] = [
+    { id: 'staff_1', name: '소영매니저님' },
+    { id: 'staff_2', name: '가연영님' },
+    { id: 'staff_3', name: '지명님' },
+    { id: 'staff_4', name: 'ZEAL님' },
+];
+
+export function getStaffNameById(staffId: string): string {
+    const staff = STAFF_ACCOUNTS.find((s) => s.id === staffId);
+    return staff ? staff.name : staffId;
 }

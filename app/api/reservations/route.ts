@@ -1,32 +1,14 @@
 import { NextResponse } from 'next/server';
+import { getValidBeds24Token } from '../../utils/beds24Client';
+
+export const dynamic = 'force-dynamic';
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function GET() {
-    const refreshToken = process.env.BEDS24_REFRESH_TOKEN;
-
-    if (!refreshToken) {
-        return NextResponse.json({ error: 'BEDS24_REFRESH_TOKEN이 설정되지 않았습니다.' }, { status: 400 });
-    }
-
     try {
-        // 1. Access Token 발급
-        const authResponse = await fetch('https://beds24.com/api/v2/authentication/token', {
-            method: 'GET',
-            headers: {
-                'refreshToken': refreshToken,
-                'accept': 'application/json',
-            },
-        });
-
-        const authData = await authResponse.json();
-
-        if (!authResponse.ok || !authData.token) {
-            return NextResponse.json({
-                error: 'Access Token 발급 실패',
-                details: authData
-            }, { status: authResponse.status });
-        }
-
-        const accessToken = authData.token;
+        // 1. 공통 모듈을 통해 토큰을 안전하게 가져옴 (메모리 캐싱 및 429 방어 적용)
+        const accessToken = await getValidBeds24Token();
 
         // 2. 관리 중인 7개 숙소 ID 배열
         const propertyIds = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
@@ -41,29 +23,47 @@ export async function GET() {
         const arrivalFrom = fromDate.toISOString().split('T')[0];
         const arrivalTo = toDate.toISOString().split('T')[0];
 
-        // 4. 7개 숙소 각각 개별 동시 요청 (100건 제한 완전 우회)
-        const requests = propertyIds.map((propId) => {
-            const url = `https://beds24.com/api/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&includeInfo=true`;
-            return fetch(url, {
+        let allBookings: any[] = [];
+
+        // 4. 429 에러 방어를 위해 Promise.all(동시 요청) 대신 for...of 직렬(순차) 요청 사용
+        for (const propId of propertyIds) {
+            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&includeInfo=true`;
+            
+            let res = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'token': accessToken,
                     'accept': 'application/json',
                 },
-            }).then(res => res.json());
-        });
+                cache: 'no-store',
+            });
 
-        const results = await Promise.all(requests);
-
-        // 5. 7개 숙소에서 받아온 예약 데이터들을 하나로 병합
-        let allBookings: any[] = [];
-        results.forEach((resData) => {
-            if (resData && resData.data && Array.isArray(resData.data)) {
-                allBookings = allBookings.concat(resData.data);
-            } else if (Array.isArray(resData)) {
-                allBookings = allBookings.concat(resData);
+            // 개별 요청 중 429 발생 시 2초 대기 후 한 번 더 시도
+            if (res.status === 429) {
+                console.warn(`⚠️ [Beds24] 숙소 ${propId} 조회 429 감지 -> 2초 대기 후 재시도`);
+                await sleep(2000);
+                res = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'token': accessToken,
+                        'accept': 'application/json',
+                    },
+                    cache: 'no-store',
+                });
             }
-        });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.data && Array.isArray(data.data)) {
+                    allBookings = allBookings.concat(data.data);
+                } else if (Array.isArray(data)) {
+                    allBookings = allBookings.concat(data);
+                }
+            }
+
+            // 다음 숙소 요청 전 300ms 대기 (Beds24 API 초당 요청 제한 방어)
+            await sleep(300);
+        }
 
         return NextResponse.json({
             success: true,

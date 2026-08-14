@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Booking } from '../types';
-import { getChannelStyle, getUnitDisplayInfo } from '../config';
+import { Booking } from '../../types';
+import { getChannelStyle, getUnitDisplayInfo } from '../../config';
 
 interface SearchModalProps {
     bookings: Booking[];

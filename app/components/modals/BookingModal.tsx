@@ -1,7 +1,7 @@
 'use client';
 
-import { Booking } from '../types';
-import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../config';
+import { Booking } from '../../types';
+import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../../config';
 
 interface BookingModalProps {
     booking: Booking;
@@ -130,8 +130,8 @@ export default function BookingModal({
                             {/* 1. 얼리체크인 */}
                             <div
                                 className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isEarlyActive
-                                        ? 'bg-blue-50 border-blue-500 border-2 shadow-sm'
-                                        : 'bg-white border-gray-300'
+                                    ? 'bg-blue-50 border-blue-500 border-2 shadow-sm'
+                                    : 'bg-white border-gray-300'
                                     }`}
                             >
                                 <button
@@ -162,8 +162,8 @@ export default function BookingModal({
                             {/* 2. 레이트체크아웃 */}
                             <div
                                 className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isLateActive
-                                        ? 'bg-indigo-50 border-indigo-500 border-2 shadow-sm'
-                                        : 'bg-white border-gray-300'
+                                    ? 'bg-indigo-50 border-indigo-500 border-2 shadow-sm'
+                                    : 'bg-white border-gray-300'
                                     }`}
                             >
                                 <button
@@ -196,8 +196,8 @@ export default function BookingModal({
                                 type="button"
                                 onClick={() => onToggleTag('no_cleaning')}
                                 className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all ${isNoCleaning
-                                        ? 'bg-rose-50 border-rose-500 border-2 text-rose-900 shadow-sm'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-rose-50 border-rose-500 border-2 text-rose-900 shadow-sm'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <span className="flex items-center gap-1.5">
@@ -212,8 +212,8 @@ export default function BookingModal({
                                 type="button"
                                 onClick={() => onToggleTag('repair')}
                                 className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all ${isRepair
-                                        ? 'bg-amber-50 border-amber-500 border-2 text-amber-950 shadow-sm'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-amber-50 border-amber-500 border-2 text-amber-950 shadow-sm'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <span className="flex items-center gap-1.5">
