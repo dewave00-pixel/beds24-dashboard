@@ -13,10 +13,10 @@ export async function GET() {
         // 2. 관리 중인 7개 숙소 ID 배열
         const propertyIds = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
 
-        // 3. 오늘 기준 과거 10일 전 ~ 미래 365일 후 기간 설정
+        // 3. 오늘 기준 과거 3일 전 ~ 미래 365일 후 기간 설정
         const today = new Date();
         const fromDate = new Date(today);
-        fromDate.setDate(today.getDate() - 10);
+        fromDate.setDate(today.getDate() - 3);
         const toDate = new Date(today);
         toDate.setDate(today.getDate() + 365);
 
@@ -27,22 +27,13 @@ export async function GET() {
 
         // 4. 429 에러 방어를 위해 Promise.all(동시 요청) 대신 for...of 직렬(순차) 요청 사용
         for (const propId of propertyIds) {
-            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&includeInfo=true`;
-            
-            let res = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'token': accessToken,
-                    'accept': 'application/json',
-                },
-                cache: 'no-store',
-            });
+            let page = 1;
+            let hasNextPage = true;
 
-            // 개별 요청 중 429 발생 시 2초 대기 후 한 번 더 시도
-            if (res.status === 429) {
-                console.warn(`⚠️ [Beds24] 숙소 ${propId} 조회 429 감지 -> 2초 대기 후 재시도`);
-                await sleep(2000);
-                res = await fetch(url, {
+            while (hasNextPage) {
+                const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&page=${page}&includeInfoItems=true`;
+
+                let res = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'token': accessToken,
@@ -50,19 +41,43 @@ export async function GET() {
                     },
                     cache: 'no-store',
                 });
-            }
 
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.data && Array.isArray(data.data)) {
-                    allBookings = allBookings.concat(data.data);
-                } else if (Array.isArray(data)) {
-                    allBookings = allBookings.concat(data);
+                // 개별 요청 중 429 발생 시 2초 대기 후 한 번 더 시도
+                if (res.status === 429) {
+                    console.warn(`⚠️ [Beds24] 숙소 ${propId} 조회 429 감지 -> 2초 대기 후 재시도`);
+                    await sleep(2000);
+                    res = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'token': accessToken,
+                            'accept': 'application/json',
+                        },
+                        cache: 'no-store',
+                    });
                 }
-            }
 
-            // 다음 숙소 요청 전 300ms 대기 (Beds24 API 초당 요청 제한 방어)
-            await sleep(300);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.data && Array.isArray(data.data)) {
+                        allBookings = allBookings.concat(data.data);
+                        // 다음 페이지가 있는지 확인
+                        hasNextPage = data.pages && data.pages.nextPageExists === true;
+                        page++;
+                    } else if (Array.isArray(data)) {
+                        allBookings = allBookings.concat(data);
+                        hasNextPage = false;
+                    } else {
+                        hasNextPage = false;
+                    }
+                } else {
+                    const errText = await res.text();
+                    console.error(`❌ [Beds24 API Error] 숙소 ${propId} 조회 실패 - Status: ${res.status}, Body: ${errText}, URL: ${url}`);
+                    hasNextPage = false;
+                }
+
+                // 다음 숙소 또는 다음 페이지 요청 전 300ms 대기 (Beds24 API 초당 요청 제한 방어)
+                await sleep(300);
+            }
         }
 
         return NextResponse.json({

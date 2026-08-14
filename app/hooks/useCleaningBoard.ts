@@ -5,14 +5,21 @@ import { useDashboard } from './useDashboard';
 import { ALL_UNITS } from '../config';
 import { CleaningAssignment } from '../types';
 
-export const DEFAULT_STAFF_LIST = ['소영매니저님', '가연영님', '지명님', 'ZEAL님'];
+export const DEFAULT_STAFF_MAP: Record<string, string> = {
+    staff_1: '소정매니저님',
+    staff_2: '가연영님',
+    staff_3: '지명님',
+    staff_4: 'ZEAL님',
+};
 
 export function useCleaningBoard() {
     const dash = useDashboard();
     const [selectedDate, setSelectedDate] = useState<string>(dash.todayStr);
-    const [staffList, setStaffList] = useState<string[]>(DEFAULT_STAFF_LIST);
+    
+    // 상태 기반 담당자 맵
+    const [staffMap, setStaffMap] = useState<Record<string, string>>(DEFAULT_STAFF_MAP);
 
-    // 호실별 배정 객체: { 'yeonnam_101': { staffName: '이모님A', assignedAt: '14:25' } }
+    // 호실별 배정 객체: { 'yeonnam_101': { staffName: '이모님A', staffId: 'staff_1', assignedAt: '14:25' } }
     const [assignments, setAssignments] = useState<{ [unitKey: string]: CleaningAssignment }>({});
 
     const cleaningTargetUnits = useMemo(() => {
@@ -27,11 +34,28 @@ export function useCleaningBoard() {
         });
     }, [dash.bookings, selectedDate]);
 
+    useEffect(() => {
+        const saved = localStorage.getItem('beds24_staff_map');
+        if (saved) {
+            try {
+                setStaffMap(JSON.parse(saved));
+            } catch (e) {
+                console.error('Failed to parse staff map');
+            }
+        }
+    }, []);
+
+    const updateStaffMap = (newMap: Record<string, string>) => {
+        setStaffMap(newMap);
+        localStorage.setItem('beds24_staff_map', JSON.stringify(newMap));
+    };
+
+    const staffList = useMemo(() => Object.values(staffMap), [staffMap]);
+
     const getStaffIdByName = (name: string) => {
-        if (name === '소영매니저님') return 'staff_1';
-        if (name === '가연영님') return 'staff_2';
-        if (name === '지명님') return 'staff_3';
-        if (name === 'ZEAL님') return 'staff_4';
+        for (const [id, staffName] of Object.entries(staffMap)) {
+            if (staffName === name) return id;
+        }
         return 'staff_unknown';
     };
 
@@ -117,7 +141,8 @@ export function useCleaningBoard() {
         selectedDate,
         setSelectedDate,
         staffList,
-        setStaffList,
+        staffMap,
+        updateStaffMap,
         assignments,
         cleaningTargetUnits,
         assignStaff,

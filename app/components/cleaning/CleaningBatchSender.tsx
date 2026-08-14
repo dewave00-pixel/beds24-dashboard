@@ -26,7 +26,6 @@ export default function CleaningBatchSender({
 
         const shareText = `[숙소 청소 배정 안내]
 📅 일자: ${dateStr}
-👥 배정 인원: ${assignedStaffs.join(', ')} (총 ${totalAssignedRooms}개 호실)
 
 오늘 청소 배정이 완료되었습니다.
 청소 관리 페이지에 로그인하여 본인 담당 호실과 특이사항(입퇴실/얼리/메모)을 확인해 주세요!
@@ -70,8 +69,8 @@ export default function CleaningBatchSender({
                 onClick={handleShareNotice}
                 disabled={totalAssignedRooms === 0}
                 className={`w-full md:w-auto px-4 py-2.5 rounded-lg font-black text-xs md:text-sm transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer ${totalAssignedRooms > 0
-                        ? 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 active:scale-95'
-                        : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                    ? 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 active:scale-95'
+                    : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                     }`}
             >
                 <span>💬</span>

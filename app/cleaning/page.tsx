@@ -61,6 +61,8 @@ export default function CleaningPage() {
                 {/* 2. 상단 담당자 풀 (드래그 출발지) */}
                 <CleaningStaffPool
                     staffList={c.staffList}
+                    staffMap={c.staffMap}
+                    updateStaffMap={c.updateStaffMap}
                     selectedStaffForMobile={selectedStaffForMobile}
                     onSelectStaffForMobile={setSelectedStaffForMobile}
                 />

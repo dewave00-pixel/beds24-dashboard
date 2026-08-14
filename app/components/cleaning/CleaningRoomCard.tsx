@@ -121,13 +121,13 @@ export default function CleaningRoomCard({
             <div className="text-[11px] flex flex-col gap-0.5 text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 font-bold">
                 {checkoutBooking && (
                     <div className="text-orange-700 flex items-center justify-between">
-                        <span>📤 오늘 퇴실 (11:00)</span>
+                        <span>📤 체크아웃</span>
                         <span className="text-[10px] text-gray-500">{checkoutBooking.firstName || '게스트'}</span>
                     </div>
                 )}
                 {checkinBooking && (
                     <div className="text-blue-700 flex items-center justify-between">
-                        <span>📥 오늘 입실 (15:00)</span>
+                        <span>📥 체크인</span>
                         <span className="text-[10px] text-gray-500">{checkinBooking.firstName || '게스트'}</span>
                     </div>
                 )}
@@ -140,7 +140,7 @@ export default function CleaningRoomCard({
                         const tagInfo = parseBookingTag(tagKey);
                         if (!tagInfo) return null;
                         return (
-                            <span key={tagKey} className="text-[9px] font-black px-1.5 py-0.5 rounded bg-black/80 text-white">
+                            <span key={tagKey} className="text-[9px] font-black px-1.5 py-0.5 rounded bg-pink-600 text-white">
                                 {tagInfo.icon} {tagInfo.label}
                             </span>
                         );
