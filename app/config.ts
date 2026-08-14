@@ -138,3 +138,46 @@ export function getDayType(dateStr: string): { type: DayType; label?: string } {
     if (day === 6) return { type: 'saturday' };
     return { type: 'weekday' };
 }
+
+// 🏷️ 4대 예약 옵션 태그 마스터 정의 (추후 추가/수정 용이)
+export interface BookingTagDef {
+    key: string;
+    label: string;
+    shortLabel: string;
+    icon: string;
+    bgClass: string;
+    textClass: string;
+}
+
+// 🏷️ 예약 상태 태그 설정 및 시간 옵션 마스터
+export const EARLY_CHECKIN_HOURS = ['오후 1시', '오후 2시', '오후 3시', '오후 4시'];
+export const LATE_CHECKOUT_HOURS = ['오후 1시', '오후 2시', '오후 3시'];
+
+// 태그 키 문자열을 받아서 대시보드 카드에 노출할 뱃지 정보를 반환하는 모듈 함수
+export function parseBookingTag(tagKey: string): { label: string; icon: string } | null {
+    // 1. 얼리체크인 (예: early_오후 2시)
+    if (tagKey.startsWith('early_')) {
+        const timeStr = tagKey.replace('early_', '');
+        const simpleTime = timeStr.replace('오후 ', '');
+        return { icon: '🕒', label: `${simpleTime} 인` };
+    }
+
+    // 2. 레이트체크아웃 (예: late_오후 1시)
+    if (tagKey.startsWith('late_')) {
+        const timeStr = tagKey.replace('late_', '');
+        const simpleTime = timeStr.replace('오후 ', '');
+        return { icon: '⏱️', label: `${simpleTime} 아웃` };
+    }
+
+    // 3. 청소안함
+    if (tagKey === 'no_cleaning') {
+        return { icon: '🧹', label: '노청소' };
+    }
+
+    // 4. 수리/점검
+    if (tagKey === 'repair') {
+        return { icon: '🛠️', label: '수리' };
+    }
+
+    return null;
+}

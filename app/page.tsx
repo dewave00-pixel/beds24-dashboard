@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import './dashboard.css';
 import { Booking } from './types';
-import { getChannelStyle } from './config';
 import BookingModal from './components/BookingModal';
 import TotalNotesModal from './components/TotalNotesModal';
 import SearchModal from './components/SearchModal';
@@ -13,20 +12,24 @@ import HorizontalTimeline from './components/HorizontalTimeline';
 const ROW_HEIGHT = 65;
 const COL_WIDTH_HORIZ = 110;
 
+export interface BookingNoteData {
+  note: string;
+  tags: string[];
+}
+
 export default function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  // 📱/🖥️ 뷰 모드 상태 ('vertical' | 'horizontal')
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
 
-  // 모달 상태 관리
+  // 모달 및 메모/태그 상태 관리
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
   const [memoInput, setMemoInput] = useState<string>('');
-  const [bookingMemos, setBookingMemos] = useState<{ [bookingId: number]: string }>({});
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [bookingNotes, setBookingNotes] = useState<{ [bookingId: number]: BookingNoteData }>({});
 
   const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
@@ -39,16 +42,16 @@ export default function Dashboard() {
 
   const displayDaysCount = 14;
 
-  // 1. Supabase 중앙 DB에서 메모 목록 불러오기 (모듈화 API 호출)
-  const fetchMemos = async () => {
+  // 1. Supabase 중앙 DB에서 메모 및 태그 목록 불러오기
+  const fetchNotes = async () => {
     try {
       const res = await fetch('/api/notes');
       const data = await res.json();
       if (data.success && data.data) {
-        setBookingMemos(data.data);
+        setBookingNotes(data.data);
       }
     } catch (e) {
-      console.error('메모 불러오기 실패:', e);
+      console.error('메모/태그 불러오기 실패:', e);
     }
   };
 
@@ -72,15 +75,14 @@ export default function Dashboard() {
     }
   };
 
-  // 통합 새로고침 (예약 + 메모)
+  // 통합 새로고침
   const reloadAll = async () => {
-    await Promise.all([fetchReservations(), fetchMemos()]);
+    await Promise.all([fetchReservations(), fetchNotes()]);
   };
 
   useEffect(() => {
     reloadAll();
 
-    // 뷰 모드 로컬 유지
     const savedMode = localStorage.getItem('beds24_view_mode');
     if (savedMode === 'horizontal' || savedMode === 'vertical') {
       setViewMode(savedMode);
@@ -131,13 +133,23 @@ export default function Dashboard() {
     }
   };
 
+  // 예약 카드 클릭 시 모달 열기
   const handleBookingClick = (e: React.MouseEvent, booking: Booking) => {
     e.stopPropagation();
     setActiveBooking(booking);
-    setMemoInput(bookingMemos[booking.id] || '');
+    const existing = bookingNotes[booking.id];
+    setMemoInput(existing ? existing.note : '');
+    setSelectedTags(existing ? existing.tags || [] : []);
   };
 
-  // 3. 특이사항 메모 중앙 DB에 저장/수정
+  // 태그 토글 핸들러
+  const handleToggleTag = (tagKey: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagKey) ? prev.filter((k) => k !== tagKey) : [...prev, tagKey]
+    );
+  };
+
+  // 메모 및 태그 저장
   const handleSaveMemo = async () => {
     if (!activeBooking) return;
     try {
@@ -147,19 +159,23 @@ export default function Dashboard() {
         body: JSON.stringify({
           bookingId: activeBooking.id,
           note: memoInput,
+          tags: selectedTags,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setBookingMemos((prev) => ({ ...prev, [activeBooking.id]: memoInput }));
+        setBookingNotes((prev) => ({
+          ...prev,
+          [activeBooking.id]: { note: memoInput, tags: selectedTags },
+        }));
       }
     } catch (e) {
-      console.error('메모 저장 실패:', e);
+      console.error('메모/태그 저장 실패:', e);
     }
     setActiveBooking(null);
   };
 
-  // 4. 특이사항 메모 중앙 DB에서 삭제
+  // 메모 및 태그 삭제
   const handleDeleteMemo = async () => {
     if (!activeBooking) return;
     try {
@@ -168,28 +184,34 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        setBookingMemos((prev) => {
+        setBookingNotes((prev) => {
           const updated = { ...prev };
           delete updated[activeBooking.id];
           return updated;
         });
       }
     } catch (e) {
-      console.error('메모 삭제 실패:', e);
+      console.error('메모/태그 삭제 실패:', e);
     }
     setActiveBooking(null);
   };
+
+  // 모아보기 호환용 맵
+  const plainMemosMap: { [bookingId: number]: string } = {};
+  Object.keys(bookingNotes).forEach((idStr) => {
+    const id = Number(idStr);
+    plainMemosMap[id] = bookingNotes[id]?.note || '';
+  });
 
   return (
     <div className="dashboard-container">
       <div className="dashboard-wrapper">
 
-        {/* 상단 헤더 카드 (컴팩트 슬림화) */}
+        {/* 상단 헤더 카드 */}
         <div className="dashboard-header-card">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base md:text-lg font-extrabold text-gray-900 shrink-0">숙소 예약 현황</h1>
 
-            {/* 플랫폼 색상 배지 */}
             <div className="text-[10px] text-gray-500 flex flex-wrap items-center gap-1">
               <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
               <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
@@ -200,7 +222,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* 오늘/내일 체크인/체크아웃 초슬림 가로 1줄 배지 */}
             <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
               <div className="stat-badge-mini stat-badge-blue">
                 <span>오늘 입실</span>
@@ -220,7 +241,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 📱/🖥️ 뷰 모드 토글 스위치 및 새로고침 */}
             <div className="flex items-center gap-1.5 ml-auto">
               <div className="bg-gray-100 p-0.5 rounded-md border border-gray-300 flex gap-0.5">
                 <button
@@ -258,10 +278,8 @@ export default function Dashboard() {
 
         {/* 대시보드 메인 패널 */}
         <div className="dashboard-panel">
-          {/* 메인 컨트롤 바 (날짜 표시 + 검색/특이사항 버튼 + 주간 이동 버튼) */}
           <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              {/* 1. 조회 날짜 범위 */}
               <div className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
                 <span>📅 조회:</span>
                 <span className="text-blue-600 font-extrabold">{timelineDates[0]}</span>
@@ -269,14 +287,12 @@ export default function Dashboard() {
                 <span className="text-blue-600 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
               </div>
 
-              {/* 2. 날짜 강조 해제 버튼 */}
               {selectedDate && (
                 <button onClick={() => setSelectedDate(null)} className="btn-reset-highlight">
                   🔍 {selectedDate} 강조 해제 ✖
                 </button>
               )}
 
-              {/* 3. 🔍 예약 검색 & 🔥 총 특이사항 버튼 */}
               <div className="flex items-center gap-1.5 ml-1">
                 <button
                   onClick={() => setIsSearchOpen(true)}
@@ -294,7 +310,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 4. 지난주 / 오늘 / 다음주 이동 버튼 */}
             <div className="flex gap-1.5 shrink-0">
               <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
               <button onClick={goToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
@@ -302,14 +317,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 타임라인 컴포넌트 렌더링 */}
           {viewMode === 'vertical' ? (
             <VerticalTimeline
               timelineDates={timelineDates}
               todayStr={todayStr}
               selectedDate={selectedDate}
               bookings={bookings}
-              bookingMemos={bookingMemos}
+              bookingNotes={bookingNotes}
               ROW_HEIGHT={ROW_HEIGHT}
               displayDaysCount={displayDaysCount}
               onDateClick={handleDateClick}
@@ -321,7 +335,7 @@ export default function Dashboard() {
               todayStr={todayStr}
               selectedDate={selectedDate}
               bookings={bookings}
-              bookingMemos={bookingMemos}
+              bookingNotes={bookingNotes}
               COL_WIDTH={COL_WIDTH_HORIZ}
               ROW_HEIGHT={ROW_HEIGHT}
               onDateClick={handleDateClick}
@@ -332,12 +346,14 @@ export default function Dashboard() {
 
       </div>
 
-      {/* 모달 1: 개별 예약 상세 및 메모 모달 */}
+      {/* 모달 1: 개별 예약 상세 및 체크박스/메모 모달 */}
       {activeBooking && (
         <BookingModal
           booking={activeBooking}
           memoInput={memoInput}
           setMemoInput={setMemoInput}
+          selectedTags={selectedTags}
+          onToggleTag={handleToggleTag}
           onSave={handleSaveMemo}
           onDelete={handleDeleteMemo}
           onClose={() => setActiveBooking(null)}
@@ -348,11 +364,13 @@ export default function Dashboard() {
       {isTotalNotesOpen && (
         <TotalNotesModal
           bookings={bookings}
-          bookingMemos={bookingMemos}
+          bookingMemos={plainMemosMap}
           onClose={() => setIsTotalNotesOpen(false)}
           onSelectBooking={(booking) => {
             setActiveBooking(booking);
-            setMemoInput(bookingMemos[booking.id] || '');
+            const existing = bookingNotes[booking.id];
+            setMemoInput(existing ? existing.note : '');
+            setSelectedTags(existing ? existing.tags || [] : []);
           }}
         />
       )}
@@ -364,7 +382,9 @@ export default function Dashboard() {
           onClose={() => setIsSearchOpen(false)}
           onSelectBooking={(booking) => {
             setActiveBooking(booking);
-            setMemoInput(bookingMemos[booking.id] || '');
+            const existing = bookingNotes[booking.id];
+            setMemoInput(existing ? existing.note : '');
+            setSelectedTags(existing ? existing.tags || [] : []);
           }}
         />
       )}

@@ -1,14 +1,19 @@
 'use client';
 
 import { Booking } from '../types';
-import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType } from '../config';
+import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../config';
+
+interface BookingNoteData {
+    note: string;
+    tags: string[];
+}
 
 interface HorizontalTimelineProps {
     timelineDates: string[];
     todayStr: string;
     selectedDate: string | null;
     bookings: Booking[];
-    bookingMemos: { [bookingId: number]: string };
+    bookingNotes: { [bookingId: number]: BookingNoteData };
     COL_WIDTH: number;
     ROW_HEIGHT: number;
     onDateClick: (dateStr: string) => void;
@@ -20,7 +25,7 @@ export default function HorizontalTimeline({
     todayStr,
     selectedDate,
     bookings,
-    bookingMemos,
+    bookingNotes,
     COL_WIDTH,
     ROW_HEIGHT,
     onDateClick,
@@ -29,12 +34,13 @@ export default function HorizontalTimeline({
     return (
         <div className="grid-table-container">
             <div className="min-w-max">
-                {/* X축: 상단 날짜 헤더 */}
+
+                {/* 상단 날짜 헤더 */}
                 <div
                     className="grid divide-x divide-gray-300 border-b-2 border-gray-300 bg-gray-100 font-bold text-xs"
                     style={{ gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px)` }}
                 >
-                    <div className="p-2 flex items-center justify-center bg-gray-200 text-gray-700 font-extrabold">
+                    <div className="sticky-corner-1 p-2 flex items-center justify-center bg-gray-200 text-gray-700 font-extrabold border-r border-gray-300">
                         숙소 / 날짜 ➔
                     </div>
                     {timelineDates.map((dStr) => {
@@ -46,7 +52,7 @@ export default function HorizontalTimeline({
                         const isSelected = selectedDate === dStr;
 
                         const dayInfo = getDayType(dStr);
-                        let dayColorClass = 'hover:bg-gray-200 text-gray-800';
+                        let dayColorClass = 'hover:bg-gray-200 text-gray-800 bg-gray-100';
                         if (dayInfo.type === 'saturday') dayColorClass = 'day-saturday';
                         if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') dayColorClass = 'day-sunday-holiday';
 
@@ -54,7 +60,7 @@ export default function HorizontalTimeline({
                             <div
                                 key={`h-header-${dStr}`}
                                 onClick={() => onDateClick(dStr)}
-                                className={`p-1.5 flex flex-col items-center justify-center cursor-pointer transition ${isSelected
+                                className={`sticky-top-1 p-1.5 flex flex-col items-center justify-center cursor-pointer transition ${isSelected
                                         ? 'bg-amber-500 text-white font-extrabold'
                                         : isToday
                                             ? 'bg-blue-600 text-white font-extrabold'
@@ -73,7 +79,7 @@ export default function HorizontalTimeline({
                     })}
                 </div>
 
-                {/* Y축 & 타임라인 영역 (시각적 일체형 병합) */}
+                {/* Y축 & 타임라인 본문 */}
                 <div className="relative w-full">
                     {PROPERTY_GROUPS.map((group) => {
                         return (
@@ -90,8 +96,7 @@ export default function HorizontalTimeline({
                                                 height: `${ROW_HEIGHT}px`,
                                             }}
                                         >
-                                            {/* Y축 왼쪽 헤더 (안정적인 시각적 일체형 병합) */}
-                                            <div className="flex h-full border-r border-gray-300 bg-gray-50">
+                                            <div className="sticky-left flex h-full border-r border-gray-300 bg-gray-50 z-20">
                                                 <div
                                                     className={`w-24 shrink-0 flex items-center justify-center font-extrabold text-xs text-center p-1 border-r border-gray-300 ${group.themeClass
                                                         } ${isFirstInGroup ? 'opacity-100' : 'opacity-90'}`}
@@ -99,13 +104,11 @@ export default function HorizontalTimeline({
                                                     {isFirstInGroup ? group.name : ''}
                                                 </div>
 
-                                                {/* 세부 호실 명칭 */}
                                                 <div className="grow flex items-center justify-center px-1 font-bold text-xs text-gray-800 bg-white">
                                                     {unit.displayName}
                                                 </div>
                                             </div>
 
-                                            {/* 가로 날짜 배경 셀들 */}
                                             {timelineDates.map((dStr) => {
                                                 const isToday = dStr === todayStr;
                                                 const isSelected = selectedDate === dStr;
@@ -135,7 +138,7 @@ export default function HorizontalTimeline({
                         );
                     })}
 
-                    {/* 오버레이: 가로방향 예약 박스 레이어 */}
+                    {/* 오버레이 예약 박스 레이어 */}
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                         {ALL_UNITS.map((unit, globalUnitIdx) => {
                             const unitBookings = bookings.filter((b) => {
@@ -174,13 +177,20 @@ export default function HorizontalTimeline({
                                     selectedDate >= b.arrival &&
                                     selectedDate <= lastNightStr;
                                 const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
-                                const hasMemo = Boolean(bookingMemos[b.id]);
+
+                                const noteData = bookingNotes[b.id];
+                                const hasMemo = Boolean(noteData && noteData.note);
+                                const activeTags = noteData ? noteData.tags || [] : [];
+
+                                const earlyTagKey = activeTags.find((t) => t.startsWith('early_'));
+                                const earlyTagInfo = earlyTagKey ? parseBookingTag(earlyTagKey) : null;
+                                const bottomTags = activeTags.filter((t) => !t.startsWith('early_'));
 
                                 return (
                                     <div
                                         key={`h-booking-${b.id}`}
                                         onClick={(e) => onBookingClick(e, b)}
-                                        className={`absolute rounded-md shadow px-2 py-1 flex items-center justify-between font-bold text-xs pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/10 ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
+                                        className={`absolute rounded-md shadow px-1.5 py-1 flex items-center justify-between font-bold text-xs pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/15 overflow-hidden ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
                                             } ${hasMemo ? 'animate-pulse-memo' : ''}`}
                                         style={{
                                             top: `${topPos}px`,
@@ -192,24 +202,52 @@ export default function HorizontalTimeline({
                                         }}
                                         title={`${ch.name} | ${guestName} (${b.arrival} ~ ${b.departure}, ${nightsCount}박)`}
                                     >
-                                        <div className="flex items-center gap-1.5 truncate">
-                                            <span className="text-[11px] font-extrabold truncate">📥 {guestName}</span>
-                                            <span className="text-[9px] opacity-80 font-medium">({ch.name})</span>
-                                        </div>
-
-                                        <div className="flex items-center gap-1 shrink-0 ml-1">
-                                            {hasMemo && (
-                                                <span className="text-[9px] font-extrabold text-amber-900 bg-amber-300/90 px-1 py-0.5 rounded">
-                                                    특이사항🔥
+                                        {/* 좌측: 이름 + 사이트 + [얼리 뱃지] */}
+                                        <div className="flex items-center gap-1 truncate shrink">
+                                            <span className="text-[10px] md:text-[11px] font-black truncate">
+                                                📥 {guestName}
+                                            </span>
+                                            <span className="text-[8.5px] opacity-85 font-bold truncate">
+                                                ({ch.name})
+                                            </span>
+                                            {earlyTagInfo && (
+                                                <span className="text-[7.5px] font-black px-1 py-0.2 rounded bg-black/50 text-white flex items-center gap-0.5 shadow shrink-0 border border-white/30">
+                                                    {earlyTagInfo.icon} {earlyTagInfo.label}
                                                 </span>
                                             )}
-                                            <span className="text-[10px] font-extrabold">{nightsCount}박</span>
+                                        </div>
+
+                                        {/* 우측: 2줄 자동 줄바꿈 뱃지 + 박수 */}
+                                        <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                                            <div className="flex flex-wrap items-center gap-0.5 max-w-[120px]">
+                                                {hasMemo && (
+                                                    <span className="text-[7.5px] font-black text-white bg-red-600 px-1 py-0.2 rounded shadow border border-white/50">
+                                                        🔥메모
+                                                    </span>
+                                                )}
+
+                                                {bottomTags.map((tagKey) => {
+                                                    const tagInfo = parseBookingTag(tagKey);
+                                                    if (!tagInfo) return null;
+                                                    return (
+                                                        <span
+                                                            key={tagKey}
+                                                            className="text-[7px] font-extrabold px-1 py-0.2 rounded bg-black/50 text-white flex items-center gap-0.5 shadow border border-white/30"
+                                                        >
+                                                            {tagInfo.icon}{tagInfo.label}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <span className="text-[9.5px] md:text-[10.5px] font-black ml-0.5">{nightsCount}박</span>
                                         </div>
                                     </div>
                                 );
                             });
                         })}
                     </div>
+
                 </div>
             </div>
         </div>

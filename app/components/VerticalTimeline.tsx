@@ -1,14 +1,19 @@
 'use client';
 
 import { Booking } from '../types';
-import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType } from '../config';
+import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../config';
+
+interface BookingNoteData {
+    note: string;
+    tags: string[];
+}
 
 interface VerticalTimelineProps {
     timelineDates: string[];
     todayStr: string;
     selectedDate: string | null;
     bookings: Booking[];
-    bookingMemos: { [bookingId: number]: string };
+    bookingNotes: { [bookingId: number]: BookingNoteData };
     ROW_HEIGHT: number;
     displayDaysCount: number;
     onDateClick: (dateStr: string) => void;
@@ -20,7 +25,7 @@ export default function VerticalTimeline({
     todayStr,
     selectedDate,
     bookings,
-    bookingMemos,
+    bookingNotes,
     ROW_HEIGHT,
     displayDaysCount,
     onDateClick,
@@ -29,44 +34,59 @@ export default function VerticalTimeline({
     return (
         <div className="grid-table-container">
             <div className="min-w-max">
-                {/* 1단: 숙소 그룹 헤더 (색상 및 시각적 병합 적용) */}
-                <div
-                    className="grid-row-header-1 divide-x divide-gray-300"
-                    style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
-                >
-                    <div className="cell-corner">숙소명</div>
-                    {PROPERTY_GROUPS.map((group) => (
-                        <div
-                            key={group.name}
-                            className={`p-2 flex items-center justify-center font-extrabold text-xs md:text-sm shadow-sm ${group.themeClass}`}
-                            style={{ gridColumn: `span ${group.units.length}` }}
-                        >
-                            {group.name}
-                        </div>
-                    ))}
-                </div>
 
-                {/* 2단: 세부 호실 헤더 */}
-                <div
-                    className="grid-row-header-2 divide-x divide-gray-300"
-                    style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
-                >
-                    <div className="p-2 flex items-center justify-center bg-gray-200 text-gray-600 text-xs">
-                        날짜 / 호실
+                {/* 상단 1단+2단 헤더 통합 고정 묶음 */}
+                <div className="sticky-header-group border-b-2 border-gray-400 shadow-sm">
+                    {/* 1단: 숙소 그룹명 */}
+                    <div
+                        className="grid divide-x divide-gray-300 bg-white"
+                        style={{
+                            gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
+                            height: '36px',
+                        }}
+                    >
+                        <div className="sticky-corner bg-gray-200 text-gray-700 flex items-center justify-center font-extrabold text-xs border-r border-gray-300">
+                            숙소명
+                        </div>
+                        {PROPERTY_GROUPS.map((group) => (
+                            <div
+                                key={group.name}
+                                className={`p-2 flex items-center justify-center font-extrabold text-xs shadow-sm border-r border-gray-300 ${group.themeClass}`}
+                                style={{ gridColumn: `span ${group.units.length}` }}
+                            >
+                                {group.name}
+                            </div>
+                        ))}
                     </div>
-                    {ALL_UNITS.map((col) => (
-                        <div key={col.key} className="p-2 flex flex-col justify-center min-h-[45px]">
-                            {col.subName && (
-                                <span className="text-[10px] text-gray-400 font-normal">{col.subName}</span>
-                            )}
-                            <span className="text-xs md:text-sm text-gray-900 font-bold">{col.displayName}</span>
+
+                    {/* 2단: 세부 호실명 */}
+                    <div
+                        className="grid divide-x divide-gray-300 bg-gray-50 border-t border-gray-200"
+                        style={{
+                            gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
+                            height: '42px',
+                        }}
+                    >
+                        <div className="sticky-corner bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold border-r border-gray-300">
+                            날짜 / 호실
                         </div>
-                    ))}
+                        {ALL_UNITS.map((col) => (
+                            <div
+                                key={col.key}
+                                className="p-1.5 flex flex-col justify-center text-center bg-gray-50"
+                            >
+                                {col.subName && (
+                                    <span className="text-[10px] text-gray-400 font-normal">{col.subName}</span>
+                                )}
+                                <span className="text-xs md:text-sm text-gray-900 font-bold">{col.displayName}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Y축 타임라인 레이어 */}
+                {/* 타임라인 본문 레이어 */}
                 <div className="relative w-full">
-                    {/* 1. 배경 날짜 셀 */}
+                    {/* 배경 날짜 셀 및 좌측 날짜 틀 고정 */}
                     {timelineDates.map((dStr) => {
                         const dObj = new Date(dStr);
                         const month = dObj.getMonth() + 1;
@@ -97,7 +117,7 @@ export default function VerticalTimeline({
                                 }}
                             >
                                 <div
-                                    className={`p-2 flex flex-col items-center justify-center font-bold text-xs transition-colors ${isSelected
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-bold text-xs transition-colors border-r border-gray-300 ${isSelected
                                             ? 'bg-amber-500 text-white font-extrabold'
                                             : isToday
                                                 ? 'bg-blue-600 text-white'
@@ -130,7 +150,7 @@ export default function VerticalTimeline({
                         );
                     })}
 
-                    {/* 2. 예약 박스 레이어 */}
+                    {/* 오버레이 예약 박스 레이어 */}
                     <div
                         className="absolute top-0 left-0 w-full h-full pointer-events-none grid z-10"
                         style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
@@ -173,40 +193,88 @@ export default function VerticalTimeline({
                                             selectedDate >= b.arrival &&
                                             selectedDate <= lastNightStr;
                                         const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
-                                        const hasMemo = Boolean(bookingMemos[b.id]);
+
+                                        const noteData = bookingNotes[b.id];
+                                        const hasMemo = Boolean(noteData && noteData.note);
+                                        const activeTags = noteData ? noteData.tags || [] : [];
+
+                                        // 얼리체크인 태그 분리
+                                        const earlyTagKey = activeTags.find((t) => t.startsWith('early_'));
+                                        const earlyTagInfo = earlyTagKey ? parseBookingTag(earlyTagKey) : null;
+                                        const bottomTags = activeTags.filter((t) => !t.startsWith('early_'));
+
+                                        const isOneNight = nightsCount === 1;
 
                                         return (
                                             <div
                                                 key={b.id}
                                                 onClick={(e) => onBookingClick(e, b)}
-                                                className={`absolute left-1 right-1 rounded-lg shadow-md p-1.5 flex flex-col justify-between font-bold text-xs pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/10 ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
-                                                    } ${hasMemo ? 'animate-pulse-memo' : ''}`}
+                                                className={`absolute left-1 right-1 rounded-lg shadow-md flex flex-col justify-between font-bold pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/15 overflow-hidden ${isOneNight ? 'p-1' : 'p-1.5'
+                                                    } ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'} ${hasMemo ? 'animate-pulse-memo' : ''
+                                                    }`}
                                                 style={{
                                                     top: `${topPos}px`,
                                                     height: `${barHeight}px`,
                                                     backgroundColor: ch.bg,
                                                     color: ch.text,
                                                 }}
-                                                title={`${ch.name} | ${guestName} (${b.arrival} 체크인 ~ ${b.departure} 체크아웃, ${nightsCount}박)`}
+                                                title={`${ch.name} | ${guestName} (${b.arrival} ~ ${b.departure}, ${nightsCount}박)`}
                                             >
-                                                <div className="flex flex-col gap-0.5 leading-tight">
-                                                    <div className="text-[11px] font-extrabold truncate">
-                                                        📥 {guestName}
-                                                    </div>
-                                                    <div className="text-[9px] opacity-85 font-medium truncate">
-                                                        {ch.name}
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-[11px] font-extrabold mt-auto pt-0.5">
-                                                    <div>
-                                                        {hasMemo && (
-                                                            <span className="text-[9px] font-extrabold text-amber-900 bg-amber-300/90 px-1 py-0.5 rounded shadow-sm">
-                                                                특이사항🔥
+                                                {/* 📌 상단 영역: 게스트명 + 채널/얼리/박수 */}
+                                                <div className="flex flex-col leading-none overflow-hidden gap-0.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] md:text-[11px] font-black truncate">
+                                                            📥 {guestName}
+                                                        </span>
+                                                        {/* 1박일 때는 상단 우측에 깔끔하게 박수 표시 */}
+                                                        {isOneNight && (
+                                                            <span className="text-[8.5px] font-black opacity-90 shrink-0 ml-1">
+                                                                1박
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span>{nightsCount}박</span>
+
+                                                    <div className="flex items-center gap-1 truncate">
+                                                        <span className="text-[8px] md:text-[8.5px] opacity-90 font-bold truncate">
+                                                            {ch.name}
+                                                        </span>
+                                                        {earlyTagInfo && (
+                                                            <span className="text-[7.5px] md:text-[8px] font-black px-1 py-0.2 rounded bg-black/50 text-white shrink-0 border border-white/30">
+                                                                {earlyTagInfo.icon} {earlyTagInfo.label}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* 📌 하단 영역: 4개 뱃지가 2줄로 자동 줄바꿈(flex-wrap)되는 모듈 */}
+                                                <div className="flex items-center justify-between text-[10px] font-black leading-none mt-auto pt-0.5 border-t border-black/10">
+                                                    <div className="flex flex-wrap items-center gap-0.5 overflow-hidden w-full">
+                                                        {hasMemo && (
+                                                            <span className="text-[7.5px] md:text-[8px] font-black text-white bg-red-600 px-1 py-0.2 rounded shrink-0 shadow-sm border border-white/50">
+                                                                🔥메모
+                                                            </span>
+                                                        )}
+
+                                                        {bottomTags.map((tagKey) => {
+                                                            const tagInfo = parseBookingTag(tagKey);
+                                                            if (!tagInfo) return null;
+                                                            return (
+                                                                <span
+                                                                    key={tagKey}
+                                                                    className="text-[7px] md:text-[7.5px] font-extrabold px-1 py-0.2 rounded bg-black/50 text-white shrink-0 shadow border border-white/30"
+                                                                >
+                                                                    {tagInfo.icon}{tagInfo.label}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* 2박 이상일 때만 하단 우측에 박수 노출 */}
+                                                    {!isOneNight && (
+                                                        <span className="shrink-0 text-[9.5px] md:text-[10.5px] font-black ml-1">
+                                                            {nightsCount}박
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -216,8 +284,8 @@ export default function VerticalTimeline({
                         })}
                     </div>
 
-                    {/* 3. 격자선 레이어 */}
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
+                    {/* 격자선 레이어 */}
+                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
                         {timelineDates.map((dStr) => (
                             <div
                                 key={`grid-line-${dStr}`}
@@ -235,6 +303,7 @@ export default function VerticalTimeline({
                         ))}
                     </div>
                 </div>
+
             </div>
         </div>
     );
