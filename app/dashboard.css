@@ -208,27 +208,27 @@
 /* 🎨 숙소 그룹 배경 전용 확실한 색상 모듈 */
 .group-theme-green {
     background-color: #059669 !important;
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .group-theme-wave {
     background-color: #0284c7 !important;
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .group-theme-yeonnam {
     background-color: #7c3aed !important;
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .group-theme-namsan {
     background-color: #d97706 !important;
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .group-theme-default {
     background-color: #475569 !important;
-    color: #ffffff !important;
+    color: #000000 !important;
 }
 
 /* 🎨 주말 및 공휴일 스타일 */
