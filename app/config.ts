@@ -181,3 +181,55 @@ export function parseBookingTag(tagKey: string): { label: string; icon: string }
 
     return null;
 }
+
+// 🏠 표준 호실 및 숙소 그룹 정보 검색 모듈 함수
+export function getUnitDisplayInfo(booking: {
+    roomId?: number | string;
+    unitId?: number | string;
+    propertyId?: number | string;
+}): {
+    propertyName: string;
+    unitDisplayName: string;
+    subName?: string;
+    themeClass: string;
+} {
+    const bRoomId = Number(booking.roomId);
+    const bUnitId = booking.unitId ? Number(booking.unitId) : null;
+
+    // 1. PROPERTY_GROUPS 순회 매칭
+    for (const group of PROPERTY_GROUPS) {
+        const matched = group.units.find((u) => {
+            const isRoomMatch = u.roomId === bRoomId;
+            // 설정에 unitId가 적혀있는 경우에만 unitId까지 엄격 대조, 없으면 roomId만 맞으면 OK!
+            const isUnitMatch = u.unitId ? (bUnitId !== null ? u.unitId === bUnitId : true) : true;
+            return isRoomMatch && isUnitMatch;
+        });
+
+        if (matched) {
+            return {
+                propertyName: group.name,
+                unitDisplayName: matched.displayName,
+                subName: matched.subName,
+                themeClass: group.themeClass,
+            };
+        }
+    }
+
+    // 2. 안전 폴백: ALL_UNITS 전체에서 roomId로 재탐색
+    const fallback = ALL_UNITS.find((u) => u.roomId === bRoomId);
+    if (fallback) {
+        const parentGroup = PROPERTY_GROUPS.find((g) => g.units.some((u) => u.key === fallback.key));
+        return {
+            propertyName: parentGroup ? parentGroup.name : '숙소',
+            unitDisplayName: fallback.displayName,
+            subName: fallback.subName,
+            themeClass: parentGroup ? parentGroup.themeClass : 'group-theme-default',
+        };
+    }
+
+    return {
+        propertyName: '숙소',
+        unitDisplayName: `호실(${bRoomId || '미정'})`,
+        themeClass: 'group-theme-default',
+    };
+}

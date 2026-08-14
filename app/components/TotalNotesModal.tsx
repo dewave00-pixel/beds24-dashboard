@@ -1,140 +1,155 @@
 'use client';
 
 import { Booking } from '../types';
-import { ALL_UNITS, getChannelStyle } from '../config';
+import { ALL_UNITS, getChannelStyle, parseBookingTag } from '../config';
+
+interface BookingNoteData {
+    note: string;
+    tags: string[];
+}
 
 interface TotalNotesModalProps {
     bookings: Booking[];
-    bookingMemos: { [bookingId: number]: string };
+    bookingNotes: { [bookingId: number]: BookingNoteData };
     onClose: () => void;
     onSelectBooking: (booking: Booking) => void;
 }
 
 export default function TotalNotesModal({
     bookings,
-    bookingMemos,
+    bookingNotes,
     onClose,
     onSelectBooking,
 }: TotalNotesModalProps) {
-    // 메모가 존재하는 예약만 필터링
-    const memoBookings = bookings.filter((b) => Boolean(bookingMemos[b.id]));
-
-    // 체크인 날짜(arrival) 기준 오름차순 정렬
-    memoBookings.sort((a, b) => a.arrival.localeCompare(b.arrival));
-
-    // 날짜별 그룹화
-    const groupedByDate: { [date: string]: Booking[] } = {};
-    memoBookings.forEach((b) => {
-        if (!groupedByDate[b.arrival]) {
-            groupedByDate[b.arrival] = [];
-        }
-        groupedByDate[b.arrival].push(b);
-    });
-
-    // 호실 및 숙소 이름 매핑 함수
-    const getUnitDisplayName = (booking: Booking) => {
-        const unit = ALL_UNITS.find(
-            (u) =>
-                u.roomId === Number(booking.roomId) &&
-                (u.unitId ? u.unitId === Number(booking.unitId) : true)
+    // 호실 이름 찾아주는 헬퍼 함수
+    const getUnitName = (booking: Booking) => {
+        const matched = ALL_UNITS.find(
+            (u) => Number(booking.roomId) === u.roomId && (u.unitId ? Number(booking.unitId) === u.unitId : true)
         );
-        if (!unit) return `호실 #${booking.roomId}`;
-        return `${unit.propName} - ${unit.displayName}`;
+        return matched ? `${matched.displayName} ${matched.subName ? `(${matched.subName})` : ''}` : '호실 미정';
     };
 
+    // 📌 텍스트 메모가 있거나, 4대 태그 중 하나라도 걸려 있는 예약만 100% 필터링
+    const notedBookings = bookings.filter((b) => {
+        const data = bookingNotes[b.id];
+        if (!data) return false;
+        const hasTextNote = Boolean(data.note && data.note.trim().length > 0);
+        const hasTags = Boolean(data.tags && data.tags.length > 0);
+        return hasTextNote || hasTags;
+    });
+
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col p-6 space-y-4">
-                {/* 모달 상단 헤더 */}
-                <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300">
+
+                {/* 상단 헤더 */}
+                <div className="p-3.5 bg-amber-500 text-white flex items-center justify-between shadow">
                     <div className="flex items-center gap-2">
-                        <span className="text-xl">🔥</span>
-                        <h3 className="text-lg font-bold text-gray-900">전체 특이사항 메모 모아보기</h3>
-                        <span className="text-xs bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">
-                            총 {memoBookings.length}건
+                        <span className="text-base md:text-lg font-black flex items-center gap-1">
+                            <span>🔥</span> 전체 특이사항 및 빠른 태그 모아보기
+                        </span>
+                        <span className="text-xs bg-amber-600 text-white px-2 py-0.5 rounded-full font-black">
+                            총 {notedBookings.length}건
                         </span>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                        className="text-base font-extrabold hover:bg-amber-600 px-2.5 py-1 rounded transition"
                     >
                         ✕
                     </button>
                 </div>
 
-                {/* 특이사항 목록 영역 (스크롤 가능) */}
-                <div className="flex-1 overflow-y-auto space-y-5 pr-1">
-                    {Object.keys(groupedByDate).length === 0 ? (
-                        <div className="text-center py-12 text-gray-400 text-sm">
-                            등록된 특이사항 메모가 없습니다.
+                {/* 본문 리스트 영역 (모바일 최적화 스크롤) */}
+                <div className="p-3 md:p-5 overflow-y-auto flex flex-col gap-2.5">
+                    {notedBookings.length === 0 ? (
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            현재 등록된 특이사항 메모나 상태 옵션 태그가 없습니다.
                         </div>
                     ) : (
-                        Object.keys(groupedByDate).map((date) => (
-                            <div key={date} className="space-y-2">
-                                {/* 날짜 분리 헤더 */}
-                                <div className="text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-100 flex items-center gap-2">
-                                    <span>📅 입실일: {date}</span>
-                                </div>
+                        notedBookings.map((b) => {
+                            const ch = getChannelStyle(b.apiSourceId);
+                            const guestName =
+                                b.firstName || b.lastName
+                                    ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
+                                    : '이름 없음';
 
-                                {/* 해당 날짜의 메모 카드 목록 */}
-                                <div className="space-y-2 pl-2">
-                                    {groupedByDate[date].map((b) => {
-                                        const guestName =
-                                            b.firstName || b.lastName
-                                                ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
-                                                : `예약 #${b.id}`;
-                                        const channel = getChannelStyle(b.apiSourceId);
-                                        const memoText = bookingMemos[b.id];
+                            const noteData = bookingNotes[b.id];
+                            const memoText = noteData?.note || '';
+                            const tags = noteData?.tags || [];
 
-                                        return (
-                                            <div
-                                                key={b.id}
-                                                onClick={() => {
-                                                    onSelectBooking(b);
-                                                    onClose();
-                                                }}
-                                                className="p-3 bg-gray-50 hover:bg-amber-50/60 border border-gray-200 hover:border-amber-300 rounded-lg transition cursor-pointer flex flex-col gap-1.5 shadow-sm"
-                                            >
-                                                <div className="flex justify-between items-center text-xs">
-                                                    <span className="font-extrabold text-gray-900">
-                                                        🏢 {getUnitDisplayName(b)}
-                                                    </span>
+                            return (
+                                <div
+                                    key={b.id}
+                                    onClick={() => onSelectBooking(b)}
+                                    className="p-3 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-amber-500 hover:shadow-md transition cursor-pointer flex flex-col gap-1.5"
+                                >
+                                    {/* 상단: 호실명 + 예약채널 + 일정 */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-black text-xs md:text-sm text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                                                🏠 {getUnitName(b)}
+                                            </span>
+                                            <span className="font-extrabold text-sm text-gray-900">
+                                                📥 {guestName}
+                                            </span>
+                                        </div>
+
+                                        <span
+                                            className="text-[10px] font-extrabold px-1.5 py-0.5 rounded shadow-sm"
+                                            style={{ backgroundColor: ch.bg, color: ch.text }}
+                                        >
+                                            {ch.name}
+                                        </span>
+                                    </div>
+
+                                    {/* 중단: 투숙 일정 및 태그 뱃지 목록 */}
+                                    <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-gray-600 font-bold bg-gray-50 p-2 rounded">
+                                        <div>
+                                            📅 {b.arrival} ~ {b.departure} ({b.numAdult || 1}명)
+                                        </div>
+
+                                        {/* 태그 뱃지들 */}
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            {tags.map((tagKey) => {
+                                                const tagInfo = parseBookingTag(tagKey);
+                                                if (!tagInfo) return null;
+                                                return (
                                                     <span
-                                                        className="font-bold px-1.5 py-0.5 rounded text-[10px]"
-                                                        style={{ backgroundColor: channel.bg, color: channel.text }}
+                                                        key={tagKey}
+                                                        className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white shadow-sm flex items-center gap-0.5"
                                                     >
-                                                        {channel.name}
+                                                        <span>{tagInfo.icon}</span>
+                                                        <span>{tagInfo.label}</span>
                                                     </span>
-                                                </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
 
-                                                <div className="flex justify-between items-center text-xs text-gray-600">
-                                                    <span className="font-bold text-gray-800">📥 {guestName}</span>
-                                                    <span className="text-[11px] text-gray-500">
-                                                        투숙: {b.arrival} ~ {b.departure}
-                                                    </span>
-                                                </div>
-
-                                                <div className="bg-white p-2 rounded border border-amber-200 text-xs font-semibold text-amber-900 mt-1">
-                                                    📝 {memoText}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                    {/* 하단: 특이사항 메모 텍스트 */}
+                                    {memoText && (
+                                        <div className="p-2 bg-yellow-50 border border-yellow-300 rounded text-xs font-bold text-gray-900 flex items-start gap-1">
+                                            <span className="shrink-0">🔥</span>
+                                            <span className="break-all">{memoText}</span>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
 
-                {/* 하단 닫기 버튼 */}
-                <div className="pt-2 border-t flex justify-end">
+                {/* 하단 닫기 바 */}
+                <div className="p-3 bg-gray-100 border-t border-gray-300 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-lg transition"
+                        className="px-5 py-2 text-xs font-black text-gray-700 bg-white hover:bg-gray-200 rounded-lg border border-gray-300 shadow-sm transition"
                     >
                         닫기
                     </button>
                 </div>
+
             </div>
         </div>
     );

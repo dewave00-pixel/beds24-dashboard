@@ -5,6 +5,7 @@ import './dashboard.css';
 import { Booking } from './types';
 import BookingModal from './components/BookingModal';
 import TotalNotesModal from './components/TotalNotesModal';
+import DailyStatusModal from './components/DailyStatusModal';
 import SearchModal from './components/SearchModal';
 import VerticalTimeline from './components/VerticalTimeline';
 import HorizontalTimeline from './components/HorizontalTimeline';
@@ -31,6 +32,8 @@ export default function Dashboard() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [bookingNotes, setBookingNotes] = useState<{ [bookingId: number]: BookingNoteData }>({});
 
+  // 팝업 모달 상태들
+  const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
   const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
@@ -133,16 +136,20 @@ export default function Dashboard() {
     }
   };
 
-  // 예약 카드 클릭 시 모달 열기
+  // 예약 카드 클릭 시 상세 모달 열기
   const handleBookingClick = (e: React.MouseEvent, booking: Booking) => {
     e.stopPropagation();
+    openBookingDetail(booking);
+  };
+
+  const openBookingDetail = (booking: Booking) => {
     setActiveBooking(booking);
     const existing = bookingNotes[booking.id];
     setMemoInput(existing ? existing.note : '');
     setSelectedTags(existing ? existing.tags || [] : []);
   };
 
-  // 태그 토글 핸들러
+  // 태그 토글
   const handleToggleTag = (tagKey: string) => {
     setSelectedTags((prev) =>
       prev.includes(tagKey) ? prev.filter((k) => k !== tagKey) : [...prev, tagKey]
@@ -196,13 +203,6 @@ export default function Dashboard() {
     setActiveBooking(null);
   };
 
-  // 모아보기 호환용 맵
-  const plainMemosMap: { [bookingId: number]: string } = {};
-  Object.keys(bookingNotes).forEach((idStr) => {
-    const id = Number(idStr);
-    plainMemosMap[id] = bookingNotes[id]?.note || '';
-  });
-
   return (
     <div className="dashboard-container">
       <div className="dashboard-wrapper">
@@ -222,25 +222,45 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-              <div className="stat-badge-mini stat-badge-blue">
-                <span>오늘 입실</span>
-                <span className="text-sm font-extrabold">{todayCheckIns.length}</span>
-              </div>
-              <div className="stat-badge-mini stat-badge-orange">
-                <span>오늘 퇴실</span>
-                <span className="text-sm font-extrabold">{todayCheckOuts.length}</span>
-              </div>
-              <div className="stat-badge-mini stat-badge-sky">
-                <span>내일 입실</span>
-                <span className="text-sm font-extrabold">{tomorrowCheckIns.length}</span>
-              </div>
-              <div className="stat-badge-mini stat-badge-amber">
-                <span>내일 퇴실</span>
-                <span className="text-sm font-extrabold">{tomorrowCheckOuts.length}</span>
-              </div>
+
+            {/* 📌 줄바꿈 통합 현황 버튼 2개 (오늘 현황 / 내일 현황) */}
+            <div className="flex items-center gap-1.5 py-0.5">
+
+              {/* 1. 오늘 현황 버튼 */}
+              <button
+                type="button"
+                onClick={() => setDailyModalType('today')}
+                className="px-2.5 py-1 rounded-lg border border-blue-300 bg-blue-50/90 hover:bg-blue-100 transition shadow-sm flex flex-col text-left cursor-pointer"
+              >
+                <div className="text-[10px] font-black text-blue-900 flex items-center gap-1">
+                  <span>📅</span> 오늘 현황
+                </div>
+                <div className="text-[11px] font-extrabold text-gray-800 flex items-center gap-1.5">
+                  <span className="text-blue-700">입 <strong className="text-xs">{todayCheckIns.length}</strong></span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-orange-700">퇴 <strong className="text-xs">{todayCheckOuts.length}</strong></span>
+                </div>
+              </button>
+
+              {/* 2. 내일 현황 버튼 */}
+              <button
+                type="button"
+                onClick={() => setDailyModalType('tomorrow')}
+                className="px-2.5 py-1 rounded-lg border border-indigo-300 bg-indigo-50/90 hover:bg-indigo-100 transition shadow-sm flex flex-col text-left cursor-pointer"
+              >
+                <div className="text-[10px] font-black text-indigo-900 flex items-center gap-1">
+                  <span>📅</span> 내일 현황
+                </div>
+                <div className="text-[11px] font-extrabold text-gray-800 flex items-center gap-1.5">
+                  <span className="text-blue-700">입 <strong className="text-xs">{tomorrowCheckIns.length}</strong></span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-orange-700">퇴 <strong className="text-xs">{tomorrowCheckOuts.length}</strong></span>
+                </div>
+              </button>
+
             </div>
 
+            {/* 세로/가로 토글 및 새로고침 */}
             <div className="flex items-center gap-1.5 ml-auto">
               <div className="bg-gray-100 p-0.5 rounded-md border border-gray-300 flex gap-0.5">
                 <button
@@ -346,7 +366,7 @@ export default function Dashboard() {
 
       </div>
 
-      {/* 모달 1: 개별 예약 상세 및 체크박스/메모 모달 */}
+      {/* 모달 1: 개별 예약 상세 모달 */}
       {activeBooking && (
         <BookingModal
           booking={activeBooking}
@@ -360,31 +380,43 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 2: 총 특이사항 모아보기 모달 */}
-      {isTotalNotesOpen && (
-        <TotalNotesModal
-          bookings={bookings}
-          bookingMemos={plainMemosMap}
-          onClose={() => setIsTotalNotesOpen(false)}
+      {/* 모달 2: 일일 입/퇴실 현황 통합 모달 (오늘 / 내일) */}
+      {dailyModalType && (
+        <DailyStatusModal
+          title={dailyModalType === 'today' ? '오늘 입/퇴실 현황' : '내일 입/퇴실 현황'}
+          dateStr={dailyModalType === 'today' ? todayStr : tomorrowStr}
+          checkInBookings={dailyModalType === 'today' ? todayCheckIns : tomorrowCheckIns}
+          checkOutBookings={dailyModalType === 'today' ? todayCheckOuts : tomorrowCheckOuts}
+          bookingNotes={bookingNotes}
+          onClose={() => setDailyModalType(null)}
           onSelectBooking={(booking) => {
-            setActiveBooking(booking);
-            const existing = bookingNotes[booking.id];
-            setMemoInput(existing ? existing.note : '');
-            setSelectedTags(existing ? existing.tags || [] : []);
+            setDailyModalType(null);
+            openBookingDetail(booking);
           }}
         />
       )}
 
-      {/* 모달 3: 통합 검색 모달 */}
+      {/* 모달 3: 총 특이사항 모아보기 모달 (4대 태그 완벽 반영) */}
+      {isTotalNotesOpen && (
+        <TotalNotesModal
+          bookings={bookings}
+          bookingNotes={bookingNotes}
+          onClose={() => setIsTotalNotesOpen(false)}
+          onSelectBooking={(booking) => {
+            setIsTotalNotesOpen(false);
+            openBookingDetail(booking);
+          }}
+        />
+      )}
+
+      {/* 모달 4: 통합 검색 모달 */}
       {isSearchOpen && (
         <SearchModal
           bookings={bookings}
           onClose={() => setIsSearchOpen(false)}
           onSelectBooking={(booking) => {
-            setActiveBooking(booking);
-            const existing = bookingNotes[booking.id];
-            setMemoInput(existing ? existing.note : '');
-            setSelectedTags(existing ? existing.tags || [] : []);
+            setIsSearchOpen(false);
+            openBookingDetail(booking);
           }}
         />
       )}
