@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Booking } from '../types';
-import { ALL_UNITS, getChannelStyle } from '../config';
+import { getChannelStyle, getUnitDisplayInfo } from '../config';
 
 interface SearchModalProps {
     bookings: Booking[];
@@ -17,165 +17,205 @@ export default function SearchModal({
 }: SearchModalProps) {
     const [searchTerm, setSearchTerm] = useState<string>('');
 
-    // 숙소명 매핑 도우미 함수
-    const getUnitDisplayName = (booking: Booking) => {
-        const unit = ALL_UNITS.find(
-            (u) =>
-                u.roomId === Number(booking.roomId) &&
-                (u.unitId ? u.unitId === Number(booking.unitId) : true)
-        );
-        if (!unit) return `호실 #${booking.roomId}`;
-        return `${unit.propName} - ${unit.displayName}`;
-    };
+    // 🔍 스마트 다중 검색 필터링 모듈 (이름, 예약번호, 숙소/호실, 대시 없는 숫자 날짜 지원)
+    const filteredBookings = useMemo(() => {
+        const rawQuery = searchTerm.trim().toLowerCase();
+        if (!rawQuery) return [];
 
-    // 1. 실시간 통합 필터링 검색
-    const filteredBookings = bookings.filter((b) => {
-        if (!searchTerm.trim()) return false;
+        // 숫자만 추출한 검색어 (예: "2026-08-14" 또는 "20260814" -> "20260814")
+        const digitsOnlyQuery = rawQuery.replace(/\D/g, '');
 
-        const term = searchTerm.toLowerCase().trim();
-        const guestName = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
-        const unitName = getUnitDisplayName(b).toLowerCase();
-        const channelName = getChannelStyle(b.apiSourceId).name.toLowerCase();
-        const arrival = b.arrival || '';
-        const departure = b.departure || '';
+        return bookings.filter((b) => {
+            const guestName = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
+            const bookingIdStr = String(b.id);
+            const ch = getChannelStyle(b.apiSourceId);
+            const unitInfo = getUnitDisplayInfo(b);
 
-        return (
-            guestName.includes(term) ||
-            unitName.includes(term) ||
-            channelName.includes(term) ||
-            arrival.includes(term) ||
-            departure.includes(term)
-        );
-    });
+            // 날짜 데이터에서 대시 뺀 순수 숫자 문자열
+            const arrivalDigits = b.arrival.replace(/-/g, ''); // "20260814"
+            const departureDigits = b.departure.replace(/-/g, ''); // "20260815"
 
-    // 2. 날짜(입실일 arrival) 기준 오름차순 정렬
-    filteredBookings.sort((a, b) => (a.arrival || '').localeCompare(b.arrival || ''));
+            // 1. 게스트 이름 검색
+            if (guestName.includes(rawQuery)) return true;
 
-    // 3. 날짜별 그룹화
-    const groupedByDate: { [date: string]: Booking[] } = {};
-    filteredBookings.forEach((b) => {
-        const dateKey = b.arrival || '날짜 미정';
-        if (!groupedByDate[dateKey]) {
-            groupedByDate[dateKey] = [];
-        }
-        groupedByDate[dateKey].push(b);
-    });
+            // 2. 예약 번호 검색
+            if (bookingIdStr.includes(rawQuery)) return true;
+
+            // 3. 숙소명 및 호실명 검색
+            if (
+                unitInfo.propertyName.toLowerCase().includes(rawQuery) ||
+                unitInfo.unitDisplayName.toLowerCase().includes(rawQuery) ||
+                (unitInfo.subName && unitInfo.subName.toLowerCase().includes(rawQuery))
+            ) {
+                return true;
+            }
+
+            // 4. 예약 사이트 채널명 검색 (Airbnb, Agoda 등)
+            if (ch.name.toLowerCase().includes(rawQuery)) return true;
+
+            // 5. 일반 날짜 검색 (예: "2026-08" 등)
+            if (b.arrival.includes(rawQuery) || b.departure.includes(rawQuery)) return true;
+
+            // 📌 6. 대시 없는 숫자 날짜 검색 (예: "20260814", "0814", "260814" 등 2자리 이상)
+            if (digitsOnlyQuery.length >= 2) {
+                if (
+                    arrivalDigits.includes(digitsOnlyQuery) ||
+                    departureDigits.includes(digitsOnlyQuery)
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }, [bookings, searchTerm]);
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[85vh] flex flex-col p-6 space-y-4">
-                {/* 모달 상단 헤더 */}
-                <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300">
+
+                {/* 상단 헤더 */}
+                <div className="p-3.5 bg-blue-600 text-white flex items-center justify-between shadow">
                     <div className="flex items-center gap-2">
-                        <span className="text-xl">🔍</span>
-                        <h3 className="text-lg font-bold text-gray-900">예약 통합 검색</h3>
-                        {searchTerm.trim() && (
-                            <span className="text-xs bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">
-                                검색 결과 {filteredBookings.length}건
-                            </span>
-                        )}
+                        <span className="text-base md:text-lg font-black flex items-center gap-1.5">
+                            <span>🔍</span> 통합 예약 검색
+                        </span>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                        className="text-base font-extrabold hover:bg-blue-700 px-2.5 py-1 rounded transition"
                     >
                         ✕
                     </button>
                 </div>
 
-                {/* 검색어 입력창 */}
-                <div className="relative">
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="고객명, 숙소명, 호실(101호), 날짜(2026-08-13), 채널명 검색..."
-                        autoFocus
-                        className="w-full p-3 pl-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                    />
-                    <span className="absolute left-3 top-3.5 text-gray-400 text-sm">🔎</span>
+                {/* 검색 입력창 영역 */}
+                <div className="p-3 md:p-4 bg-gray-50 border-b border-gray-200 flex flex-col gap-1.5">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            autoFocus
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="예약자명, 숙소/호실, 날짜(예: 0814 또는 20260814), 예약번호"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-gray-300 focus:border-blue-600 rounded-lg text-sm font-bold text-gray-900 placeholder:text-gray-400 placeholder:font-normal focus:outline-none shadow-sm transition"
+                        />
+                        <span className="absolute left-3 top-3 text-gray-400 text-sm">🔍</span>
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 font-bold text-sm p-0.5"
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+                    <div className="text-[11px] text-gray-500 font-medium flex items-center gap-1 pl-1">
+                        <span>💡</span>
+                        <span>날짜 검색 시 대시(-) 없이 <strong>0814</strong> 또는 <strong>20260814</strong> 처럼 숫자만 입력해도 검색됩니다.</span>
+                    </div>
                 </div>
 
-                {/* 검색 결과 목록 영역 (날짜별 나열) */}
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1 min-h-[250px]">
+                {/* 검색 결과 리스트 본문 */}
+                <div className="p-3 md:p-4 overflow-y-auto flex flex-col gap-2 grow">
                     {!searchTerm.trim() ? (
-                        <div className="text-center py-16 text-gray-400 text-sm">
-                            💡 검색어를 입력하시면 날짜별로 정렬된 예약 목록이 표시됩니다.
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            검색어를 입력하시면 실시간으로 예약이 검색됩니다.
                         </div>
                     ) : filteredBookings.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 text-sm">
-                            검색 조건에 맞는 예약 내역이 없습니다.
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            &apos;{searchTerm}&apos;에 해당하는 예약 검색 결과가 없습니다.
                         </div>
                     ) : (
-                        Object.keys(groupedByDate).map((date) => (
-                            <div key={date} className="space-y-2">
-                                {/* 날짜 분리 헤더 */}
-                                <div className="text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-100 flex items-center gap-2">
-                                    <span>📅 입실일: {date}</span>
-                                </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="text-xs font-black text-blue-900 px-1 flex items-center justify-between">
+                                <span>검색 결과</span>
+                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-black text-[10.5px]">
+                                    총 {filteredBookings.length}건
+                                </span>
+                            </div>
 
-                                {/* 해당 날짜의 예약 카드리스트 */}
-                                <div className="space-y-2 pl-2">
-                                    {groupedByDate[date].map((b) => {
-                                        const guestName =
-                                            b.firstName || b.lastName
-                                                ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
-                                                : `예약 #${b.id}`;
-                                        const channel = getChannelStyle(b.apiSourceId);
-                                        const unitName = getUnitDisplayName(b);
+                            {filteredBookings.map((b) => {
+                                const ch = getChannelStyle(b.apiSourceId);
+                                const guestName =
+                                    b.firstName || b.lastName
+                                        ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
+                                        : '이름 없음';
 
-                                        return (
-                                            <div
-                                                key={b.id}
-                                                onClick={() => {
-                                                    onSelectBooking(b);
-                                                    onClose();
-                                                }}
-                                                className="p-3 bg-gray-50 hover:bg-blue-50/70 border border-gray-200 hover:border-blue-300 rounded-lg transition cursor-pointer flex justify-between items-center shadow-sm"
-                                            >
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-extrabold text-sm text-gray-900">
-                                                            📥 {guestName}
-                                                        </span>
-                                                        <span
-                                                            className="font-bold px-1.5 py-0.5 rounded text-[10px]"
-                                                            style={{ backgroundColor: channel.bg, color: channel.text }}
-                                                        >
-                                                            {channel.name}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-600 font-semibold">
-                                                        🏢 {unitName}
-                                                    </div>
-                                                </div>
+                                const { propertyName, unitDisplayName, subName, badgeStyle } = getUnitDisplayInfo(b);
+                                const fullUnitName = `${unitDisplayName}${subName ? `(${subName})` : ''}`;
 
-                                                <div className="text-right space-y-0.5">
-                                                    <div className="text-xs font-bold text-blue-600">
-                                                        {b.arrival} ~ {b.departure}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-400 font-medium">
-                                                        상세/메모 보기 ➔
-                                                    </div>
+                                return (
+                                    <div
+                                        key={b.id}
+                                        onClick={() => onSelectBooking(b)}
+                                        className="p-2.5 md:p-3 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-500 hover:shadow-md transition cursor-pointer flex flex-col gap-1.5"
+                                    >
+                                        {/* 상단: 숙소명 + 호실 + 예약자명 + 채널 뱃지 */}
+                                        <div className="flex items-start justify-between gap-1.5">
+                                            <div className="flex flex-wrap items-center gap-1.5 min-w-0 grow">
+                                                {/* 숙소명 뱃지 */}
+                                                <span
+                                                    style={badgeStyle}
+                                                    className="text-[9.5px] font-black px-1.5 py-0.2 rounded shadow-sm shrink-0 border border-black/10"
+                                                >
+                                                    {propertyName}
+                                                </span>
+
+                                                {/* 호실명 뱃지 */}
+                                                <span className="font-black text-xs md:text-sm text-gray-950 bg-gray-200 border border-gray-300 px-2 py-0.5 rounded shrink-0">
+                                                    {fullUnitName}
+                                                </span>
+
+                                                {/* 예약자명 */}
+                                                <div className="flex items-center gap-1 truncate">
+                                                    <span className="font-black text-xs md:text-sm text-gray-900 truncate">
+                                                        📥 {guestName}
+                                                    </span>
+                                                    <span className="text-[10px] md:text-xs text-gray-600 font-extrabold shrink-0">
+                                                        ({b.numAdult || 1}명)
+                                                    </span>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))
+
+                                            {/* 예약 사이트 채널 뱃지 */}
+                                            <span
+                                                className="text-[8.5px] md:text-[9.5px] font-black px-1.5 py-0.2 rounded shadow-sm shrink-0 ml-1"
+                                                style={{ backgroundColor: ch.bg, color: ch.text }}
+                                            >
+                                                {ch.name}
+                                            </span>
+                                        </div>
+
+                                        {/* 하단: 일정 정보 및 예약 번호 */}
+                                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] md:text-xs text-gray-600 font-bold bg-gray-50 p-2 rounded border border-gray-200">
+                                            <div>
+                                                📅 <strong className="text-blue-700">{b.arrival}</strong> ~ <strong className="text-orange-700">{b.departure}</strong>
+                                            </div>
+                                            <div className="text-gray-400 font-medium text-[10px] md:text-[11px]">
+                                                예약 #{b.id}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
 
-                {/* 하단 닫기 버튼 */}
-                <div className="pt-2 border-t flex justify-end">
+                {/* 하단 닫기 바 */}
+                <div className="p-3 bg-gray-100 border-t border-gray-300 flex justify-end">
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-lg transition"
+                        className="px-5 py-1.5 md:py-2 text-xs font-black text-gray-700 bg-white hover:bg-gray-200 rounded-lg border border-gray-300 shadow-sm transition"
                     >
                         닫기
                     </button>
                 </div>
+
             </div>
         </div>
     );

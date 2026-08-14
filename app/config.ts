@@ -3,26 +3,6 @@ import { PropertyGroup } from './types';
 // 7개 숙소 및 세부 호실 매핑 표
 export const PROPERTY_GROUPS: PropertyGroup[] = [
     {
-        name: 'Green',
-        themeClass: 'group-theme-greens',
-        units: [
-            { key: '560097', roomId: 560097, displayName: '4층' },
-            { key: '560093', roomId: 560093, displayName: '3층' },
-        ],
-    },
-    {
-        name: 'Namsun',
-        themeClass: 'group-theme-namsuns',
-        units: [
-            { key: '560157', roomId: 560157, displayName: '1층' },
-            { key: '557426', roomId: 557426, displayName: '2층' },
-            { key: '560162-1', roomId: 560162, unitId: 1, displayName: '1호', subName: 'mini 1' },
-            { key: '560162-2', roomId: 560162, unitId: 2, displayName: '4호', subName: 'mini 1' },
-            { key: '560163-1', roomId: 560163, unitId: 1, displayName: '2호', subName: 'mini 2' },
-            { key: '560163-2', roomId: 560163, unitId: 2, displayName: '3호', subName: 'mini 2' },
-        ],
-    },
-    {
         name: 'WAVE A',
         themeClass: 'group-theme-waves',
         units: [
@@ -55,6 +35,14 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
         ],
     },
     {
+        name: 'YEONNAM (투룸)',
+        themeClass: 'group-theme-yeonnams',
+        units: [
+            { key: '560113-2', roomId: 560113, unitId: 2, displayName: '102호' },
+            { key: '560113-1', roomId: 560113, unitId: 1, displayName: '202호' },
+        ],
+    },
+    {
         name: 'YEONNAM (쓰리룸)',
         themeClass: 'group-theme-yeonnams',
         units: [
@@ -63,18 +51,30 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
         ],
     },
     {
-        name: 'YEONNAM (투룸)',
-        themeClass: 'group-theme-yeonnams',
-        units: [
-            { key: '560113-1', roomId: 560113, unitId: 1, displayName: '202호' },
-            { key: '560113-2', roomId: 560113, unitId: 2, displayName: '102호' },
-        ],
-    },
-    {
         name: 'YEONNAM (포룸)',
         themeClass: 'group-theme-yeonnams',
         units: [
             { key: '560115-1', roomId: 560115, unitId: 1, displayName: '301호' },
+        ],
+    },
+    {
+        name: 'Green',
+        themeClass: 'group-theme-greens',
+        units: [
+            { key: '560093', roomId: 560093, displayName: '3층' },
+            { key: '560097', roomId: 560097, displayName: '4층' },
+        ],
+    },
+    {
+        name: 'Namsun',
+        themeClass: 'group-theme-namsuns',
+        units: [
+            { key: '560162-1', roomId: 560162, unitId: 1, displayName: '1호', subName: 'mini 1' },
+            { key: '560162-2', roomId: 560162, unitId: 2, displayName: '4호', subName: 'mini 1' },
+            { key: '560163-1', roomId: 560163, unitId: 1, displayName: '2호', subName: 'mini 2' },
+            { key: '560163-2', roomId: 560163, unitId: 2, displayName: '3호', subName: 'mini 2' },
+            { key: '560157', roomId: 560157, displayName: '5호' },
+            { key: '557426', roomId: 557426, displayName: '6호' },
         ],
     },
 ];

@@ -223,10 +223,10 @@ export default function Dashboard() {
 
           <div className="flex flex-wrap items-center gap-2">
 
-            {/* 📌 줄바꿈 통합 현황 버튼 2개 (오늘 현황 / 내일 현황) */}
+            {/* 오늘 현황 / 내일 현황 버튼 */}
             <div className="flex items-center gap-1.5 py-0.5">
 
-              {/* 1. 오늘 현황 버튼 */}
+              {/* 오늘 현황 */}
               <button
                 type="button"
                 onClick={() => setDailyModalType('today')}
@@ -242,7 +242,7 @@ export default function Dashboard() {
                 </div>
               </button>
 
-              {/* 2. 내일 현황 버튼 */}
+              {/* 내일 현황 */}
               <button
                 type="button"
                 onClick={() => setDailyModalType('tomorrow')}
@@ -298,7 +298,11 @@ export default function Dashboard() {
 
         {/* 대시보드 메인 패널 */}
         <div className="dashboard-panel">
+
+          {/* 📌 개선된 툴바: 좌측(날짜 조회 + 검색) / 우측(주간 이동 + 🔥 특이사항 돋보이는 버튼) */}
           <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200">
+
+            {/* 좌측 영역: 날짜 범위 + 🔍 검색 버튼 */}
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <div className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
                 <span>📅 조회:</span>
@@ -313,28 +317,33 @@ export default function Dashboard() {
                 </button>
               )}
 
-              <div className="flex items-center gap-1.5 ml-1">
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
-                >
-                  🔍 검색
-                </button>
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
+              >
+                🔍 검색
+              </button>
+            </div>
 
-                <button
-                  onClick={() => setIsTotalNotesOpen(true)}
-                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
-                >
-                  🔥 특이사항
-                </button>
+            {/* 우측 영역: 주간 이동 버튼 + 📌 [오른쪽 끝으로 이동된 🔥 특이사항 하이라이트 버튼] */}
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              <div className="flex gap-1">
+                <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
+                <button onClick={goToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
+                <button onClick={() => moveDays(7)} className="btn-secondary">다음주 ▶</button>
               </div>
+
+              {/* 돋보이는 특이사항 모아보기 버튼 */}
+              <button
+                onClick={() => setIsTotalNotesOpen(true)}
+                className="btn-highlight-notes"
+                title="전체 특이사항 및 빠른 태그 모아보기"
+              >
+                <span>🔥</span>
+                <span>특이사항 모아보기</span>
+              </button>
             </div>
 
-            <div className="flex gap-1.5 shrink-0">
-              <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
-              <button onClick={goToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
-              <button onClick={() => moveDays(7)} className="btn-secondary">다음주 ▶</button>
-            </div>
           </div>
 
           {viewMode === 'vertical' ? (
@@ -380,7 +389,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 2: 일일 입/퇴실 현황 통합 모달 (오늘 / 내일) */}
+      {/* 모달 2: 일일 입/퇴실 현황 통합 모달 */}
       {dailyModalType && (
         <DailyStatusModal
           title={dailyModalType === 'today' ? '오늘 입/퇴실 현황' : '내일 입/퇴실 현황'}
@@ -396,7 +405,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 3: 총 특이사항 모아보기 모달 (4대 태그 완벽 반영) */}
+      {/* 모달 3: 총 특이사항 모아보기 모달 */}
       {isTotalNotesOpen && (
         <TotalNotesModal
           bookings={bookings}
