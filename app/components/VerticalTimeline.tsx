@@ -37,7 +37,8 @@ export default function VerticalTimeline({
 
                 {/* 상단 1단+2단 헤더 통합 고정 묶음 */}
                 <div className="sticky-header-group border-b-2 border-gray-400 shadow-sm">
-                    {/* 1단: 숙소 그룹명 */}
+
+                    {/* 1단: 숙소 그룹명 (볼드체 font-black 강화) */}
                     <div
                         className="grid divide-x divide-gray-300 bg-white"
                         style={{
@@ -45,16 +46,16 @@ export default function VerticalTimeline({
                             height: '36px',
                         }}
                     >
-                        <div className="sticky-corner bg-gray-200 text-gray-700 flex items-center justify-center font-extrabold text-xs border-r border-gray-300">
+                        <div className="sticky-corner bg-gray-200 text-gray-800 flex items-center justify-center font-black text-xs border-r border-gray-300">
                             숙소명
                         </div>
                         {PROPERTY_GROUPS.map((group) => (
                             <div
                                 key={group.name}
-                                className={`p-2 flex items-center justify-center font-extrabold text-xs shadow-sm border-r border-gray-300 ${group.themeClass}`}
+                                className={`p-2 flex items-center justify-center font-black text-xs md:text-sm tracking-wide shadow-sm border-r border-gray-300 ${group.themeClass}`}
                                 style={{ gridColumn: `span ${group.units.length}` }}
                             >
-                                {group.name}
+                                🏢 {group.name}
                             </div>
                         ))}
                     </div>
@@ -67,7 +68,7 @@ export default function VerticalTimeline({
                             height: '42px',
                         }}
                     >
-                        <div className="sticky-corner bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold border-r border-gray-300">
+                        <div className="sticky-corner bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-black border-r border-gray-300">
                             날짜 / 호실
                         </div>
                         {ALL_UNITS.map((col) => (
@@ -76,9 +77,9 @@ export default function VerticalTimeline({
                                 className="p-1.5 flex flex-col justify-center text-center bg-gray-50"
                             >
                                 {col.subName && (
-                                    <span className="text-[10px] text-gray-400 font-normal">{col.subName}</span>
+                                    <span className="text-[10px] text-gray-500 font-bold">{col.subName}</span>
                                 )}
-                                <span className="text-xs md:text-sm text-gray-900 font-bold">{col.displayName}</span>
+                                <span className="text-xs md:text-sm text-gray-950 font-black">{col.displayName}</span>
                             </div>
                         ))}
                     </div>
@@ -117,19 +118,19 @@ export default function VerticalTimeline({
                                 }}
                             >
                                 <div
-                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-bold text-xs transition-colors border-r border-gray-300 ${isSelected
-                                            ? 'bg-amber-500 text-white font-extrabold'
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r border-gray-300 ${isSelected
+                                            ? 'bg-amber-500 text-white font-black'
                                             : isToday
-                                                ? 'bg-blue-600 text-white'
+                                                ? 'bg-blue-600 text-white font-black'
                                                 : dayColorClass
                                         }`}
                                 >
                                     <div>
                                         {month}/{dayNum}
                                     </div>
-                                    <div className="text-[10px] opacity-90 flex items-center gap-1">
+                                    <div className="text-[10px] opacity-90 flex items-center gap-1 font-extrabold">
                                         <span>({dayOfWeek})</span>
-                                        {dayInfo.label && <span className="text-[9px] font-extrabold truncate">[{dayInfo.label}]</span>}
+                                        {dayInfo.label && <span className="text-[9px] font-black truncate">[{dayInfo.label}]</span>}
                                     </div>
                                 </div>
 
@@ -226,7 +227,6 @@ export default function VerticalTimeline({
                                                         <span className="text-[10px] md:text-[11px] font-black truncate">
                                                             📥 {guestName}
                                                         </span>
-                                                        {/* 1박일 때는 상단 우측에 깔끔하게 박수 표시 */}
                                                         {isOneNight && (
                                                             <span className="text-[8.5px] font-black opacity-90 shrink-0 ml-1">
                                                                 1박
@@ -235,7 +235,7 @@ export default function VerticalTimeline({
                                                     </div>
 
                                                     <div className="flex items-center gap-1 truncate">
-                                                        <span className="text-[8px] md:text-[8.5px] opacity-90 font-bold truncate">
+                                                        <span className="text-[8px] md:text-[8.5px] opacity-90 font-black truncate">
                                                             {ch.name}
                                                         </span>
                                                         {earlyTagInfo && (
@@ -246,7 +246,7 @@ export default function VerticalTimeline({
                                                     </div>
                                                 </div>
 
-                                                {/* 📌 하단 영역: 4개 뱃지가 2줄로 자동 줄바꿈(flex-wrap)되는 모듈 */}
+                                                {/* 📌 하단 영역: 4개 뱃지가 2줄로 자동 줄바꿈(flex-wrap) */}
                                                 <div className="flex items-center justify-between text-[10px] font-black leading-none mt-auto pt-0.5 border-t border-black/10">
                                                     <div className="flex flex-wrap items-center gap-0.5 overflow-hidden w-full">
                                                         {hasMemo && (
@@ -269,7 +269,6 @@ export default function VerticalTimeline({
                                                         })}
                                                     </div>
 
-                                                    {/* 2박 이상일 때만 하단 우측에 박수 노출 */}
                                                     {!isOneNight && (
                                                         <span className="shrink-0 text-[9.5px] md:text-[10.5px] font-black ml-1">
                                                             {nightsCount}박

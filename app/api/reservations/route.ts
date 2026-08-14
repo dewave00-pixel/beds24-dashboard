@@ -31,12 +31,12 @@ export async function GET() {
         // 2. 관리 중인 7개 숙소 ID 배열
         const propertyIds = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
 
-        // 3. 오늘 기준 과거 10일 전 ~ 미래 60일 후 기간 설정
+        // 3. 오늘 기준 과거 10일 전 ~ 미래 365일 후 기간 설정
         const today = new Date();
         const fromDate = new Date(today);
         fromDate.setDate(today.getDate() - 10);
         const toDate = new Date(today);
-        toDate.setDate(today.getDate() + 90);
+        toDate.setDate(today.getDate() + 365);
 
         const arrivalFrom = fromDate.toISOString().split('T')[0];
         const arrivalTo = toDate.toISOString().split('T')[0];

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import './dashboard.css';
 import { Booking } from './types';
 import BookingModal from './components/BookingModal';
@@ -209,19 +210,37 @@ export default function Dashboard() {
 
         {/* 상단 헤더 카드 */}
         <div className="dashboard-header-card">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-base md:text-lg font-extrabold text-gray-900 shrink-0">숙소 예약 현황</h1>
+          <div className="flex flex-wrap items-center justify-between gap-2">
 
-            <div className="text-[10px] text-gray-500 flex flex-wrap items-center gap-1">
-              <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
-              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
-              <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
-              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
-              <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
+            {/* 좌측: 타이틀 + 채널 색상 안내 */}
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base md:text-lg font-extrabold text-gray-900 shrink-0">숙소 예약 현황</h1>
+
+              <div className="text-[10px] text-gray-500 flex flex-wrap items-center gap-1">
+                <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(255,17,0)' }}>Airbnb</span>
+                <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(255,243,13)' }}>Trip.com</span>
+                <span className="px-1 py-0.5 rounded text-white font-bold" style={{ backgroundColor: 'rgb(0,42,255)' }}>Booking.com</span>
+                <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,225)' }}>Agoda</span>
+                <span className="px-1 py-0.5 rounded text-black font-bold" style={{ backgroundColor: 'rgb(0,255,26)' }}>Expedia</span>
+              </div>
             </div>
+
+            {/* 📌 우측 상단: [📊 대시보드] <-> [🔑 숙소/비번 관리] 네비게이션 탭 */}
+            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-lg border border-gray-300">
+              <div className="px-3 py-1.5 rounded-md text-xs font-black bg-white text-blue-600 shadow-sm flex items-center gap-1">
+                <span>📊</span> 대시보드
+              </div>
+              <Link
+                href="/properties"
+                className="px-3 py-1.5 rounded-md text-xs font-black text-gray-600 hover:text-gray-900 transition flex items-center gap-1"
+              >
+                <span>🔑</span> 숙소/비번 관리
+              </Link>
+            </div>
+
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-200">
 
             {/* 오늘 현황 / 내일 현황 버튼 */}
             <div className="flex items-center gap-1.5 py-0.5">
@@ -299,10 +318,9 @@ export default function Dashboard() {
         {/* 대시보드 메인 패널 */}
         <div className="dashboard-panel">
 
-          {/* 📌 개선된 툴바: 좌측(날짜 조회 + 검색) / 우측(주간 이동 + 🔥 특이사항 돋보이는 버튼) */}
           <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200">
 
-            {/* 좌측 영역: 날짜 범위 + 🔍 검색 버튼 */}
+            {/* 좌측: 날짜 범위 + 🔍 검색 버튼 */}
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <div className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
                 <span>📅 조회:</span>
@@ -325,7 +343,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* 우측 영역: 주간 이동 버튼 + 📌 [오른쪽 끝으로 이동된 🔥 특이사항 하이라이트 버튼] */}
+            {/* 우측: 주간 이동 + 🔥 특이사항 모아보기 버튼 */}
             <div className="flex flex-wrap items-center gap-2 ml-auto">
               <div className="flex gap-1">
                 <button onClick={() => moveDays(-7)} className="btn-secondary">◀ 지난주</button>
@@ -333,7 +351,6 @@ export default function Dashboard() {
                 <button onClick={() => moveDays(7)} className="btn-secondary">다음주 ▶</button>
               </div>
 
-              {/* 돋보이는 특이사항 모아보기 버튼 */}
               <button
                 onClick={() => setIsTotalNotesOpen(true)}
                 className="btn-highlight-notes"
