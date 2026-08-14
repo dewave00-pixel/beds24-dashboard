@@ -39,16 +39,48 @@ export default function Dashboard() {
 
   const displayDaysCount = 14;
 
-  useEffect(() => {
-    const savedMemos = localStorage.getItem('beds24_booking_memos');
-    if (savedMemos) {
-      try {
-        setBookingMemos(JSON.parse(savedMemos));
-      } catch (e) {
-        console.error('메모 불러오기 실패:', e);
+  // 1. Supabase 중앙 DB에서 메모 목록 불러오기 (모듈화 API 호출)
+  const fetchMemos = async () => {
+    try {
+      const res = await fetch('/api/notes');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setBookingMemos(data.data);
       }
+    } catch (e) {
+      console.error('메모 불러오기 실패:', e);
     }
+  };
 
+  // 2. Beds24 실시간 예약 데이터 불러오기
+  const fetchReservations = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/reservations');
+      const data = await res.json();
+
+      if (data.success) {
+        setBookings(Array.isArray(data.data) ? data.data : []);
+      } else {
+        setError(data.error || '예약 데이터를 불러오지 못했습니다.');
+      }
+    } catch (err) {
+      setError('서버 통신 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 통합 새로고침 (예약 + 메모)
+  const reloadAll = async () => {
+    await Promise.all([fetchReservations(), fetchMemos()]);
+  };
+
+  useEffect(() => {
+    reloadAll();
+
+    // 뷰 모드 로컬 유지
     const savedMode = localStorage.getItem('beds24_view_mode');
     if (savedMode === 'horizontal' || savedMode === 'vertical') {
       setViewMode(savedMode);
@@ -59,29 +91,6 @@ export default function Dashboard() {
     setViewMode(mode);
     localStorage.setItem('beds24_view_mode', mode);
   };
-
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/reservations');
-      const data = await res.json();
-
-      if (data.success) {
-        setBookings(Array.isArray(data.data) ? data.data : []);
-      } else {
-        setError(data.error || '데이터를 불러오지 못했습니다.');
-      }
-    } catch (err) {
-      setError('서버 통신 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
@@ -128,20 +137,46 @@ export default function Dashboard() {
     setMemoInput(bookingMemos[booking.id] || '');
   };
 
-  const handleSaveMemo = () => {
+  // 3. 특이사항 메모 중앙 DB에 저장/수정
+  const handleSaveMemo = async () => {
     if (!activeBooking) return;
-    const updatedMemos = { ...bookingMemos, [activeBooking.id]: memoInput };
-    setBookingMemos(updatedMemos);
-    localStorage.setItem('beds24_booking_memos', JSON.stringify(updatedMemos));
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: activeBooking.id,
+          note: memoInput,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBookingMemos((prev) => ({ ...prev, [activeBooking.id]: memoInput }));
+      }
+    } catch (e) {
+      console.error('메모 저장 실패:', e);
+    }
     setActiveBooking(null);
   };
 
-  const handleDeleteMemo = () => {
+  // 4. 특이사항 메모 중앙 DB에서 삭제
+  const handleDeleteMemo = async () => {
     if (!activeBooking) return;
-    const updatedMemos = { ...bookingMemos };
-    delete updatedMemos[activeBooking.id];
-    setBookingMemos(updatedMemos);
-    localStorage.setItem('beds24_booking_memos', JSON.stringify(updatedMemos));
+    try {
+      const res = await fetch(`/api/notes?bookingId=${activeBooking.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBookingMemos((prev) => {
+          const updated = { ...prev };
+          delete updated[activeBooking.id];
+          return updated;
+        });
+      }
+    } catch (e) {
+      console.error('메모 삭제 실패:', e);
+    }
     setActiveBooking(null);
   };
 
@@ -185,14 +220,14 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 우측 주요 버튼들 */}
+            {/* 📱/🖥️ 뷰 모드 토글 스위치 및 새로고침 */}
             <div className="flex items-center gap-1.5 ml-auto">
               <div className="bg-gray-100 p-0.5 rounded-md border border-gray-300 flex gap-0.5">
                 <button
                   onClick={() => toggleViewMode('vertical')}
                   className={`px-2 py-1 text-xs font-extrabold rounded transition ${viewMode === 'vertical'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900'
                     }`}
                 >
                   📱 세로
@@ -200,19 +235,21 @@ export default function Dashboard() {
                 <button
                   onClick={() => toggleViewMode('horizontal')}
                   className={`px-2 py-1 text-xs font-extrabold rounded transition ${viewMode === 'horizontal'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900'
                     }`}
                 >
                   🖥️ 가로
                 </button>
               </div>
-              <button onClick={fetchData} disabled={loading} className="btn-primary">
+
+              <button onClick={reloadAll} disabled={loading} className="btn-primary">
                 {loading ? '...' : '새로고침'}
               </button>
             </div>
           </div>
         </div>
+
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
             🚨 {error}
@@ -232,14 +269,14 @@ export default function Dashboard() {
                 <span className="text-blue-600 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
               </div>
 
-              {/* 2. 날짜 강조 해제 버튼 (선택 시 노출) */}
+              {/* 2. 날짜 강조 해제 버튼 */}
               {selectedDate && (
                 <button onClick={() => setSelectedDate(null)} className="btn-reset-highlight">
                   🔍 {selectedDate} 강조 해제 ✖
                 </button>
               )}
 
-              {/* 3. 🔍 예약 검색 & 🔥 총 특이사항 버튼 (메인 패널 내부 배치) */}
+              {/* 3. 🔍 예약 검색 & 🔥 총 특이사항 버튼 */}
               <div className="flex items-center gap-1.5 ml-1">
                 <button
                   onClick={() => setIsSearchOpen(true)}
@@ -265,7 +302,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 하단 타임라인 컴포넌트 (VerticalTimeline / HorizontalTimeline) */}
+          {/* 타임라인 컴포넌트 렌더링 */}
           {viewMode === 'vertical' ? (
             <VerticalTimeline
               timelineDates={timelineDates}
@@ -295,7 +332,7 @@ export default function Dashboard() {
 
       </div>
 
-      {/* 모달 1 */}
+      {/* 모달 1: 개별 예약 상세 및 메모 모달 */}
       {activeBooking && (
         <BookingModal
           booking={activeBooking}
@@ -307,7 +344,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 2 */}
+      {/* 모달 2: 총 특이사항 모아보기 모달 */}
       {isTotalNotesOpen && (
         <TotalNotesModal
           bookings={bookings}
@@ -320,7 +357,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* 모달 3 */}
+      {/* 모달 3: 통합 검색 모달 */}
       {isSearchOpen && (
         <SearchModal
           bookings={bookings}
