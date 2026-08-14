@@ -171,7 +171,7 @@ export function parseBookingTag(tagKey: string): { label: string; icon: string }
 
     // 3. 청소안함
     if (tagKey === 'no_cleaning') {
-        return { icon: '🧹', label: '노청소' };
+        return { icon: '🧹', label: '청소안함' };
     }
 
     // 4. 수리/점검
