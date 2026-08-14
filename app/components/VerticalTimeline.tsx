@@ -38,7 +38,7 @@ export default function VerticalTimeline({
                 {/* 상단 1단+2단 헤더 통합 고정 묶음 */}
                 <div className="sticky-header-group border-b-2 border-gray-400 shadow-sm">
 
-                    {/* 1단: 숙소 그룹명 (볼드체 font-black 강화) */}
+                    {/* 1단: 숙소 그룹명 (PC/모바일 무조건 블랙 볼드체 강제 적용) */}
                     <div
                         className="grid divide-x divide-gray-300 bg-white"
                         style={{
@@ -46,14 +46,18 @@ export default function VerticalTimeline({
                             height: '36px',
                         }}
                     >
-                        <div className="sticky-corner bg-gray-200 text-gray-800 flex items-center justify-center font-black text-xs border-r border-gray-300">
+                        <div className="sticky-corner bg-gray-200 text-gray-950 flex items-center justify-center font-black text-xs border-r border-gray-300">
                             숙소명
                         </div>
                         {PROPERTY_GROUPS.map((group) => (
                             <div
                                 key={group.name}
-                                className={`p-2 flex items-center justify-center font-black text-xs md:text-sm tracking-wide shadow-sm border-r border-gray-300 ${group.themeClass}`}
-                                style={{ gridColumn: `span ${group.units.length}` }}
+                                className={`p-2 flex items-center justify-center font-black text-xs md:text-sm tracking-wide shadow-sm border-r border-gray-300 text-gray-950 ${group.themeClass}`}
+                                style={{
+                                    gridColumn: `span ${group.units.length}`,
+                                    color: '#000000',
+                                    fontWeight: 900,
+                                }}
                             >
                                 🏢 {group.name}
                             </div>
