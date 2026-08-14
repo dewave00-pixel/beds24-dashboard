@@ -182,7 +182,7 @@ export function parseBookingTag(tagKey: string): { label: string; icon: string }
     return null;
 }
 
-// 🏠 표준 호실 및 숙소 그룹 정보 검색 모듈 함수
+// 🏠 표준 호실 및 숙소 그룹 정보 검색 모듈 함수 (고대비 선명 컬러 주입)
 export function getUnitDisplayInfo(booking: {
     roomId?: number | string;
     unitId?: number | string;
@@ -192,15 +192,24 @@ export function getUnitDisplayInfo(booking: {
     unitDisplayName: string;
     subName?: string;
     themeClass: string;
+    badgeStyle: { backgroundColor: string; color: string };
 } {
     const bRoomId = Number(booking.roomId);
     const bUnitId = booking.unitId ? Number(booking.unitId) : null;
+
+    // 숙소 그룹별 선명한 고대비 전용 배경색 맵
+    const colorMap: { [key: string]: { backgroundColor: string; color: string } } = {
+        'group-theme-green': { backgroundColor: '#047857', color: '#ffffff' }, // 진한 에메랄드 그린
+        'group-theme-wave': { backgroundColor: '#0369a1', color: '#ffffff' },  // 진한 웨이브 블루
+        'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#ffffff' }, // 진한 연남 퍼플
+        'group-theme-namsan': { backgroundColor: '#b45309', color: '#ffffff' }, // 진한 남산 앰버
+        'group-theme-default': { backgroundColor: '#334155', color: '#ffffff' }, // 다크 슬레이트
+    };
 
     // 1. PROPERTY_GROUPS 순회 매칭
     for (const group of PROPERTY_GROUPS) {
         const matched = group.units.find((u) => {
             const isRoomMatch = u.roomId === bRoomId;
-            // 설정에 unitId가 적혀있는 경우에만 unitId까지 엄격 대조, 없으면 roomId만 맞으면 OK!
             const isUnitMatch = u.unitId ? (bUnitId !== null ? u.unitId === bUnitId : true) : true;
             return isRoomMatch && isUnitMatch;
         });
@@ -211,6 +220,7 @@ export function getUnitDisplayInfo(booking: {
                 unitDisplayName: matched.displayName,
                 subName: matched.subName,
                 themeClass: group.themeClass,
+                badgeStyle: colorMap[group.themeClass] || colorMap['group-theme-default'],
             };
         }
     }
@@ -219,11 +229,13 @@ export function getUnitDisplayInfo(booking: {
     const fallback = ALL_UNITS.find((u) => u.roomId === bRoomId);
     if (fallback) {
         const parentGroup = PROPERTY_GROUPS.find((g) => g.units.some((u) => u.key === fallback.key));
+        const theme = parentGroup ? parentGroup.themeClass : 'group-theme-default';
         return {
             propertyName: parentGroup ? parentGroup.name : '숙소',
             unitDisplayName: fallback.displayName,
             subName: fallback.subName,
-            themeClass: parentGroup ? parentGroup.themeClass : 'group-theme-default',
+            themeClass: theme,
+            badgeStyle: colorMap[theme] || colorMap['group-theme-default'],
         };
     }
 
@@ -231,5 +243,6 @@ export function getUnitDisplayInfo(booking: {
         propertyName: '숙소',
         unitDisplayName: `호실(${bRoomId || '미정'})`,
         themeClass: 'group-theme-default',
+        badgeStyle: colorMap['group-theme-default'],
     };
 }
