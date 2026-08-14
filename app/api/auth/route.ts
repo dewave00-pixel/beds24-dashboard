@@ -8,12 +8,12 @@ export async function POST(req: NextRequest) {
     try {
         const { password } = await req.json();
 
-        const adminPw = process.env.ADMIN_PASSWORD;
-        const managerPw = process.env.MANAGER_PASSWORD;
-        const staff1Pw = process.env.STAFF_1_PASSWORD;
-        const staff2Pw = process.env.STAFF_2_PASSWORD;
-        const staff3Pw = process.env.STAFF_3_PASSWORD;
-        const staff4Pw = process.env.STAFF_4_PASSWORD;
+        const adminPw = process.env.ADMIN_PASSWORD || '1234';
+        const managerPw = process.env.MANAGER_PASSWORD || '5678';
+        const staff1Pw = process.env.STAFF_1_PASSWORD || '1313';
+        const staff2Pw = process.env.STAFF_2_PASSWORD || '4646';
+        const staff3Pw = process.env.STAFF_3_PASSWORD || '7979';
+        const staff4Pw = process.env.STAFF_4_PASSWORD || '0101';
 
         let role: string | null = null;
         let redirectTo = '/';
