@@ -16,13 +16,13 @@ export default function TimelineHeader() {
                     height: '36px',
                 }}
             >
-                <div className="sticky-corner bg-gray-200 text-gray-950 flex items-center justify-center font-black text-xs border-r-2 border-gray-400">
+                <div className="sticky-corner bg-gray-200 text-gray-950 flex items-center justify-center font-black text-xs border-r-[5px] border-r-slate-400">
                     숙소명
                 </div>
                 {PROPERTY_GROUPS.map((group, idx) => (
                     <div
                         key={group.name}
-                        className={`p-2 flex items-center justify-center font-black text-xs md:text-sm tracking-wide shadow-sm border-r-2 border-slate-400 text-gray-950 ${group.themeClass}`}
+                        className={`p-2 flex items-center justify-center font-black text-xs md:text-sm tracking-wide shadow-sm border-r-[5px] border-slate-400 text-gray-950 ${group.themeClass}`}
                         style={{
                             gridColumn: `span ${group.units.length}`,
                             color: '#000000',
@@ -42,7 +42,7 @@ export default function TimelineHeader() {
                     height: '42px',
                 }}
             >
-                <div className="sticky-corner bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-black border-r-2 border-gray-400">
+                <div className="sticky-corner bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-black border-r-[5px] border-r-slate-400">
                     날짜 / 호실
                 </div>
                 {ALL_UNITS.map((col) => {
@@ -50,7 +50,7 @@ export default function TimelineHeader() {
                     return (
                         <div
                             key={col.key}
-                            className={`p-1.5 flex flex-col justify-center text-center bg-gray-50 ${isGroupEnd ? 'border-r-2! border-r-slate-400!' : ''}`}
+                            className={`p-1.5 flex flex-col justify-center text-center bg-gray-50 ${isGroupEnd ? 'border-r-[5px]! border-r-slate-400!' : ''}`}
                         >
                             {col.subName && (
                                 <span className="text-[10px] text-gray-500 font-bold">{col.subName}</span>

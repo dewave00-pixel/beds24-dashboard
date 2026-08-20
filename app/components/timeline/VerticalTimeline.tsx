@@ -77,7 +77,7 @@ export default function VerticalTimeline({
                                 }}
                             >
                                 <div
-                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r-2 border-gray-400 ${isSelected
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r-[5px] border-slate-400 ${isSelected
                                         ? 'bg-amber-500 text-white font-black'
                                         : isToday
                                             ? 'bg-blue-600 text-white font-black'
@@ -98,7 +98,7 @@ export default function VerticalTimeline({
                                     return (
                                         <div
                                             key={`${dStr}-${col.key}`}
-                                            className={`h-full ${isGroupEnd ? 'border-r-2! border-r-slate-400!' : ''} ${isToday && !isSelected
+                                            className={`h-full ${isGroupEnd ? 'border-r-[5px]! border-r-slate-400!' : ''} ${isToday && !isSelected
                                                 ? 'bg-blue-50/30'
                                                 : dayInfo.type === 'saturday'
                                                     ? 'bg-blue-50/10'
