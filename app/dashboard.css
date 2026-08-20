@@ -218,6 +218,23 @@ body {
     opacity: 0.35;
 }
 
+/* 🏢 건물(Property) 전용 짙은 회색 구분 기둥 (흐려짐 없이 100% 선명도 유지) */
+.property-divider-pillar {
+    background-color: #475569 !important; /* 짙은 슬레이트 차콜 그레이 */
+    border-left: 1px solid #334155 !important;
+    border-right: 1px solid #334155 !important;
+    opacity: 1 !important; /* row-dimmed 시에도 선명하게 유지 */
+    z-index: 5;
+}
+
+.property-divider-horizontal {
+    height: 16px !important;
+    background-color: #475569 !important;
+    border-top: 1px solid #334155 !important;
+    border-bottom: 1px solid #334155 !important;
+    opacity: 1 !important;
+}
+
 .booking-card-dimmed {
     opacity: 0.2 !important;
     filter: grayscale(80%);

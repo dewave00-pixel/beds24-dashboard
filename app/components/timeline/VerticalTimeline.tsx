@@ -106,7 +106,7 @@ export default function VerticalTimeline({
                                             />
                                         ))}
                                         {idx < PROPERTY_GROUPS.length - 1 && (
-                                            <div className="bg-slate-200 border-x border-slate-300" />
+                                            <div className="property-divider-pillar" />
                                         )}
                                     </div>
                                 ))}

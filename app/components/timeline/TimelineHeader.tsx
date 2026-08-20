@@ -29,7 +29,7 @@ export default function TimelineHeader() {
                             🏢 {group.name}
                         </div>
                         {idx < PROPERTY_GROUPS.length - 1 && (
-                            <div className="bg-slate-300 border-x border-slate-400 flex items-center justify-center" />
+                            <div className="property-divider-pillar" />
                         )}
                     </div>
                 ))}
@@ -60,7 +60,7 @@ export default function TimelineHeader() {
                             </div>
                         ))}
                         {idx < PROPERTY_GROUPS.length - 1 && (
-                            <div className="bg-slate-300 border-x border-slate-400 flex items-center justify-center" />
+                            <div className="property-divider-pillar" />
                         )}
                     </div>
                 ))}
