@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 아이디 형식 지원: @가 없으면 기본 도메인(@dewave.local) 자동 추가
-        const loginEmail = inputId.includes('@') ? inputId : `${inputId.toLowerCase()}@dewave.local`;
+        // 아이디 형식 지원: @가 없으면 기본 도메인(@dewave.com) 자동 추가
+        const loginEmail = inputId.includes('@') ? inputId : `${inputId.toLowerCase()}@dewave.com`;
 
         // 1. Supabase Auth로 로그인 시도
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -134,4 +134,4 @@ export async function DELETE() {
     const response = NextResponse.json({ success: true, message: '로그아웃 되었습니다.' });
     response.cookies.delete('auth_role');
     return response;
-}
+}
