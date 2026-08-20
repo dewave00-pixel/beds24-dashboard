@@ -137,6 +137,8 @@ export default function CleaningPage() {
                 <CleaningBatchSender
                     dateStr={c.selectedDate}
                     assignments={c.assignments}
+                    bookings={c.bookings}
+                    bookingNotes={c.bookingNotes}
                 />
 
             </div>
