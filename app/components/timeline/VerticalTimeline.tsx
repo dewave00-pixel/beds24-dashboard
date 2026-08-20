@@ -1,7 +1,7 @@
 'use client';
 
 import { Booking } from '../../types';
-import { ALL_UNITS, getDayType } from '../../config';
+import { ALL_UNITS, PROPERTY_GROUPS, getDayType } from '../../config';
 import TimelineHeader from './TimelineHeader';
 import BookingBar from './BookingBar';
 
@@ -33,6 +33,9 @@ export default function VerticalTimeline({
     onDateClick,
     onBookingClick,
 }: VerticalTimelineProps) {
+    // 각 숙소 그룹의 마지막 호실 키 집합 (굵은 구분선용)
+    const groupEndKeys = new Set(PROPERTY_GROUPS.map((g) => g.units[g.units.length - 1]?.key));
+
     return (
         <div className="grid-table-container">
             <div className="min-w-max">
@@ -74,7 +77,7 @@ export default function VerticalTimeline({
                                 }}
                             >
                                 <div
-                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r border-gray-300 ${isSelected
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r-2 border-gray-400 ${isSelected
                                         ? 'bg-amber-500 text-white font-black'
                                         : isToday
                                             ? 'bg-blue-600 text-white font-black'
@@ -90,19 +93,22 @@ export default function VerticalTimeline({
                                     </div>
                                 </div>
 
-                                {ALL_UNITS.map((col) => (
-                                    <div
-                                        key={`${dStr}-${col.key}`}
-                                        className={`h-full ${isToday && !isSelected
-                                            ? 'bg-blue-50/30'
-                                            : dayInfo.type === 'saturday'
-                                                ? 'bg-blue-50/10'
-                                                : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                    ? 'bg-red-50/10'
-                                                    : ''
-                                            }`}
-                                    />
-                                ))}
+                                {ALL_UNITS.map((col) => {
+                                    const isGroupEnd = groupEndKeys.has(col.key);
+                                    return (
+                                        <div
+                                            key={`${dStr}-${col.key}`}
+                                            className={`h-full ${isGroupEnd ? 'border-r-2! border-r-slate-400!' : ''} ${isToday && !isSelected
+                                                ? 'bg-blue-50/30'
+                                                : dayInfo.type === 'saturday'
+                                                    ? 'bg-blue-50/10'
+                                                    : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
+                                                        ? 'bg-red-50/10'
+                                                        : ''
+                                                }`}
+                                        />
+                                    );
+                                })}
                             </div>
                         );
                     })}

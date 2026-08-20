@@ -11,6 +11,7 @@ import BookingModal from './components/modals/BookingModal';
 import DailyStatusModal from './components/modals/DailyStatusModal';
 import TotalNotesModal from './components/modals/TotalNotesModal';
 import SearchModal from './components/modals/SearchModal';
+import ZoomableTimelineWrapper from './components/timeline/ZoomableTimelineWrapper';
 
 const ROW_HEIGHT = 65;
 const COL_WIDTH_HORIZ = 110;
@@ -48,6 +49,10 @@ export default function DashboardPage() {
           <DashboardToolbar
             timelineDates={d.timelineDates}
             selectedDate={d.selectedDate}
+            zoomLevel={d.zoomLevel}
+            onChangeZoom={d.changeZoom}
+            onUpdateZoomLevel={d.updateZoomLevel}
+            onResetZoom={d.resetZoom}
             onResetSelectedDate={() => d.setSelectedDate(null)}
             onOpenSearch={() => d.setIsSearchOpen(true)}
             onMoveDays={d.moveDays}
@@ -55,32 +60,37 @@ export default function DashboardPage() {
             onOpenTotalNotes={() => d.setIsTotalNotesOpen(true)}
           />
 
-          {/* 타임라인 렌더링 */}
-          {d.viewMode === 'vertical' ? (
-            <VerticalTimeline
-              timelineDates={d.timelineDates}
-              todayStr={d.todayStr}
-              selectedDate={d.selectedDate}
-              bookings={d.bookings}
-              bookingNotes={d.bookingNotes}
-              ROW_HEIGHT={ROW_HEIGHT}
-              displayDaysCount={d.displayDaysCount}
-              onDateClick={d.handleDateClick}
-              onBookingClick={d.handleBookingClick}
-            />
-          ) : (
-            <HorizontalTimeline
-              timelineDates={d.timelineDates}
-              todayStr={d.todayStr}
-              selectedDate={d.selectedDate}
-              bookings={d.bookings}
-              bookingNotes={d.bookingNotes}
-              COL_WIDTH={COL_WIDTH_HORIZ}
-              ROW_HEIGHT={ROW_HEIGHT}
-              onDateClick={d.handleDateClick}
-              onBookingClick={d.handleBookingClick}
-            />
-          )}
+          {/* 타임라인 렌더링 (구글 시트형 줌 배율 제어 래퍼) */}
+          <ZoomableTimelineWrapper
+            zoomLevel={d.zoomLevel}
+            onUpdateZoomLevel={d.updateZoomLevel}
+          >
+            {d.viewMode === 'vertical' ? (
+              <VerticalTimeline
+                timelineDates={d.timelineDates}
+                todayStr={d.todayStr}
+                selectedDate={d.selectedDate}
+                bookings={d.bookings}
+                bookingNotes={d.bookingNotes}
+                ROW_HEIGHT={ROW_HEIGHT}
+                displayDaysCount={d.displayDaysCount}
+                onDateClick={d.handleDateClick}
+                onBookingClick={d.handleBookingClick}
+              />
+            ) : (
+              <HorizontalTimeline
+                timelineDates={d.timelineDates}
+                todayStr={d.todayStr}
+                selectedDate={d.selectedDate}
+                bookings={d.bookings}
+                bookingNotes={d.bookingNotes}
+                COL_WIDTH={COL_WIDTH_HORIZ}
+                ROW_HEIGHT={ROW_HEIGHT}
+                onDateClick={d.handleDateClick}
+                onBookingClick={d.handleBookingClick}
+              />
+            )}
+          </ZoomableTimelineWrapper>
         </div>
       </div>
 

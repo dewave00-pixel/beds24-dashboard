@@ -15,6 +15,7 @@ export function useDashboard() {
 
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
+    const [zoomLevel, setZoomLevel] = useState<number>(1.0); // 0.5 ~ 1.5
 
     // 모달 및 메모/태그 상태
     const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
@@ -79,11 +80,32 @@ export function useDashboard() {
         if (savedMode === 'horizontal' || savedMode === 'vertical') {
             setViewMode(savedMode);
         }
+        const savedZoom = localStorage.getItem('beds24_timeline_zoom');
+        if (savedZoom) {
+            const z = parseFloat(savedZoom);
+            if (!isNaN(z) && z >= 0.4 && z <= 2.0) {
+                setZoomLevel(z);
+            }
+        }
     }, []);
 
     const toggleViewMode = (mode: 'vertical' | 'horizontal') => {
         setViewMode(mode);
         localStorage.setItem('beds24_view_mode', mode);
+    };
+
+    const updateZoomLevel = (newZoom: number) => {
+        const clamped = Math.min(Math.max(Number(newZoom.toFixed(2)), 0.4), 2.0);
+        setZoomLevel(clamped);
+        localStorage.setItem('beds24_timeline_zoom', String(clamped));
+    };
+
+    const changeZoom = (delta: number) => {
+        updateZoomLevel(zoomLevel + delta);
+    };
+
+    const resetZoom = () => {
+        updateZoomLevel(1.0);
     };
 
     // 오늘 / 내일 날짜 계산
@@ -219,6 +241,10 @@ export function useDashboard() {
         moveDays,
         goToday,
         reloadAll,
+        zoomLevel,
+        updateZoomLevel,
+        changeZoom,
+        resetZoom,
         handleDateClick,
         handleBookingClick,
         openBookingDetail,
