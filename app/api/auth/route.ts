@@ -36,11 +36,33 @@ export async function POST(req: NextRequest) {
 
         const user = authData.user;
 
-        // 2. user_profiles 테이블에서 사용자 역할(Role) 및 스태프 ID 조회
+        // 2. 기본 권한 및 목적지 결정 (아이디 접두사 기반 스마트 기본값)
+        const cleanInputId = inputId.toLowerCase().split('@')[0];
         let role = 'staff_1';
         let userName = user.email ? user.email.split('@')[0] : '사용자';
         let redirectTo = '/cleaning/my';
 
+        if (cleanInputId === 'admin') {
+            role = 'admin';
+            redirectTo = '/';
+        } else if (cleanInputId === 'manager') {
+            role = 'manager';
+            redirectTo = '/';
+        } else if (cleanInputId === 'staff1' || cleanInputId === 'staff_1') {
+            role = 'staff_1';
+            redirectTo = '/cleaning/my';
+        } else if (cleanInputId === 'staff2' || cleanInputId === 'staff_2') {
+            role = 'staff_2';
+            redirectTo = '/cleaning/my';
+        } else if (cleanInputId === 'staff3' || cleanInputId === 'staff_3') {
+            role = 'staff_3';
+            redirectTo = '/cleaning/my';
+        } else if (cleanInputId === 'staff4' || cleanInputId === 'staff_4') {
+            role = 'staff_4';
+            redirectTo = '/cleaning/my';
+        }
+
+        // 3. user_profiles 테이블에 커스텀 설정이 있으면 최우선 적용
         const { data: profile } = await supabase
             .from('user_profiles')
             .select('name, role, staff_id')
@@ -55,23 +77,11 @@ export async function POST(req: NextRequest) {
             } else if (profile.role === 'manager') {
                 role = 'manager';
                 redirectTo = '/';
-            } else {
-                // 스태프일 경우 profile.staff_id (e.g. 'staff_1', 'staff_2') 또는 'staff_1'
-                role = profile.staff_id || 'staff_1';
+            } else if (profile.staff_id) {
+                role = profile.staff_id;
                 redirectTo = '/cleaning/my';
-            }
-        } else {
-            // 프로필이 아직 생성 안 된 경우 이메일 메타데이터 확인
-            const metaRole = user.user_metadata?.role;
-            const metaStaffId = user.user_metadata?.staff_id;
-            if (metaRole === 'admin') {
-                role = 'admin';
-                redirectTo = '/';
-            } else if (metaRole === 'manager') {
-                role = 'manager';
-                redirectTo = '/';
-            } else if (metaStaffId) {
-                role = metaStaffId;
+            } else if (profile.role.startsWith('staff_')) {
+                role = profile.role;
                 redirectTo = '/cleaning/my';
             }
         }
