@@ -16,7 +16,7 @@ export async function GET() {
         // 3. 오늘 기준 과거 3일 전 ~ 미래 365일 후 기간 설정
         const today = new Date();
         const fromDate = new Date(today);
-        fromDate.setDate(today.getDate() - 3);
+        fromDate.setDate(today.getDate() - 30);
         const toDate = new Date(today);
         toDate.setDate(today.getDate() + 365);
 

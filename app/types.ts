@@ -38,4 +38,6 @@ export interface CleaningAssignment {
     staffName: string;   // 👤 담당자 이름 (예: '이모님A')
     staffId: string;     // 🔑 계정 매칭용 권한 아이디 (예: 'staff_1')
     assignedAt: string;  // 🕒 배정 시각 (예: '14:25')
+    isCompleted?: boolean; // ✅ 청소 완료 여부
+    completedAt?: string;  // 🕒 청소 완료 시각 (예: '14:50')
 }

@@ -29,6 +29,8 @@ export async function GET(request: Request) {
                     staffName: row.staff_name,
                     staffId: row.staff_id,
                     assignedAt: row.assigned_at,
+                    isCompleted: !!row.is_completed,
+                    completedAt: row.completed_at || '',
                 };
             });
         }
@@ -40,26 +42,33 @@ export async function GET(request: Request) {
     }
 }
 
-// POST: 배정 내역 추가/수정
+// POST: 배정 내역 추가/수정 (완료 상태 토글 포함)
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { unitKey, targetDate, staffName, staffId, assignedAt } = body;
+        const { unitKey, targetDate, staffName, staffId, assignedAt, isCompleted, completedAt } = body;
 
-        if (!unitKey || !targetDate || !staffName || !staffId || !assignedAt) {
+        if (!unitKey || !targetDate || !staffName || !staffId) {
             return NextResponse.json({ success: false, error: '필수 파라미터 누락' }, { status: 400 });
+        }
+
+        const upsertPayload: Record<string, any> = {
+            unit_key: unitKey,
+            target_date: targetDate,
+            staff_name: staffName,
+            staff_id: staffId,
+            assigned_at: assignedAt || '',
+        };
+
+        if (typeof isCompleted === 'boolean') {
+            upsertPayload.is_completed = isCompleted;
+            upsertPayload.completed_at = completedAt || null;
         }
 
         const { error } = await supabase
             .from('cleaning_assignments')
             .upsert(
-                {
-                    unit_key: unitKey,
-                    target_date: targetDate,
-                    staff_name: staffName,
-                    staff_id: staffId,
-                    assigned_at: assignedAt
-                },
+                upsertPayload,
                 { onConflict: 'unit_key, target_date' }
             );
 

@@ -24,12 +24,16 @@ export function useCleaningBoard() {
 
     const cleaningTargetUnits = useMemo(() => {
         return ALL_UNITS.filter((unit) => {
-            const hasCheckout = dash.bookings.some(
-                (b) => b.roomId === unit.roomId && b.departure === selectedDate
-            );
-            const hasCheckin = dash.bookings.some(
-                (b) => b.roomId === unit.roomId && b.arrival === selectedDate
-            );
+            const hasCheckout = dash.bookings.some((b) => {
+                const isRoomMatch = Number(b.roomId) === Number(unit.roomId);
+                const isUnitMatch = unit.unitId ? Number(b.unitId) === Number(unit.unitId) : true;
+                return isRoomMatch && isUnitMatch && b.departure === selectedDate;
+            });
+            const hasCheckin = dash.bookings.some((b) => {
+                const isRoomMatch = Number(b.roomId) === Number(unit.roomId);
+                const isUnitMatch = unit.unitId ? Number(b.unitId) === Number(unit.unitId) : true;
+                return isRoomMatch && isUnitMatch && b.arrival === selectedDate;
+            });
             return hasCheckout || hasCheckin;
         });
     }, [dash.bookings, selectedDate]);
@@ -136,6 +140,49 @@ export function useCleaningBoard() {
         }
     };
 
+    // 청소 완료 상태 토글 함수 (DB 비동기 저장 포함)
+    const toggleComplete = async (unitKey: string) => {
+        const current = assignments[unitKey];
+        if (!current) return;
+
+        const nextCompleted = !current.isCompleted;
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const completedAt = nextCompleted ? `${hours}:${minutes}` : '';
+
+        const updatedAssignment: CleaningAssignment = {
+            ...current,
+            isCompleted: nextCompleted,
+            completedAt,
+        };
+
+        // 화면 즉각 반영 (Optimistic UI)
+        setAssignments((prev) => ({
+            ...prev,
+            [unitKey]: updatedAssignment,
+        }));
+
+        // DB 저장 (비동기)
+        try {
+            await fetch('/api/assignments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    unitKey: updatedAssignment.unitKey,
+                    targetDate: selectedDate,
+                    staffName: updatedAssignment.staffName,
+                    staffId: updatedAssignment.staffId,
+                    assignedAt: updatedAssignment.assignedAt,
+                    isCompleted: updatedAssignment.isCompleted,
+                    completedAt: updatedAssignment.completedAt,
+                }),
+            });
+        } catch (err) {
+            console.error('청소 완료 상태 저장 실패:', err);
+        }
+    };
+
     return {
         ...dash,
         selectedDate,
@@ -147,5 +194,6 @@ export function useCleaningBoard() {
         cleaningTargetUnits,
         assignStaff,
         unassignStaff,
+        toggleComplete,
     };
 }

@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* 📱 모바일 두 손가락 자유 축소(Zoom-out) 및 제스처 허용 */
 html,
