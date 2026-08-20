@@ -1,66 +1,36 @@
 import type { UnitConfig, PropertyGroup } from './types';
 
 
-// 7개 숙소 및 세부 호실 매핑 표
+// 4대 실제 숙소 건물(Property) 및 세부 호실 매핑 표
 export const PROPERTY_GROUPS: PropertyGroup[] = [
     {
-        name: 'WAVE A',
-        themeClass: 'group-theme-waves',
+        name: 'WAVE',
+        themeClass: 'group-theme-wave',
         units: [
-            { key: '563864-1', roomId: 563864, unitId: 1, displayName: '401호' },
-            { key: '563864-2', roomId: 563864, unitId: 2, displayName: '501호' },
+            { key: '563864-1', roomId: 563864, unitId: 1, displayName: '401호', subName: 'A' },
+            { key: '563864-2', roomId: 563864, unitId: 2, displayName: '501호', subName: 'A' },
+            { key: '563881-1', roomId: 563881, unitId: 1, displayName: '402호', subName: 'B' },
+            { key: '563881-2', roomId: 563881, unitId: 2, displayName: '502호', subName: 'B' },
+            { key: '563954-1', roomId: 563954, unitId: 1, displayName: '403호', subName: 'C' },
+            { key: '563954-2', roomId: 563954, unitId: 2, displayName: '503호', subName: 'C' },
+            { key: '564027-1', roomId: 564027, unitId: 1, displayName: '404호', subName: 'D' },
+            { key: '564027-2', roomId: 564027, unitId: 2, displayName: '504호', subName: 'D' },
         ],
     },
     {
-        name: 'WAVE B',
-        themeClass: 'group-theme-waves',
+        name: 'YEONNAM',
+        themeClass: 'group-theme-yeonnam',
         units: [
-            { key: '563881-1', roomId: 563881, unitId: 1, displayName: '402호' },
-            { key: '563881-2', roomId: 563881, unitId: 2, displayName: '502호' },
-        ],
-    },
-    {
-        name: 'WAVE C',
-        themeClass: 'group-theme-waves',
-        units: [
-            { key: '563954-1', roomId: 563954, unitId: 1, displayName: '403호' },
-            { key: '563954-2', roomId: 563954, unitId: 2, displayName: '503호' },
-        ],
-    },
-    {
-        name: 'WAVE D',
-        themeClass: 'group-theme-waves',
-        units: [
-            { key: '564027-1', roomId: 564027, unitId: 1, displayName: '404호' },
-            { key: '564027-2', roomId: 564027, unitId: 2, displayName: '504호' },
-        ],
-    },
-    {
-        name: 'YEONNAM (투룸)',
-        themeClass: 'group-theme-yeonnams',
-        units: [
-            { key: '560113-2', roomId: 560113, unitId: 2, displayName: '102호' },
-            { key: '560113-1', roomId: 560113, unitId: 1, displayName: '202호' },
-        ],
-    },
-    {
-        name: 'YEONNAM (쓰리룸)',
-        themeClass: 'group-theme-yeonnams',
-        units: [
-            { key: '559985-1', roomId: 559985, unitId: 1, displayName: '101호' },
-            { key: '559985-2', roomId: 559985, unitId: 2, displayName: '201호' },
-        ],
-    },
-    {
-        name: 'YEONNAM (포룸)',
-        themeClass: 'group-theme-yeonnams',
-        units: [
-            { key: '560115-1', roomId: 560115, unitId: 1, displayName: '301호' },
+            { key: '560113-2', roomId: 560113, unitId: 2, displayName: '102호', subName: '투룸' },
+            { key: '560113-1', roomId: 560113, unitId: 1, displayName: '202호', subName: '투룸' },
+            { key: '559985-1', roomId: 559985, unitId: 1, displayName: '101호', subName: '쓰리룸' },
+            { key: '559985-2', roomId: 559985, unitId: 2, displayName: '201호', subName: '쓰리룸' },
+            { key: '560115-1', roomId: 560115, unitId: 1, displayName: '301호', subName: '포룸' },
         ],
     },
     {
         name: 'Green',
-        themeClass: 'group-theme-greens',
+        themeClass: 'group-theme-green',
         units: [
             { key: '560093', roomId: 560093, displayName: '3층' },
             { key: '560097', roomId: 560097, displayName: '4층' },
@@ -68,7 +38,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
     },
     {
         name: 'Namsun',
-        themeClass: 'group-theme-namsuns',
+        themeClass: 'group-theme-namsan',
         units: [
             { key: '560162-1', roomId: 560162, unitId: 1, displayName: '1호', subName: 'mini 1' },
             { key: '560162-2', roomId: 560162, unitId: 2, displayName: '4호', subName: 'mini 1' },
