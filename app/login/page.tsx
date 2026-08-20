@@ -3,14 +3,14 @@
 import { useState } from 'react';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email.trim() || !password.trim() || loading) return;
+        if (!username.trim() || !password.trim() || loading) return;
 
         setLoading(true);
         setErrorMsg('');
@@ -20,7 +20,7 @@ export default function LoginPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: email.trim(),
+                    username: username.trim(),
                     password: password.trim(),
                 }),
             });
@@ -31,7 +31,7 @@ export default function LoginPage() {
                 // 성공 시 권한에 맞는 목적지로 이동
                 window.location.href = data.redirectTo || '/';
             } else {
-                setErrorMsg(data.message || '이메일 또는 비밀번호가 올바르지 않습니다.');
+                setErrorMsg(data.message || '아이디 또는 비밀번호가 올바르지 않습니다.');
                 setLoading(false);
             }
         } catch (err) {
@@ -50,24 +50,25 @@ export default function LoginPage() {
                         🏨
                     </div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight">숙소 통합 관리 시스템</h1>
-                    <p className="text-xs text-slate-500 font-bold">계정으로 로그인해 주세요</p>
+                    <p className="text-xs text-slate-500 font-bold">아이디와 비밀번호로 로그인해 주세요</p>
                 </div>
 
                 {/* 폼 */}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    {/* 이메일 */}
+                    {/* 아이디 */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-black text-slate-700">이메일</label>
+                        <label className="text-xs font-black text-slate-700">아이디</label>
                         <input
-                            type="email"
-                            value={email}
+                            type="text"
+                            value={username}
                             onChange={(e) => {
-                                setEmail(e.target.value);
+                                setUsername(e.target.value);
                                 if (errorMsg) setErrorMsg('');
                             }}
-                            placeholder="admin@dewave.com"
+                            placeholder="예: admin, manager, staff1"
                             autoFocus
                             required
+                            autoCapitalize="none"
                             className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:outline-hidden text-sm font-bold text-slate-900 transition"
                         />
                     </div>

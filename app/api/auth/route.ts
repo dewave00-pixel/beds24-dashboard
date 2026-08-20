@@ -7,25 +7,29 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
     try {
-        const { email, password } = await req.json();
+        const { username, email, password } = await req.json();
+        const inputId = (username || email || '').trim();
 
-        if (!email || !password) {
+        if (!inputId || !password) {
             return NextResponse.json(
-                { success: false, message: '이메일과 비밀번호를 모두 입력해 주세요.' },
+                { success: false, message: '아이디와 비밀번호를 모두 입력해 주세요.' },
                 { status: 400 }
             );
         }
 
-        // 1. Supabase Auth로 이메일/비밀번호 로그인 시도
+        // 아이디 형식 지원: @가 없으면 기본 도메인(@dewave.local) 자동 추가
+        const loginEmail = inputId.includes('@') ? inputId : `${inputId.toLowerCase()}@dewave.local`;
+
+        // 1. Supabase Auth로 로그인 시도
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: loginEmail,
             password: password.trim(),
         });
 
         if (authError || !authData.user) {
             console.error('❌ [Supabase Auth Error]:', authError?.message);
             return NextResponse.json(
-                { success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.' },
+                { success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' },
                 { status: 401 }
             );
         }
