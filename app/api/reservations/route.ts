@@ -98,48 +98,37 @@ export async function GET(request: Request) {
             });
         }
 
-        // 2. 평상시: Supabase bookings 테이블에서 0.05초 초고속 조회!
+        // 2. 평상시: Supabase bookings 테이블에서 슬림 컬럼 초고속 조회! (60KB 초경량)
+        const today = new Date();
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - 45);
+        const pastDateStr = pastDate.toISOString().split('T')[0];
+
         const { data: dbBookings, error } = await supabase
             .from('bookings')
-            .select('*')
+            .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes')
+            .gte('departure', pastDateStr)
             .order('arrival', { ascending: true });
 
-        // 만약 DB 조회가 성공했고 데이터가 있으면 바로 반환
+        // 만약 DB 조회가 성공했고 데이터가 있으면 즉시 반환
         if (!error && dbBookings && dbBookings.length > 0) {
-            // raw_data가 있으면 프론트엔드가 요구하는 전체 포맷을 유지하고, 없을 시 row 자체 매핑
-            const formatted = dbBookings.map((row) => {
-                if (row.raw_data && typeof row.raw_data === 'object') {
-                    return {
-                        ...row.raw_data,
-                        id: row.id,
-                        arrival: row.arrival,
-                        departure: row.departure,
-                        roomId: row.room_id,
-                        unitId: row.unit_id,
-                        propertyId: row.property_id,
-                        propId: row.property_id,
-                        price: row.price,
-                        status: row.status,
-                    };
-                }
-                return {
-                    id: row.id,
-                    propertyId: row.property_id,
-                    propId: row.property_id,
-                    roomId: row.room_id,
-                    unitId: row.unit_id,
-                    arrival: row.arrival,
-                    departure: row.departure,
-                    firstName: row.first_name,
-                    lastName: row.last_name,
-                    numAdult: row.num_guests || 1,
-                    numChild: 0,
-                    status: row.status,
-                    apiSourceId: row.api_source_id,
-                    price: row.price,
-                    notes: row.notes,
-                };
-            });
+            const formatted = dbBookings.map((row) => ({
+                id: row.id,
+                propertyId: row.property_id,
+                propId: row.property_id,
+                roomId: row.room_id,
+                unitId: row.unit_id,
+                arrival: row.arrival,
+                departure: row.departure,
+                firstName: row.first_name || '',
+                lastName: row.last_name || '',
+                numAdult: row.num_guests || 1,
+                numChild: 0,
+                status: row.status || 'confirmed',
+                apiSourceId: row.api_source_id,
+                price: row.price || 0,
+                notes: row.notes || '',
+            }));
 
             return NextResponse.json({
                 success: true,
