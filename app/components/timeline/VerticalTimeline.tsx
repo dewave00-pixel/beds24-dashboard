@@ -1,7 +1,7 @@
 'use client';
 
 import { Booking } from '../../types';
-import { ALL_UNITS, PROPERTY_GROUPS, getDayType } from '../../config';
+import { PROPERTY_GROUPS, VERTICAL_GRID_COLUMNS, getDayType } from '../../config';
 import TimelineHeader from './TimelineHeader';
 import BookingBar from './BookingBar';
 
@@ -33,9 +33,6 @@ export default function VerticalTimeline({
     onDateClick,
     onBookingClick,
 }: VerticalTimelineProps) {
-    // 각 숙소 그룹의 마지막 호실 키 집합 (굵은 구분선용)
-    const groupEndKeys = new Set(PROPERTY_GROUPS.map((g) => g.units[g.units.length - 1]?.key));
-
     return (
         <div className="grid-table-container">
             <div className="min-w-max">
@@ -72,12 +69,12 @@ export default function VerticalTimeline({
                                         : 'bg-white hover:bg-gray-50/80'
                                     }`}
                                 style={{
-                                    gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
+                                    gridTemplateColumns: VERTICAL_GRID_COLUMNS,
                                     height: `${ROW_HEIGHT}px`,
                                 }}
                             >
                                 <div
-                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r-[5px] border-slate-400 ${isSelected
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center font-black text-xs transition-colors border-r border-gray-300 ${isSelected
                                         ? 'bg-amber-500 text-white font-black'
                                         : isToday
                                             ? 'bg-blue-600 text-white font-black'
@@ -93,22 +90,26 @@ export default function VerticalTimeline({
                                     </div>
                                 </div>
 
-                                {ALL_UNITS.map((col) => {
-                                    const isGroupEnd = groupEndKeys.has(col.key);
-                                    return (
-                                        <div
-                                            key={`${dStr}-${col.key}`}
-                                            className={`h-full ${isGroupEnd ? 'border-r-[5px]! border-r-slate-400!' : ''} ${isToday && !isSelected
-                                                ? 'bg-blue-50/30'
-                                                : dayInfo.type === 'saturday'
-                                                    ? 'bg-blue-50/10'
-                                                    : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                        ? 'bg-red-50/10'
-                                                        : ''
-                                                }`}
-                                        />
-                                    );
-                                })}
+                                {PROPERTY_GROUPS.map((group, idx) => (
+                                    <div key={`row-${dStr}-${group.name}`} className="contents">
+                                        {group.units.map((col) => (
+                                            <div
+                                                key={`${dStr}-${col.key}`}
+                                                className={`h-full ${isToday && !isSelected
+                                                    ? 'bg-blue-50/30'
+                                                    : dayInfo.type === 'saturday'
+                                                        ? 'bg-blue-50/10'
+                                                        : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
+                                                            ? 'bg-red-50/10'
+                                                            : ''
+                                                    }`}
+                                            />
+                                        ))}
+                                        {idx < PROPERTY_GROUPS.length - 1 && (
+                                            <div className="bg-slate-200 border-x border-slate-300" />
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         );
                     })}
@@ -116,57 +117,62 @@ export default function VerticalTimeline({
                     {/* 오버레이 예약 박스 레이어 */}
                     <div
                         className="absolute top-0 left-0 w-full h-full pointer-events-none grid z-10"
-                        style={{ gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))` }}
+                        style={{ gridTemplateColumns: VERTICAL_GRID_COLUMNS }}
                     >
                         <div />
 
-                        {ALL_UNITS.map((col) => {
-                            const unitBookings = bookings.filter((b) => {
-                                const isRoomMatch = Number(b.roomId) === col.roomId;
-                                const isUnitMatch = col.unitId ? Number(b.unitId) === col.unitId : true;
-                                return isRoomMatch && isUnitMatch;
-                            });
+                        {PROPERTY_GROUPS.map((group, idx) => (
+                            <div key={`overlay-group-${group.name}`} className="contents">
+                                {group.units.map((col) => {
+                                    const unitBookings = bookings.filter((b) => {
+                                        const isRoomMatch = Number(b.roomId) === col.roomId;
+                                        const isUnitMatch = col.unitId ? Number(b.unitId) === col.unitId : true;
+                                        return isRoomMatch && isUnitMatch;
+                                    });
 
-                            return (
-                                <div key={`overlay-${col.key}`} className="relative w-full h-full">
-                                    {unitBookings.map((b) => {
-                                        const startIndex = timelineDates.indexOf(b.arrival);
-                                        const depDateObj = new Date(b.departure);
-                                        depDateObj.setDate(depDateObj.getDate() - 1);
-                                        const lastNightStr = depDateObj.toISOString().split('T')[0];
-                                        const lastNightIndex = timelineDates.indexOf(lastNightStr);
+                                    return (
+                                        <div key={`overlay-${col.key}`} className="relative w-full h-full">
+                                            {unitBookings.map((b) => {
+                                                const startIndex = timelineDates.indexOf(b.arrival);
+                                                const depDateObj = new Date(b.departure);
+                                                depDateObj.setDate(depDateObj.getDate() - 1);
+                                                const lastNightStr = depDateObj.toISOString().split('T')[0];
+                                                const lastNightIndex = timelineDates.indexOf(lastNightStr);
 
-                                        if (startIndex === -1 && lastNightIndex === -1) return null;
+                                                if (startIndex === -1 && lastNightIndex === -1) return null;
 
-                                        const startRow = startIndex === -1 ? 0 : startIndex;
-                                        const endRow = lastNightIndex === -1 ? displayDaysCount - 1 : lastNightIndex;
-                                        const nightsCount = Math.max(1, endRow - startRow + 1);
+                                                const startRow = startIndex === -1 ? 0 : startIndex;
+                                                const endRow = lastNightIndex === -1 ? displayDaysCount - 1 : lastNightIndex;
+                                                const nightsCount = Math.max(1, endRow - startRow + 1);
 
-                                        const topPos = startRow * ROW_HEIGHT + 3;
-                                        const barHeight = nightsCount * ROW_HEIGHT - 6;
+                                                const topPos = startRow * ROW_HEIGHT + 3;
+                                                const barHeight = nightsCount * ROW_HEIGHT - 6;
 
-                                        const isBookingInSelectedDate =
-                                            selectedDate !== null &&
-                                            selectedDate >= b.arrival &&
-                                            selectedDate <= lastNightStr;
-                                        const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
+                                                const isBookingInSelectedDate =
+                                                    selectedDate !== null &&
+                                                    selectedDate >= b.arrival &&
+                                                    selectedDate <= lastNightStr;
+                                                const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
 
-                                        return (
-                                            <BookingBar
-                                                key={b.id}
-                                                booking={b}
-                                                topPos={topPos}
-                                                barHeight={barHeight}
-                                                nightsCount={nightsCount}
-                                                isDimmed={isBookingDimmed}
-                                                noteData={bookingNotes[b.id]}
-                                                onClick={onBookingClick}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
+                                                return (
+                                                    <BookingBar
+                                                        key={b.id}
+                                                        booking={b}
+                                                        topPos={topPos}
+                                                        barHeight={barHeight}
+                                                        nightsCount={nightsCount}
+                                                        isDimmed={isBookingDimmed}
+                                                        noteData={bookingNotes[b.id]}
+                                                        onClick={onBookingClick}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                                {idx < PROPERTY_GROUPS.length - 1 && <div />}
+                            </div>
+                        ))}
                     </div>
 
                     {/* 격자선 레이어 */}
@@ -176,13 +182,18 @@ export default function VerticalTimeline({
                                 key={`grid-line-${dStr}`}
                                 className="grid divide-x divide-gray-300/60 border-b border-gray-300/60"
                                 style={{
-                                    gridTemplateColumns: `120px repeat(${ALL_UNITS.length}, minmax(110px, 1fr))`,
+                                    gridTemplateColumns: VERTICAL_GRID_COLUMNS,
                                     height: `${ROW_HEIGHT}px`,
                                 }}
                             >
                                 <div />
-                                {ALL_UNITS.map((col) => (
-                                    <div key={`grid-cell-${dStr}-${col.key}`} className="h-full" />
+                                {PROPERTY_GROUPS.map((group, idx) => (
+                                    <div key={`grid-group-${dStr}-${group.name}`} className="contents">
+                                        {group.units.map((col) => (
+                                            <div key={`grid-cell-${dStr}-${col.key}`} className="h-full" />
+                                        ))}
+                                        {idx < PROPERTY_GROUPS.length - 1 && <div />}
+                                    </div>
                                 ))}
                             </div>
                         ))}

@@ -83,7 +83,7 @@ export default function HorizontalTimeline({
                 <div className="relative w-full">
                     {PROPERTY_GROUPS.map((group) => {
                         return (
-                            <div key={`group-block-${group.name}`} className="border-b-[5px] border-slate-400">
+                            <div key={`group-block-${group.name}`} className="border-b-8 border-slate-300">
                                 {group.units.map((unit, uIdx) => {
                                     const isFirstInGroup = uIdx === 0;
 

@@ -59,6 +59,15 @@ export const ALL_UNITS: UnitConfig[] = PROPERTY_GROUPS.flatMap((group) =>
     }))
 );
 
+// 🏢 세로 타임라인 Grid Template Columns (건물 사이 16px 독립 구분 기둥 포함)
+export const VERTICAL_GRID_COLUMNS = [
+    '120px',
+    ...PROPERTY_GROUPS.map((g, idx) =>
+        `repeat(${g.units.length}, minmax(110px, 1fr))` +
+        (idx < PROPERTY_GROUPS.length - 1 ? ' 16px' : '')
+    ),
+].join(' ');
+
 // 플랫폼별 apiSourceId RGB 색상 매핑 함수
 export const getChannelStyle = (apiSourceId?: number) => {
     switch (Number(apiSourceId)) {
