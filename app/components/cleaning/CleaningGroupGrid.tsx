@@ -160,7 +160,9 @@ export default function CleaningGroupGrid({
             {/* 2. 숙소 그룹(건물)별 그리드 목록: 모바일 1열 / PC 슬림 자동채움 (3~4개+ 나열) */}
             <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                 {groupsWithStatus.map((group) => {
-                    const displayUnits = viewFilter === 'targetOnly' ? group.targetUnits : group.unitsWithStatus;
+                    const displayUnits = isStaffView
+                        ? group.unitsWithStatus
+                        : (viewFilter === 'targetOnly' ? group.targetUnits : group.unitsWithStatus);
 
                     // 해당 숙소에 보여줄 호실이 없으면 생략
                     if (displayUnits.length === 0) {

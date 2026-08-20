@@ -57,10 +57,16 @@ export function useCleaningBoard() {
     const staffList = useMemo(() => Object.values(staffMap), [staffMap]);
 
     const getStaffIdByName = (name: string) => {
+        if (name === 'staff_1' || name === 'staff_2' || name === 'staff_3' || name === 'staff_4') {
+            return name;
+        }
         for (const [id, staffName] of Object.entries(staffMap)) {
             if (staffName === name) return id;
         }
-        return 'staff_unknown';
+        for (const [id, staffName] of Object.entries(DEFAULT_STAFF_MAP)) {
+            if (staffName === name) return id;
+        }
+        return 'staff_1';
     };
 
     // 배정 내역 불러오기
