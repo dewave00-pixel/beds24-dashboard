@@ -65,7 +65,6 @@ export default function LoginPage() {
                                 setUsername(e.target.value);
                                 if (errorMsg) setErrorMsg('');
                             }}
-                            placeholder="예: admin, manager, staff1"
                             autoFocus
                             required
                             autoCapitalize="none"
@@ -109,4 +108,4 @@ export default function LoginPage() {
             </div>
         </div>
     );
-}
+}
