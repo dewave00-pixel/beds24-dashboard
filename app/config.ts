@@ -68,21 +68,21 @@ export const VERTICAL_GRID_COLUMNS = [
     ),
 ].join(' ');
 
-// 플랫폼별 apiSourceId RGB 색상 매핑 함수
+// 플랫폼별 apiSourceId 16진수 HEX 색상 매핑 함수
 export const getChannelStyle = (apiSourceId?: number) => {
     switch (Number(apiSourceId)) {
         case 46:
-            return { name: 'Airbnb', bg: 'rgb(255, 17, 0)', text: '#ffffff' };
+            return { name: 'Airbnb', bg: '#d9ead3', text: '#14532d' }; // 에어비앤비: #d9ead3 (연초록)
         case 53:
-            return { name: 'Trip.com', bg: 'rgb(255, 243, 13)', text: '#000000' };
+            return { name: 'Trip.com', bg: '#f1c232', text: '#000000' }; // 트립닷컴: #f1c232 (옐로우)
         case 19:
-            return { name: 'Booking.com', bg: 'rgb(0, 42, 255)', text: '#ffffff' };
+            return { name: 'Booking.com', bg: '#4a86e8', text: '#ffffff' }; // 부킹닷컴: #4a86e8 (블루)
         case 17:
-            return { name: 'Agoda', bg: 'rgb(0, 255, 225)', text: '#000000' };
+            return { name: 'Agoda', bg: '#9900ff', text: '#ffffff' }; // 아고다: #9900ff (퍼플)
         case 14:
-            return { name: 'Expedia', bg: 'rgb(0, 255, 26)', text: '#000000' };
+            return { name: 'Expedia', bg: '#cccccc', text: '#000000' }; // 익스피디아: #cccccc (그레이)
         default:
-            return { name: '기타', bg: 'rgb(120, 120, 120)', text: '#ffffff' };
+            return { name: '기타', bg: '#6c757d', text: '#ffffff' };
     }
 };
 
