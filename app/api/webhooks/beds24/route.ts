@@ -37,18 +37,28 @@ export async function POST(request: Request) {
             bookingsToSave = [body];
         }
 
-        // 2. 취소/삭제된 예약 처리
+        // 2. 취소/삭제 및 유효 예약 분리 처리
+        const activeBookings: any[] = [];
+
         for (const item of bookingsToSave) {
             const bookingId = Number(item.id || item.bookId);
-            if (item.status === 'cancelled' || item.status === 'deleted' || item.action === 'delete') {
-                console.log(`🗑️ [Beds24 Webhook] 예약 취소/삭제 처리: ID ${bookingId}`);
-                // 상태를 cancelled로 업데이트하거나 삭제 처리 (여기서는 status='cancelled'로 upsert하여 이력 보존)
+            const isCancelledOrDeleted =
+                item.status === 'cancelled' ||
+                item.status === 'deleted' ||
+                item.status === 'inquiry' ||
+                item.action === 'delete';
+
+            if (isCancelledOrDeleted && bookingId) {
+                console.log(`🗑️ [Beds24 Webhook] 예약 취소/삭제/문의 감지 -> DB에서 삭제: ID ${bookingId}`);
+                await deleteBookingFromSupabase(bookingId);
+            } else {
+                activeBookings.push(item);
             }
         }
 
-        // 3. Supabase bookings 테이블에 upsert
-        if (bookingsToSave.length > 0) {
-            const result = await upsertBookingsToSupabase(bookingsToSave);
+        // 3. 유효한 예약만 Supabase bookings 테이블에 upsert
+        if (activeBookings.length > 0) {
+            const result = await upsertBookingsToSupabase(activeBookings);
             if (!result.success) {
                 console.error('❌ [Beds24 Webhook] Supabase 저장 실패:', result.error);
                 return NextResponse.json({ success: false, error: result.error }, { status: 500 });

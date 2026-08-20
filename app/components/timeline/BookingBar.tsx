@@ -43,6 +43,15 @@ export default function BookingBar({
 
     const isOneNight = nightsCount === 1;
 
+    // 실제 전체 예약 박수 계산 (장기 투숙 등 전체 일정 기준)
+    const actualNights = Math.max(
+        1,
+        Math.round(
+            (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) /
+                (1000 * 60 * 60 * 24)
+        )
+    );
+
     return (
         <div
             onClick={(e) => onClick(e, booking)}
@@ -55,7 +64,7 @@ export default function BookingBar({
                 backgroundColor: ch.bg,
                 color: ch.text,
             }}
-            title={`${ch.name} | ${guestName} (${booking.arrival} ~ ${booking.departure}, ${nightsCount}박)`}
+            title={`${ch.name} | ${guestName} (${booking.arrival} ~ ${booking.departure}, 총 ${actualNights}박)`}
         >
             {/* 📌 상단 영역: 게스트명 + 채널/얼리/박수 */}
             <div className="flex flex-col leading-none overflow-hidden gap-0.5">
@@ -105,9 +114,9 @@ export default function BookingBar({
                     })}
                 </div>
 
-                {!isOneNight && (
+                {actualNights > 1 && (
                     <span className="shrink-0 text-[9.5px] md:text-[10.5px] font-black ml-1">
-                        {nightsCount}박
+                        {actualNights}박
                     </span>
                 )}
             </div>

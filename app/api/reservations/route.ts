@@ -108,6 +108,9 @@ export async function GET(request: Request) {
             .from('bookings')
             .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes')
             .gte('departure', pastDateStr)
+            .neq('status', 'cancelled')
+            .neq('status', 'deleted')
+            .neq('status', 'inquiry')
             .order('arrival', { ascending: true });
 
         // 만약 DB 조회가 성공했고 데이터가 있으면 즉시 반환
