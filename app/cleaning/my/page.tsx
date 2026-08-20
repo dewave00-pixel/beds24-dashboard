@@ -1,7 +1,8 @@
 'use client';
 
 import { useAuth } from '../../hooks/useAuth';
-import { useCleaningBoard } from '../../hooks/useCleaningBoard';
+import { useCleaningBoard, DEFAULT_STAFF_MAP } from '../../hooks/useCleaningBoard';
+import { ALL_UNITS } from '../../config';
 import CleaningGroupGrid from '../../components/cleaning/CleaningGroupGrid';
 import '../../dashboard.css';
 
@@ -9,11 +10,17 @@ export default function MyCleaningPage() {
     const auth = useAuth();
     const c = useCleaningBoard();
 
-    // 내게 배정된 호실 목록 (통계용)
+    // 현재 스태프 슬롯 이름 (예: staff_1 -> '소정매니저님')
+    const currentSlotName = auth.role ? (c.staffMap[auth.role] || DEFAULT_STAFF_MAP[auth.role]) : null;
+
+    // 내게 배정된 호실 목록 (슬롯 ID 및 슬롯 이름 이중 매칭)
     const myAssignedUnits = auth.role
-        ? c.cleaningTargetUnits.filter(unit => {
+        ? ALL_UNITS.filter(unit => {
             const assignment = c.assignments[unit.key];
-            return assignment && assignment.staffId === auth.role;
+            if (!assignment) return false;
+            const isIdMatch = assignment.staffId === auth.role;
+            const isNameMatch = currentSlotName ? assignment.staffName === currentSlotName : false;
+            return isIdMatch || isNameMatch;
         })
         : [];
 
@@ -137,6 +144,7 @@ export default function MyCleaningPage() {
                         bookingNotes={c.bookingNotes}
                         assignments={c.assignments}
                         staffList={c.staffList}
+                        staffMap={c.staffMap}
                         onToggleComplete={(unitKey) => c.toggleComplete(unitKey)}
                         staffIdFilter={auth.role}
                         isStaffView={true}

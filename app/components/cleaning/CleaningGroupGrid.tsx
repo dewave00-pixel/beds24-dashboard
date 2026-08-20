@@ -5,6 +5,7 @@ import { PROPERTY_GROUPS } from '../../config';
 import { Booking, CleaningAssignment, UnitConfig } from '../../types';
 import CleaningRoomCard from './CleaningRoomCard';
 import { getUnitCleaningStatus } from '../../utils/cleaningStatus';
+import { DEFAULT_STAFF_MAP } from '../../hooks/useCleaningBoard';
 
 interface CleaningGroupGridProps {
     dateStr: string;
@@ -12,6 +13,7 @@ interface CleaningGroupGridProps {
     bookingNotes: { [bookingId: number]: { note: string; tags: string[] } };
     assignments: { [unitKey: string]: CleaningAssignment };
     staffList?: string[];
+    staffMap?: Record<string, string>;
     selectedStaffForMobile?: string;
     onAssign?: (unitKey: string, staffName: string) => void;
     onUnassign?: (unitKey: string) => void;
@@ -26,6 +28,7 @@ export default function CleaningGroupGrid({
     bookingNotes,
     assignments,
     staffList = [],
+    staffMap = DEFAULT_STAFF_MAP,
     selectedStaffForMobile,
     onAssign,
     onUnassign,
@@ -41,6 +44,9 @@ export default function CleaningGroupGrid({
     let totalStandbyCheckoutCount = 0;
     let totalAssignedCount = 0;
     let totalCompletedCount = 0;
+
+    // 현재 스태프 슬롯 이름 추출 (예: staff_1 -> '소정매니저님')
+    const currentSlotName = staffIdFilter ? (staffMap[staffIdFilter] || DEFAULT_STAFF_MAP[staffIdFilter]) : null;
 
     // 각 숙소 그룹별 데이터 사전 가공
     const groupsWithStatus = PROPERTY_GROUPS.map((group) => {
@@ -59,9 +65,14 @@ export default function CleaningGroupGrid({
             };
         });
 
-        // 스태프 전용 필터 적용
+        // 스태프 전용 필터 적용 (슬롯 ID 매칭 + 슬롯 이름 매칭)
         const filteredUnits = staffIdFilter
-            ? unitsWithStatus.filter((u) => u.assignment?.staffId === staffIdFilter)
+            ? unitsWithStatus.filter((u) => {
+                if (!u.assignment) return false;
+                if (u.assignment.staffId === staffIdFilter) return true;
+                if (currentSlotName && u.assignment.staffName === currentSlotName) return true;
+                return false;
+            })
             : unitsWithStatus;
 
         // 통계 집계 (스태프 뷰일 때는 내 배정 호실만 집계, 관리자 뷰일 때는 전체 집계)
@@ -72,7 +83,11 @@ export default function CleaningGroupGrid({
             if (u.isCompleted) totalCompletedCount++;
         });
 
-        const targetUnits = filteredUnits.filter((u) => u.statusInfo.needsCleaning);
+        // 스태프 뷰일 때는 배정된 모든 방이 표시 대상
+        const targetUnits = isStaffView
+            ? filteredUnits
+            : filteredUnits.filter((u) => u.statusInfo.needsCleaning);
+
         const assignedTargetCount = targetUnits.filter((u) => u.isAssigned).length;
         const completedTargetCount = targetUnits.filter((u) => u.isCompleted).length;
 
