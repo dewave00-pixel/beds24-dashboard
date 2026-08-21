@@ -13,6 +13,7 @@ export interface Booking {
     roomId?: number;
     unitId?: number;
     apiSourceId?: number;
+    price?: number;
     notes?: string;
 }
 

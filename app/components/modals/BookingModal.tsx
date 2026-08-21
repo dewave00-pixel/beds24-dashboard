@@ -103,7 +103,7 @@ export default function BookingModal({
                         </div>
                         <div>
                             <span className="text-[11px] text-gray-500 font-bold block">예약 번호</span>
-                            <span className="font-bold text-gray-900 text-xs md:text-sm">{booking.id}</span>
+                            <span className="font-bold text-gray-900 text-xs md:text-sm font-mono">{booking.id}</span>
                         </div>
                         <div>
                             <span className="text-[11px] text-gray-500 font-bold block">체크인 (입실)</span>
@@ -113,9 +113,15 @@ export default function BookingModal({
                             <span className="text-[11px] text-gray-500 font-bold block">체크아웃 (퇴실)</span>
                             <span className="font-extrabold text-orange-700">{booking.departure}</span>
                         </div>
-                        <div className="col-span-2">
+                        <div>
                             <span className="text-[11px] text-gray-500 font-bold block">투숙 인원</span>
                             <span className="font-extrabold text-gray-900">{booking.numAdult || 1}명</span>
+                        </div>
+                        <div>
+                            <span className="text-[11px] text-gray-500 font-bold block">💰 예약 금액</span>
+                            <span className="font-black text-emerald-700 text-sm md:text-base font-mono">
+                                {booking.price ? `${Number(booking.price).toLocaleString()}원` : '0원'}
+                            </span>
                         </div>
                     </div>
 
