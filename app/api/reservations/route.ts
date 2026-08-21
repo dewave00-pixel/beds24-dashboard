@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getValidBeds24Token } from '../../utils/beds24Client';
-import { upsertBookingsToSupabase } from '../../utils/bookingSync';
+import { upsertBookingsToSupabase, syncAllBookingsWithSupabase } from '../../utils/bookingSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +73,9 @@ async function syncFromBeds24(): Promise<any[]> {
         }
     }
 
-    // Supabase에 저장
+    // Supabase에 완전 동기화 및 삭제된 유령 예약 자동 청소 (Reconciliation)
     if (allBookings.length > 0) {
-        await upsertBookingsToSupabase(allBookings);
+        await syncAllBookingsWithSupabase(allBookings, arrivalFrom, arrivalTo);
     }
 
     return allBookings;

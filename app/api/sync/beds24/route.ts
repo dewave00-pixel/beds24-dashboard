@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getValidBeds24Token } from '../../../utils/beds24Client';
-import { upsertBookingsToSupabase } from '../../../utils/bookingSync';
+import { upsertBookingsToSupabase, syncAllBookingsWithSupabase } from '../../../utils/bookingSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,10 +76,10 @@ export async function POST() {
             }
         }
 
-        console.log(`📥 [Beds24 Sync] Beds24에서 총 ${allBookings.length}건 예약 조회 완료. Supabase 저장 중...`);
+        console.log(`📥 [Beds24 Sync] Beds24에서 총 ${allBookings.length}건 예약 조회 완료. Supabase 완전 동기화 및 유령 예약 정리 중...`);
 
-        // Supabase DB에 일괄 저장
-        const saveResult = await upsertBookingsToSupabase(allBookings);
+        // Supabase DB에 일괄 저장 및 삭제된 유령 예약 자동 청소 (Reconciliation)
+        const saveResult = await syncAllBookingsWithSupabase(allBookings, arrivalFrom, arrivalTo);
 
         if (!saveResult.success) {
             return NextResponse.json({
@@ -89,12 +89,13 @@ export async function POST() {
             }, { status: 500 });
         }
 
-        console.log(`✅ [Beds24 Sync] 동기화 성공! 저장 완료: ${saveResult.count}건`);
+        console.log(`✅ [Beds24 Sync] 동기화 성공! 저장: ${saveResult.savedCount}건, 삭제된 유령 예약: ${saveResult.deletedGhostCount}건`);
 
         return NextResponse.json({
             success: true,
-            message: `성공적으로 ${saveResult.count}건의 예약을 Supabase에 동기화했습니다.`,
-            syncedCount: saveResult.count,
+            message: `성공적으로 ${saveResult.savedCount}건 동기화 및 ${saveResult.deletedGhostCount}건의 삭제된 유령 예약을 정리했습니다.`,
+            syncedCount: saveResult.savedCount,
+            deletedGhostCount: saveResult.deletedGhostCount,
             totalFetched: allBookings.length,
         });
 

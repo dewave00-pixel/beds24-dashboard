@@ -91,3 +91,92 @@ export async function deleteBookingFromSupabase(bookingId: number): Promise<{ su
     }
     return { success: true };
 }
+
+/**
+ * 🔄 Beds24 전체 예약 완전 동기화 및 삭제된 유령 예약 자동 청소 (Reconciliation)
+ * - Beds24에 존재하는 예약: Supabase에 일괄 Upsert
+ * - Beds24에서 삭제된 예약: Supabase DB에서도 감지 후 일괄 Delete
+ */
+export async function syncAllBookingsWithSupabase(
+    beds24Bookings: any[],
+    arrivalFrom?: string,
+    arrivalTo?: string
+): Promise<{ success: boolean; savedCount: number; deletedGhostCount: number; error?: string }> {
+    try {
+        // 1. 유효한 예약 upsert 저장
+        const upsertResult = await upsertBookingsToSupabase(beds24Bookings);
+        if (!upsertResult.success) {
+            return {
+                success: false,
+                savedCount: 0,
+                deletedGhostCount: 0,
+                error: upsertResult.error,
+            };
+        }
+
+        // 2. 동기화 날짜 범위가 주어진 경우, 삭제된 유령 예약(Ghost Bookings) 청소
+        let deletedGhostCount = 0;
+
+        if (arrivalFrom && arrivalTo) {
+            // Beds24 API에 존재하는 ID 목록 (Set)
+            const beds24ValidIds = new Set(
+                beds24Bookings
+                    .map((b) => Number(b.id || b.bookId))
+                    .filter((id) => id > 0)
+            );
+
+            // 해당 기간 동안 Supabase DB에 저장되어 있는 모든 예약 ID 조회
+            let query = supabase
+                .from('bookings')
+                .select('id')
+                .gte('arrival', arrivalFrom)
+                .lte('arrival', arrivalTo);
+
+            const { data: dbRows, error: dbQueryError } = await query;
+
+            if (dbQueryError) {
+                console.error('⚠️ [Reconciliation DB Query Error]:', dbQueryError);
+            } else if (dbRows && dbRows.length > 0) {
+                // DB에는 있지만 Beds24 응답 목록에는 없는 유령 ID 추출
+                const ghostIds = dbRows
+                    .map((r) => Number(r.id))
+                    .filter((id) => !beds24ValidIds.has(id));
+
+                if (ghostIds.length > 0) {
+                    console.log(`🧹 [Reconciliation] Beds24에서 삭제된 유령 예약 ${ghostIds.length}건 감지 -> DB 삭제 진행:`, ghostIds);
+
+                    // 500개씩 청크 분할 삭제
+                    const chunkSize = 500;
+                    for (let i = 0; i < ghostIds.length; i += chunkSize) {
+                        const chunk = ghostIds.slice(i, i + chunkSize);
+                        const { error: deleteErr } = await supabase
+                            .from('bookings')
+                            .delete()
+                            .in('id', chunk);
+
+                        if (deleteErr) {
+                            console.error('❌ [Reconciliation Delete Error]:', deleteErr);
+                        } else {
+                            deletedGhostCount += chunk.length;
+                        }
+                    }
+                    console.log(`✅ [Reconciliation] 유령 예약 ${deletedGhostCount}건 DB 삭제 완료`);
+                }
+            }
+        }
+
+        return {
+            success: true,
+            savedCount: upsertResult.count,
+            deletedGhostCount,
+        };
+    } catch (err: any) {
+        console.error('❌ [syncAllBookingsWithSupabase Exception]:', err);
+        return {
+            success: false,
+            savedCount: 0,
+            deletedGhostCount: 0,
+            error: err.message || String(err),
+        };
+    }
+}
