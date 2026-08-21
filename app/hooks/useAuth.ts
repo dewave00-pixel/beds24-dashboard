@@ -2,11 +2,25 @@
 
 import { useState, useEffect } from 'react';
 
+function getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+    return null;
+}
+
 export function useAuth() {
-    const [role, setRole] = useState<string | null>(null);
+    const [role, setRole] = useState<string | null>(() => getCookie('auth_role'));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // 클라이언트 쿠키 즉시 동기화
+        const initialCookieRole = getCookie('auth_role');
+        if (initialCookieRole) {
+            setRole(initialCookieRole);
+        }
+
         console.log('🚀 [useAuth] 1. 서버에 로그인 권한 확인 요청 중...');
 
         fetch('/api/auth', { cache: 'no-store' })

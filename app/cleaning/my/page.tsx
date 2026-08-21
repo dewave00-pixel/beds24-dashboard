@@ -1,15 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../hooks/useAuth';
 import { useCleaningBoard, DEFAULT_STAFF_MAP } from '../../hooks/useCleaningBoard';
 import { ALL_UNITS } from '../../config';
 import CleaningGroupGrid from '../../components/cleaning/CleaningGroupGrid';
+import AppSidebar from '../../components/layout/AppSidebar';
 import '../../dashboard.css';
 
 export default function MyCleaningPage() {
     const auth = useAuth();
     const c = useCleaningBoard();
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
     // 현재 스태프 슬롯 이름 (예: manager -> '소영매니저님')
     const currentSlotName = auth.role === 'manager' || auth.role === 'staff_1'
@@ -58,9 +61,9 @@ export default function MyCleaningPage() {
     if (auth.loading || c.loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="text-center font-bold text-gray-500 flex flex-col items-center gap-2">
-                    <span className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
-                    <span>나의 청소 배정 목록을 불러오는 중입니다...</span>
+                <div className="text-sm font-bold text-gray-500 flex items-center gap-2">
+                    <span className="animate-spin text-lg">⏳</span>
+                    <span>청소 배정 데이터를 불러오는 중입니다...</span>
                 </div>
             </div>
         );
@@ -78,75 +81,49 @@ export default function MyCleaningPage() {
         );
     }
 
-    const showNavTabs = auth.isAdmin || auth.isManager;
-
     return (
-        <div className="dashboard-container">
-            <div className="dashboard-wrapper flex flex-col gap-3">
+        <div className="flex min-h-screen bg-gray-100">
+            {/* 🧭 크롬 스타일 접이식 사이드바 */}
+            <AppSidebar
+                isMobileOpen={isMobileSidebarOpen}
+                onCloseMobile={() => setIsMobileSidebarOpen(false)}
+            />
 
-                {/* 1. 상단 헤더 & 네비게이션 */}
-                <div className="dashboard-header-card py-2.5 px-3 md:px-4 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-lg">🧹</span>
-                        <div>
-                            <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight flex items-center gap-1.5 flex-wrap">
-                                <span>나의 청소 배정 목록</span>
-                                {currentSlotName && (
-                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                                        {currentSlotName}
-                                    </span>
-                                )}
-                            </h1>
-                            <span className="text-[10.5px] text-gray-500 font-bold">
-                                {c.selectedDate} 기준 (배정 {myAssignedUnits.length}곳 / 완료 {myCompletedCount}곳)
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* 👑 관리자 및 👔 매니저 전용 네비게이션 탭 */}
-                        {showNavTabs && (
-                            <nav className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200 text-xs font-black">
-                                <Link
-                                    href="/"
-                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                                >
-                                    <span>📊</span> 대시보드
-                                </Link>
-
-                                {auth.isAdmin && (
-                                    <Link
-                                        href="/cleaning"
-                                        className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                                    >
-                                        <span>🧹</span> 청소 배정
-                                    </Link>
-                                )}
-
-                                <div className="px-2.5 py-1 rounded-md bg-white text-blue-600 shadow-2xs flex items-center gap-1">
-                                    <span>🧹</span> 나의 청소
-                                </div>
-
-                                <Link
-                                    href="/properties"
-                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                                >
-                                    <span>🔑</span> 숙소/비번
-                                </Link>
-                            </nav>
-                        )}
-
+            {/* 우측 메인 영역 */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* 1. 상단 헤더 */}
+                <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        {/* 📱 모바일 햄버거 버튼 */}
                         <button
                             type="button"
-                            onClick={handleLogout}
-                            className="text-xs font-bold text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            title="메뉴 열기"
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-black transition cursor-pointer border border-gray-200"
                         >
-                            로그아웃
+                            ☰
                         </button>
-                    </div>
-                </div>
 
-                {/* 2. 날짜 선택 툴바 */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">🧹</span>
+                            <div>
+                                <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight flex items-center gap-1.5 flex-wrap">
+                                    <span>나의 청소 배정 목록</span>
+                                    {currentSlotName && (
+                                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                            {currentSlotName}
+                                        </span>
+                                    )}
+                                </h1>
+                                <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
+                                    {c.selectedDate} 기준 (배정 {myAssignedUnits.length}곳 / 완료 {myCompletedCount}곳)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="p-2 md:p-3 flex-1 flex flex-col gap-3">
                 <div className="bg-white p-2.5 px-3 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <button
@@ -206,6 +183,7 @@ export default function MyCleaningPage() {
                         isStaffView={true}
                     />
                 )}
+                </div>
             </div>
         </div>
     );

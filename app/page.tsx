@@ -1,8 +1,10 @@
 'use client';
 
+import React, { useState } from 'react';
 import './dashboard.css';
 import { useDashboard } from './hooks/useDashboard';
 import { useAuth } from './hooks/useAuth';
+import AppSidebar from './components/layout/AppSidebar';
 import DashboardHeader from './components/dashboard/DashboardHeader';
 import DashboardToolbar from './components/dashboard/DashboardToolbar';
 import VerticalTimeline from './components/timeline/VerticalTimeline';
@@ -19,10 +21,18 @@ const COL_WIDTH_HORIZ = 110;
 export default function DashboardPage() {
   const d = useDashboard();
   const auth = useAuth();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-wrapper">
+    <div className="flex min-h-screen bg-gray-100">
+      {/* 🧭 크롬 스타일 접이식 사이드바 */}
+      <AppSidebar
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
+
+      {/* 우측 메인 대시보드 영역 */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* 1. 상단 헤더 모듈 */}
         <DashboardHeader
           userRole={auth.role}
@@ -32,19 +42,21 @@ export default function DashboardPage() {
           tomorrowCheckOuts={d.tomorrowCheckOuts}
           viewMode={d.viewMode}
           loading={d.loading}
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenDailyModal={d.setDailyModalType}
           onToggleViewMode={d.toggleViewMode}
           onReload={d.reloadAll}
         />
 
-        {d.error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-bold">
-            🚨 {d.error}
-          </div>
-        )}
+        <div className="p-2 md:p-3 flex-1 flex flex-col gap-3">
+          {d.error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-bold">
+              🚨 {d.error}
+            </div>
+          )}
 
-        {/* 2. 대시보드 본문 패널 */}
-        <div className="dashboard-panel">
+          {/* 2. 대시보드 본문 패널 */}
+          <div className="dashboard-panel">
           {/* 툴바 모듈 */}
           <DashboardToolbar
             timelineDates={d.timelineDates}
@@ -92,6 +104,7 @@ export default function DashboardPage() {
             )}
           </ZoomableTimelineWrapper>
         </div>
+      </div>
       </div>
 
       {/* 3. 모달 레이어들 */}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import '../dashboard.css';
 import { PROPERTY_GROUPS } from '../config';
 import { useAuth } from '../hooks/useAuth';
+import AppSidebar from '../components/layout/AppSidebar';
 
 interface UnitInfoData {
     doorPassword: string;
@@ -14,6 +15,7 @@ interface UnitInfoData {
 
 export default function PropertiesPage() {
     const auth = useAuth();
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
     const [propertiesInfo, setPropertiesInfo] = useState<{ [id: string]: UnitInfoData }>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export default function PropertiesPage() {
     const fetchPropertiesInfo = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/properties-info');
+            const res = await fetch('/api/properties-info', { cache: 'no-store' });
             const data = await res.json();
             if (data.success && data.data) {
                 setPropertiesInfo(data.data);
@@ -68,7 +70,7 @@ export default function PropertiesPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    id: unitKey,
+                    unitKey,
                     roomId,
                     unitId: unitId || null,
                     doorPassword: editPassword,
@@ -110,15 +112,30 @@ export default function PropertiesPage() {
     };
 
     return (
-        <div className="dashboard-container">
-            <div className="dashboard-wrapper">
+        <div className="flex min-h-screen bg-gray-100">
+            {/* 🧭 크롬 스타일 접이식 사이드바 */}
+            <AppSidebar
+                isMobileOpen={isMobileSidebarOpen}
+                onCloseMobile={() => setIsMobileSidebarOpen(false)}
+            />
 
-                {/* 상단 콤팩트 헤더 & 탭 네비게이션 */}
-                <div className="dashboard-header-card py-2.5 px-3 md:px-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* 메인 본문 컨텐츠 */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* 상단 콤팩트 헤더 */}
+                <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        {/* 📱 모바일 햄버거 버튼 */}
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            title="메뉴 열기"
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-black transition cursor-pointer border border-gray-200"
+                        >
+                            ☰
+                        </button>
 
                         <div className="flex items-center gap-2">
-                            <span className="text-lg">🔑</span>
+                            <span className="text-xl">🔑</span>
                             <div>
                                 <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
                                     숙소 비밀번호 & 호실 현황
@@ -128,41 +145,18 @@ export default function PropertiesPage() {
                                 </span>
                             </div>
                         </div>
-
-                        {/* 대시보드 ↔ 청소 ↔ 숙소관리 전환 탭 */}
-                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200 text-xs font-black shrink-0">
-                            <Link
-                                href="/"
-                                className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                            >
-                                <span>📊</span> 대시보드
-                            </Link>
-
-                            {auth.isAdmin && (
-                                <Link
-                                    href="/cleaning"
-                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                                >
-                                    <span>🧹</span> 청소 배정
-                                </Link>
-                            )}
-
-                            {auth.isManager && (
-                                <Link
-                                    href="/cleaning/my"
-                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
-                                >
-                                    <span>🧹</span> 나의 청소
-                                </Link>
-                            )}
-
-                            <div className="px-2.5 py-1 rounded-md bg-white text-blue-600 shadow-2xs flex items-center gap-1">
-                                <span>🔑</span> 숙소/비번
-                            </div>
-                        </div>
-
                     </div>
-                </div>
+
+                    <button
+                        type="button"
+                        onClick={fetchPropertiesInfo}
+                        disabled={loading}
+                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs rounded-xl border border-gray-200 transition flex items-center gap-1 cursor-pointer"
+                    >
+                        <span className={loading ? 'animate-spin' : ''}>🔄</span>
+                        <span className="hidden sm:inline">새로고침</span>
+                    </button>
+                </header>
 
                 {/* 📌 한눈에 쏙 들어오는 숙소별 콤팩트 테이블 본문 패널 */}
                 <div className="dashboard-panel p-2 md:p-3 flex flex-col gap-4">

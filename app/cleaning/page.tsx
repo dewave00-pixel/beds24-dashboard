@@ -4,12 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import '../dashboard.css';
 import { useCleaningBoard } from '../hooks/useCleaningBoard';
+import AppSidebar from '../components/layout/AppSidebar';
 import CleaningStaffPool from '../components/cleaning/CleaningStaffPool';
 import CleaningGroupGrid from '../components/cleaning/CleaningGroupGrid';
 import CleaningBatchSender from '../components/cleaning/CleaningBatchSender';
 
 export default function CleaningPage() {
     const c = useCleaningBoard();
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
     const [selectedStaffForMobile, setSelectedStaffForMobile] = useState<string>('');
 
     // 날짜 변경 함수 (offset: -1 이면 어제, +1 이면 내일)
@@ -24,44 +26,43 @@ export default function CleaningPage() {
     };
 
     return (
-        <div className="dashboard-container">
-            <div className="dashboard-wrapper flex flex-col gap-3">
+        <div className="flex min-h-screen bg-gray-100">
+            {/* 🧭 크롬 스타일 접이식 사이드바 */}
+            <AppSidebar
+                isMobileOpen={isMobileSidebarOpen}
+                onCloseMobile={() => setIsMobileSidebarOpen(false)}
+            />
 
-                {/* 1. 상단 헤더 & 네비게이션 */}
-                <div className="dashboard-header-card py-2.5 px-3 md:px-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* 우측 메인 영역 */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* 1. 상단 헤더 */}
+                <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        {/* 📱 모바일 햄버거 버튼 */}
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            title="메뉴 열기"
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-black transition cursor-pointer border border-gray-200"
+                        >
+                            ☰
+                        </button>
+
                         <div className="flex items-center gap-2">
-                            <span className="text-lg">🧹</span>
+                            <span className="text-xl">🧹</span>
                             <div>
                                 <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
                                     청소 배정 & 카톡 발송 보드
                                 </h1>
-                                <span className="text-[10.5px] text-gray-500 font-bold">
+                                <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
                                     숙소별 그리드 및 당일 입실/퇴실 우선순위 관리
                                 </span>
                             </div>
                         </div>
-
-                        {/* 네비게이션 탭 */}
-                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-300">
-                            <Link
-                                href="/"
-                                className="px-2.5 py-1 rounded-md text-xs font-black text-gray-600 hover:text-gray-900 transition flex items-center gap-1"
-                            >
-                                <span>📊</span> 대시보드
-                            </Link>
-                            <div className="px-2.5 py-1 rounded-md text-xs font-black bg-white text-blue-600 shadow-sm flex items-center gap-1">
-                                <span>🧹</span> 청소 관리
-                            </div>
-                            <Link
-                                href="/properties"
-                                className="px-2.5 py-1 rounded-md text-xs font-black text-gray-600 hover:text-gray-900 transition flex items-center gap-1"
-                            >
-                                <span>🔑</span> 숙소/비번
-                            </Link>
-                        </div>
                     </div>
-                </div>
+                </header>
+
+                <div className="p-2 md:p-3 flex-1 flex flex-col gap-3">
 
                 {/* 2. 날짜 선택 툴바 */}
                 <div className="bg-white p-2.5 px-3 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-2">
@@ -141,6 +142,7 @@ export default function CleaningPage() {
                     bookingNotes={c.bookingNotes}
                 />
 
+                </div>
             </div>
         </div>
     );
