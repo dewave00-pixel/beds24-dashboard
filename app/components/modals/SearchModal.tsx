@@ -10,6 +10,45 @@ interface SearchModalProps {
     onSelectBooking: (booking: Booking) => void;
 }
 
+/**
+ * 🔍 스마트 이름 매칭 모듈
+ * - 성/이름 순서 무관: "희원 이" vs "이 희원" vs "이희원" 모두 매칭
+ * - 공백 무시: "이 희 원" / "이희원" 등 띄어쓰기 달라도 100% 매칭
+ */
+export function matchGuestName(firstName: string = '', lastName: string = '', query: string = ''): boolean {
+    const f = (firstName || '').trim().toLowerCase();
+    const l = (lastName || '').trim().toLowerCase();
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return false;
+
+    // 1. 공백 제거 검색어 (예: "이 희원" -> "이희원")
+    const qNoSpace = q.replace(/\s+/g, '');
+
+    // 2. 성/이름 조합 후보군 생성
+    const combinations = [
+        `${f} ${l}`, // 이름 성 (희원 이)
+        `${l} ${f}`, // 성 이름 (이 희원)
+        `${l}${f}`,   // 성이름 붙임 (이희원)
+        `${f}${l}`,   // 이름성 붙임 (희원이)
+        f,            // 이름만 (희원)
+        l,            // 성만 (이)
+    ];
+
+    // 3. 일반 검색어 대조
+    if (combinations.some((name) => name.includes(q))) {
+        return true;
+    }
+
+    // 4. 공백 제거 대조 (띄어쓰기 무시)
+    if (qNoSpace.length > 0) {
+        if (combinations.some((name) => name.replace(/\s+/g, '').includes(qNoSpace))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export default function SearchModal({
     bookings,
     onClose,
@@ -17,16 +56,17 @@ export default function SearchModal({
 }: SearchModalProps) {
     const [searchTerm, setSearchTerm] = useState<string>('');
 
-    // 🔍 스마트 다중 검색 필터링 모듈 (이름, 예약번호, 숙소/호실, 대시 없는 숫자 날짜 지원)
+    // 🔍 스마트 다중 검색 필터링 모듈 (이름 순서/공백 무시, 예약번호, 숙소/호실, 대시 없는 숫자 날짜 지원)
     const filteredBookings = useMemo(() => {
         const rawQuery = searchTerm.trim().toLowerCase();
         if (!rawQuery) return [];
+
+        const noSpaceQuery = rawQuery.replace(/\s+/g, '');
 
         // 숫자만 추출한 검색어 (예: "2026-08-14" 또는 "20260814" -> "20260814")
         const digitsOnlyQuery = rawQuery.replace(/\D/g, '');
 
         return bookings.filter((b) => {
-            const guestName = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
             const bookingIdStr = String(b.id);
             const ch = getChannelStyle(b.apiSourceId);
             const unitInfo = getUnitDisplayInfo(b);
@@ -35,17 +75,24 @@ export default function SearchModal({
             const arrivalDigits = b.arrival.replace(/-/g, ''); // "20260814"
             const departureDigits = b.departure.replace(/-/g, ''); // "20260815"
 
-            // 1. 게스트 이름 검색
-            if (guestName.includes(rawQuery)) return true;
+            // 1. 게스트 이름 스마트 검색 (성/이름 순서 반전 및 공백 무시)
+            if (matchGuestName(b.firstName, b.lastName, rawQuery)) return true;
 
             // 2. 예약 번호 검색
-            if (bookingIdStr.includes(rawQuery)) return true;
+            if (bookingIdStr.includes(rawQuery) || bookingIdStr.includes(noSpaceQuery)) return true;
 
-            // 3. 숙소명 및 호실명 검색
+            // 3. 숙소명 및 호실명 검색 (공백 무시 포함)
+            const propNameLower = unitInfo.propertyName.toLowerCase();
+            const unitNameLower = unitInfo.unitDisplayName.toLowerCase();
+            const subNameLower = (unitInfo.subName || '').toLowerCase();
+
             if (
-                unitInfo.propertyName.toLowerCase().includes(rawQuery) ||
-                unitInfo.unitDisplayName.toLowerCase().includes(rawQuery) ||
-                (unitInfo.subName && unitInfo.subName.toLowerCase().includes(rawQuery))
+                propNameLower.includes(rawQuery) ||
+                unitNameLower.includes(rawQuery) ||
+                subNameLower.includes(rawQuery) ||
+                propNameLower.replace(/\s+/g, '').includes(noSpaceQuery) ||
+                unitNameLower.replace(/\s+/g, '').includes(noSpaceQuery) ||
+                subNameLower.replace(/\s+/g, '').includes(noSpaceQuery)
             ) {
                 return true;
             }
