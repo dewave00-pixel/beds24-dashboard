@@ -327,8 +327,8 @@ export default function PropertiesPage() {
                                     </table>
                                 </div>
 
-                                {/* 📱 모바일 뷰: 한 손으로 쏙 들어오는 초슬림 압축 카드 */}
-                                <div className="grid grid-cols-1 gap-1.5 md:hidden">
+                                {/* 📱 모바일 뷰: 한 손으로 쏙 들어오는 시원하고 선명한 카드 */}
+                                <div className="grid grid-cols-1 gap-2 md:hidden">
                                     {group.units.map((unit) => {
                                         const info = propertiesInfo[unit.key] || {
                                             doorPassword: '',
@@ -340,54 +340,67 @@ export default function PropertiesPage() {
                                         return (
                                             <div
                                                 key={unit.key}
-                                                className="bg-white rounded-lg border border-gray-300 p-2 shadow-sm flex flex-col gap-1.5"
+                                                className={`rounded-xl transition shadow-2xs flex flex-col gap-2 p-2.5 ${
+                                                    isEditing
+                                                        ? 'bg-blue-50/80 border-2 border-blue-400'
+                                                        : 'bg-white border border-gray-300'
+                                                }`}
                                             >
-                                                {/* 모바일 1줄: 호실명 + 비번(복사) + 수정버튼 */}
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <span className="font-black text-xs text-gray-900 shrink-0">
-                                                        🏠 {unit.displayName}
-                                                    </span>
+                                                {/* 모바일 헤더줄: 호실명 + 액션 버튼 / 비번 복사 */}
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="font-black text-xs text-gray-900 shrink-0">
+                                                            🏠 {unit.displayName}
+                                                        </span>
+                                                        {unit.subName && (
+                                                            <span className="text-[10px] text-gray-500 font-bold truncate">
+                                                                ({unit.subName})
+                                                            </span>
+                                                        )}
+                                                        {isEditing && (
+                                                            <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                                                                수정 중
+                                                            </span>
+                                                        )}
+                                                    </div>
 
                                                     {!isEditing ? (
-                                                        <div className="flex items-center gap-1 min-w-0">
-                                                            <span className="font-black text-[11px] font-mono text-gray-900 bg-gray-100 px-1.5 py-0.2 rounded border border-gray-200 truncate">
+                                                        <div className="flex items-center gap-1 min-w-0 shrink-0">
+                                                            <span className="font-black text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                                                                 🔑 {info.doorPassword || '미등록'}
                                                             </span>
                                                             {info.doorPassword && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleCopyPassword(unit.key, info.doorPassword)}
-                                                                    className="px-1.5 py-0.5 text-[9px] font-black text-white bg-slate-800 rounded shrink-0"
+                                                                    className="px-2 py-0.5 text-[10px] font-black text-white bg-slate-800 hover:bg-slate-900 rounded shadow-xs cursor-pointer"
                                                                 >
-                                                                    {copiedId === unit.key ? '복사됨!' : '복사'}
+                                                                    {copiedId === unit.key ? '복사됨! ✅' : '복사'}
                                                                 </button>
                                                             )}
-                                                            <span className="text-[10px] text-gray-500 font-bold shrink-0 ml-1">
-                                                                (최대 {info.maxGuests}명)
-                                                            </span>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleStartEdit(unit.key, info)}
-                                                                className="px-1.5 py-0.5 text-[9.5px] font-black text-blue-600 bg-blue-50 border border-blue-200 rounded shrink-0 ml-0.5"
+                                                                className="px-2 py-0.5 text-[11px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded cursor-pointer ml-1"
                                                             >
                                                                 수정
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center gap-1">
+                                                        <div className="flex items-center gap-1.5 shrink-0">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleSave(unit.key, unit.roomId, unit.unitId)}
                                                                 disabled={saving}
-                                                                className="px-2 py-0.5 text-[10px] font-black text-white bg-blue-600 rounded"
+                                                                className="px-3 py-1 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                                                             >
-                                                                저장
+                                                                {saving ? '저장중...' : '저장'}
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={handleCancelEdit}
                                                                 disabled={saving}
-                                                                className="px-1.5 py-0.5 text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-300 rounded"
+                                                                className="px-2.5 py-1 text-xs font-bold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg cursor-pointer disabled:opacity-50"
                                                             >
                                                                 취소
                                                             </button>
@@ -395,41 +408,71 @@ export default function PropertiesPage() {
                                                     )}
                                                 </div>
 
-                                                {/* 모바일 2줄 (수정 모드일 때 입력 폼) */}
-                                                {isEditing && (
-                                                    <div className="flex flex-col gap-1 pt-1 border-t border-gray-100 text-xs">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <input
-                                                                type="text"
-                                                                value={editPassword}
-                                                                onChange={(e) => setEditPassword(e.target.value)}
-                                                                placeholder="비밀번호"
-                                                                className="flex-1 px-2 py-1 bg-white border border-blue-400 rounded text-[11px] font-bold"
-                                                            />
-                                                            <input
-                                                                type="number"
-                                                                min={1}
-                                                                max={30}
-                                                                value={editMaxGuests}
-                                                                onChange={(e) => setEditMaxGuests(Number(e.target.value))}
-                                                                className="w-14 px-2 py-1 bg-white border border-blue-400 rounded text-[11px] font-bold text-center"
-                                                            />
-                                                            <span className="text-[10px] text-gray-500 font-bold shrink-0">명</span>
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            value={editRepairNotes}
-                                                            onChange={(e) => setEditRepairNotes(e.target.value)}
-                                                            placeholder="수리/점검 메모"
-                                                            className="w-full px-2 py-1 bg-white border border-blue-400 rounded text-[11px] font-medium"
-                                                        />
+                                                {/* 모바일 일반 뷰: 최대 인원 & 수리 메모 */}
+                                                {!isEditing && (
+                                                    <div className="flex items-center justify-between gap-2 text-xs pt-0.5 border-t border-gray-100">
+                                                        <span className="text-[11px] text-gray-600 font-bold shrink-0">
+                                                            👥 최대 <strong className="text-blue-600 font-black">{info.maxGuests}</strong>명
+                                                        </span>
+                                                        {info.repairNotes ? (
+                                                            <span className="text-[11px] text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold truncate max-w-[200px]">
+                                                                🛠️ {info.repairNotes}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10.5px] text-gray-400">수리 메모 없음</span>
+                                                        )}
                                                     </div>
                                                 )}
 
-                                                {/* 모바일 수리 메모 노출 */}
-                                                {!isEditing && info.repairNotes && (
-                                                    <div className="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-bold truncate">
-                                                        🛠️ {info.repairNotes}
+                                                {/* 모바일 수정 모드: 큼직하고 선명한 고대비 입력 폼 */}
+                                                {isEditing && (
+                                                    <div className="flex flex-col gap-2 pt-1 border-t border-blue-200">
+                                                        {/* 1행: 비밀번호 + 최대 인원 */}
+                                                        <div className="flex items-end gap-2">
+                                                            <div className="flex-1 flex flex-col gap-1">
+                                                                <label className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                                                                    <span>🔑</span> 도어락 비밀번호
+                                                                </label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={editPassword}
+                                                                    onChange={(e) => setEditPassword(e.target.value)}
+                                                                    placeholder="비밀번호 입력"
+                                                                    className="w-full px-3 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-600 shadow-2xs font-mono"
+                                                                />
+                                                            </div>
+
+                                                            <div className="w-24 flex flex-col gap-1">
+                                                                <label className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                                                                    <span>👥</span> 최대 인원
+                                                                </label>
+                                                                <div className="flex items-center gap-1">
+                                                                    <input
+                                                                        type="number"
+                                                                        min={1}
+                                                                        max={30}
+                                                                        value={editMaxGuests}
+                                                                        onChange={(e) => setEditMaxGuests(Number(e.target.value))}
+                                                                        className="w-full px-2 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 text-center focus:outline-none focus:border-blue-600 shadow-2xs"
+                                                                    />
+                                                                    <span className="text-xs font-bold text-gray-700 shrink-0">명</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 2행: 수리/점검 메모 */}
+                                                        <div className="flex flex-col gap-1">
+                                                            <label className="text-[11px] font-black text-amber-900 flex items-center gap-1">
+                                                                <span>🛠️</span> 주요 수리 / 점검 메모
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editRepairNotes}
+                                                                onChange={(e) => setEditRepairNotes(e.target.value)}
+                                                                placeholder="수리/점검 사항을 입력하세요 (없으면 공란)"
+                                                                className="w-full px-3 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-xs font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-600 shadow-2xs"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
