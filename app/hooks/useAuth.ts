@@ -36,6 +36,7 @@ export function useAuth() {
         isAdmin: role === 'admin',
         isManager: role === 'manager',
         isStaff: role ? role.startsWith('staff_') : false,
+        canViewMyCleaning: role === 'manager' || (role ? role.startsWith('staff_') : false),
         loading,
     };
 }

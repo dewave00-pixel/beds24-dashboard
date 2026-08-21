@@ -67,6 +67,16 @@ export default function DashboardHeader({
                         </Link>
                     )}
 
+                    {/* 🧹 매니저(manager)는 본인 청소 목록만 보임 */}
+                    {userRole === 'manager' && (
+                        <Link
+                            href="/cleaning/my"
+                            className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                        >
+                            <span>🧹</span> 나의 청소
+                        </Link>
+                    )}
+
                     {/* 🔑 최고관리자 & 매니저 공통 숙소/비번 관리 */}
                     {(userRole === 'admin' || userRole === 'manager') && (
                         <Link

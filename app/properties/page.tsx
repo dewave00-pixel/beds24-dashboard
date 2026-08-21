@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../dashboard.css';
 import { PROPERTY_GROUPS } from '../config';
+import { useAuth } from '../hooks/useAuth';
 
 interface UnitInfoData {
     doorPassword: string;
@@ -12,6 +13,7 @@ interface UnitInfoData {
 }
 
 export default function PropertiesPage() {
+    const auth = useAuth();
     const [propertiesInfo, setPropertiesInfo] = useState<{ [id: string]: UnitInfoData }>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -127,16 +129,35 @@ export default function PropertiesPage() {
                             </div>
                         </div>
 
-                        {/* 대시보드 ↔ 숙소관리 전환 탭 */}
-                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-300 shrink-0">
+                        {/* 대시보드 ↔ 청소 ↔ 숙소관리 전환 탭 */}
+                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200 text-xs font-black shrink-0">
                             <Link
                                 href="/"
-                                className="px-2.5 py-1 rounded-md text-xs font-black text-gray-600 hover:text-gray-900 transition flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
                             >
                                 <span>📊</span> 대시보드
                             </Link>
-                            <div className="px-2.5 py-1 rounded-md text-xs font-black bg-white text-blue-600 shadow-sm flex items-center gap-1">
-                                <span>🔑</span> 비번 관리
+
+                            {auth.isAdmin && (
+                                <Link
+                                    href="/cleaning"
+                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                                >
+                                    <span>🧹</span> 청소 배정
+                                </Link>
+                            )}
+
+                            {auth.isManager && (
+                                <Link
+                                    href="/cleaning/my"
+                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                                >
+                                    <span>🧹</span> 나의 청소
+                                </Link>
+                            )}
+
+                            <div className="px-2.5 py-1 rounded-md bg-white text-blue-600 shadow-2xs flex items-center gap-1">
+                                <span>🔑</span> 숙소/비번
                             </div>
                         </div>
 

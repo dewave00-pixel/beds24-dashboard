@@ -6,7 +6,7 @@ import { ALL_UNITS } from '../config';
 import { CleaningAssignment } from '../types';
 
 export const DEFAULT_STAFF_MAP: Record<string, string> = {
-    staff_1: '소정매니저님',
+    manager: '소영매니저님',
     staff_2: '가연영님',
     staff_3: '지명님',
     staff_4: 'ZEAL님',
@@ -57,16 +57,19 @@ export function useCleaningBoard() {
     const staffList = useMemo(() => Object.values(staffMap), [staffMap]);
 
     const getStaffIdByName = (name: string) => {
-        if (name === 'staff_1' || name === 'staff_2' || name === 'staff_3' || name === 'staff_4') {
+        if (name === 'manager' || name === 'staff_1') {
+            return 'manager';
+        }
+        if (name === 'staff_2' || name === 'staff_3' || name === 'staff_4') {
             return name;
         }
         for (const [id, staffName] of Object.entries(staffMap)) {
-            if (staffName === name) return id;
+            if (staffName === name) return id === 'staff_1' ? 'manager' : id;
         }
         for (const [id, staffName] of Object.entries(DEFAULT_STAFF_MAP)) {
             if (staffName === name) return id;
         }
-        return 'staff_1';
+        return 'manager';
     };
 
     // 배정 내역 불러오기

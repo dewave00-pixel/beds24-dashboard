@@ -30,9 +30,9 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    // 4. 매니저 (manager): 청소 배정(/cleaning)만 접근 차단 -> 메인 대시보드로 이동
-    if (role === 'manager' && pathname.startsWith('/cleaning')) {
-        return NextResponse.redirect(new URL('/', req.url));
+    // 4. 매니저 (manager): 전체 청소 배정(/cleaning) 접근 차단 -> 본인 청소 목록(/cleaning/my)으로 리다이렉트
+    if (role === 'manager' && pathname === '/cleaning') {
+        return NextResponse.redirect(new URL('/cleaning/my', req.url));
     }
 
     // 5. 최고관리자(admin) 및 매니저(manager)의 일반 페이지 접근 허용

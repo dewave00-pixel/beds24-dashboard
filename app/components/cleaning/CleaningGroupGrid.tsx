@@ -70,6 +70,7 @@ export default function CleaningGroupGrid({
             ? unitsWithStatus.filter((u) => {
                 if (!u.assignment) return false;
                 if (u.assignment.staffId === staffIdFilter) return true;
+                if ((staffIdFilter === 'manager' || staffIdFilter === 'staff_1') && (u.assignment.staffId === 'manager' || u.assignment.staffId === 'staff_1')) return true;
                 if (currentSlotName && u.assignment.staffName === currentSlotName) return true;
                 return false;
             })

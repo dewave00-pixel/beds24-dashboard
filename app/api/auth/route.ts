@@ -45,12 +45,9 @@ export async function POST(req: NextRequest) {
         if (cleanInputId === 'admin') {
             role = 'admin';
             redirectTo = '/';
-        } else if (cleanInputId === 'manager') {
+        } else if (cleanInputId === 'manager' || cleanInputId === 'staff1' || cleanInputId === 'staff_1') {
             role = 'manager';
             redirectTo = '/';
-        } else if (cleanInputId === 'staff1' || cleanInputId === 'staff_1') {
-            role = 'staff_1';
-            redirectTo = '/cleaning/my';
         } else if (cleanInputId === 'staff2' || cleanInputId === 'staff_2') {
             role = 'staff_2';
             redirectTo = '/cleaning/my';
@@ -74,7 +71,10 @@ export async function POST(req: NextRequest) {
             if (profile.role === 'admin') {
                 role = 'admin';
                 redirectTo = '/';
-            } else if (profile.role === 'manager') {
+            } else if (profile.role === 'manager' || profile.role === 'staff_1') {
+                role = 'manager';
+                redirectTo = '/';
+            } else if (profile.staff_id === 'staff_1' || profile.staff_id === 'manager') {
                 role = 'manager';
                 redirectTo = '/';
             } else if (profile.staff_id) {

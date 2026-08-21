@@ -229,18 +229,19 @@ export function getUnitDisplayInfo(booking: {
 
 // 스태프 4인 계정 및 담당자 이름 매핑 설정
 export interface StaffAccount {
-    id: string;        // 'staff_1' ~ 'staff_4'
-    name: string;      // '이모님A', '이모님B', '삼촌C', '매니저'
+    id: string;        // 'manager', 'staff_2' ~ 'staff_4'
+    name: string;      // '소영매니저님', '가연영님', '지명님', 'ZEAL님'
 }
 
 export const STAFF_ACCOUNTS: StaffAccount[] = [
-    { id: 'staff_1', name: '소영매니저님' },
+    { id: 'manager', name: '소영매니저님' },
     { id: 'staff_2', name: '가연영님' },
     { id: 'staff_3', name: '지명님' },
     { id: 'staff_4', name: 'ZEAL님' },
 ];
 
 export function getStaffNameById(staffId: string): string {
+    if (staffId === 'staff_1') staffId = 'manager';
     const staff = STAFF_ACCOUNTS.find((s) => s.id === staffId);
     return staff ? staff.name : staffId;
 }

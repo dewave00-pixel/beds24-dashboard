@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '../../hooks/useAuth';
 import { useCleaningBoard, DEFAULT_STAFF_MAP } from '../../hooks/useCleaningBoard';
 import { ALL_UNITS } from '../../config';
@@ -10,14 +11,23 @@ export default function MyCleaningPage() {
     const auth = useAuth();
     const c = useCleaningBoard();
 
-    // 현재 스태프 슬롯 이름 (예: staff_1 -> '소정매니저님')
-    const currentSlotName = auth.role ? (c.staffMap[auth.role] || DEFAULT_STAFF_MAP[auth.role]) : null;
+    // 현재 스태프 슬롯 이름 (예: manager -> '소영매니저님')
+    const currentSlotName = auth.role === 'manager' || auth.role === 'staff_1'
+        ? (c.staffMap['manager'] || DEFAULT_STAFF_MAP['manager'] || '소영매니저님')
+        : (auth.role ? (c.staffMap[auth.role] || DEFAULT_STAFF_MAP[auth.role]) : null);
 
-    // 내게 배정된 호실 목록 (슬롯 ID 및 슬롯 이름 이중 매칭)
+    // 내게 배정된 호실 목록 (슬롯 ID 및 슬롯 이름 이중 매칭 + 매니저 staff_1 호환)
     const myAssignedUnits = auth.role
         ? ALL_UNITS.filter(unit => {
             const assignment = c.assignments[unit.key];
             if (!assignment) return false;
+
+            if (auth.role === 'manager' || auth.role === 'staff_1') {
+                const isManagerIdMatch = assignment.staffId === 'manager' || assignment.staffId === 'staff_1';
+                const isNameMatch = currentSlotName ? assignment.staffName === currentSlotName : false;
+                return isManagerIdMatch || isNameMatch;
+            }
+
             const isIdMatch = assignment.staffId === auth.role;
             const isNameMatch = currentSlotName ? assignment.staffName === currentSlotName : false;
             return isIdMatch || isNameMatch;
@@ -39,6 +49,12 @@ export default function MyCleaningPage() {
         c.setSelectedDate(c.todayStr);
     };
 
+    const handleLogout = async () => {
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        await fetch('/api/auth', { method: 'DELETE' });
+        window.location.href = '/login';
+    };
+
     if (auth.loading || c.loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -50,44 +66,84 @@ export default function MyCleaningPage() {
         );
     }
 
-    if (!auth.isStaff) {
+    // 매니저, 최고관리자, 또는 스태프 계정만 접근 허용
+    if (!auth.canViewMyCleaning && !auth.isAdmin) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
                 <div className="text-center font-bold text-red-500 flex flex-col gap-3">
-                    <p>청소 스태프 권한으로 로그인해야 접근할 수 있습니다.</p>
+                    <p>청소 담당자 권한으로 로그인해야 접근할 수 있습니다.</p>
                     <button onClick={() => window.location.href = '/'} className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer">대시보드로 돌아가기</button>
                 </div>
             </div>
         );
     }
 
+    const showNavTabs = auth.isAdmin || auth.isManager;
+
     return (
         <div className="dashboard-container">
             <div className="dashboard-wrapper flex flex-col gap-3">
-                {/* 1. 상단 헤더 */}
-                <div className="dashboard-header-card py-2.5 px-3 md:px-4 flex items-center justify-between">
+
+                {/* 1. 상단 헤더 & 네비게이션 */}
+                <div className="dashboard-header-card py-2.5 px-3 md:px-4 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                         <span className="text-lg">🧹</span>
                         <div>
-                            <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
-                                나의 청소 배정 목록
+                            <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight flex items-center gap-1.5 flex-wrap">
+                                <span>나의 청소 배정 목록</span>
+                                {currentSlotName && (
+                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                        {currentSlotName}
+                                    </span>
+                                )}
                             </h1>
                             <span className="text-[10.5px] text-gray-500 font-bold">
                                 {c.selectedDate} 기준 (배정 {myAssignedUnits.length}곳 / 완료 {myCompletedCount}곳)
                             </span>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            if (!confirm('로그아웃 하시겠습니까?')) return;
-                            await fetch('/api/auth', { method: 'DELETE' });
-                            window.location.href = '/login';
-                        }}
-                        className="text-xs font-bold text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
-                    >
-                        로그아웃
-                    </button>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* 👑 관리자 및 👔 매니저 전용 네비게이션 탭 */}
+                        {showNavTabs && (
+                            <nav className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200 text-xs font-black">
+                                <Link
+                                    href="/"
+                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                                >
+                                    <span>📊</span> 대시보드
+                                </Link>
+
+                                {auth.isAdmin && (
+                                    <Link
+                                        href="/cleaning"
+                                        className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                                    >
+                                        <span>🧹</span> 청소 배정
+                                    </Link>
+                                )}
+
+                                <div className="px-2.5 py-1 rounded-md bg-white text-blue-600 shadow-2xs flex items-center gap-1">
+                                    <span>🧹</span> 나의 청소
+                                </div>
+
+                                <Link
+                                    href="/properties"
+                                    className="px-2.5 py-1 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition flex items-center gap-1"
+                                >
+                                    <span>🔑</span> 숙소/비번
+                                </Link>
+                            </nav>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="text-xs font-bold text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                        >
+                            로그아웃
+                        </button>
+                    </div>
                 </div>
 
                 {/* 2. 날짜 선택 툴바 */}
