@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+// 📌 캐싱 방지: 항상 실시간으로 최신 메모/태그 조회
+export const dynamic = 'force-dynamic';
+
 // 1. 모든 예약의 메모 및 태그 목록 불러오기 (GET)
 export async function GET() {
     try {

@@ -13,7 +13,7 @@ interface HorizontalTimelineProps {
     todayStr: string;
     selectedDate: string | null;
     bookings: Booking[];
-    bookingNotes: { [bookingId: number]: BookingNoteData };
+    bookingNotes: Record<string | number, BookingNoteData>;
     COL_WIDTH: number;
     ROW_HEIGHT: number;
     onDateClick: (dateStr: string) => void;
@@ -178,7 +178,7 @@ export default function HorizontalTimeline({
                                     selectedDate <= lastNightStr;
                                 const isBookingDimmed = selectedDate !== null && !isBookingInSelectedDate;
 
-                                const noteData = bookingNotes[b.id];
+                                const noteData = bookingNotes[b.id] || bookingNotes[Number(b.id)] || bookingNotes[String(b.id)];
                                 const hasMemo = Boolean(noteData && noteData.note);
                                 const activeTags = noteData ? noteData.tags || [] : [];
 

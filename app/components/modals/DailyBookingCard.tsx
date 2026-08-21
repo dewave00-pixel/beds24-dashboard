@@ -11,7 +11,7 @@ interface BookingNoteData {
 interface DailyBookingCardProps {
     booking: Booking;
     type: 'checkIn' | 'checkOut';
-    bookingNotes: { [bookingId: number]: BookingNoteData };
+    bookingNotes: Record<string | number, BookingNoteData>;
     onSelectBooking: (booking: Booking) => void;
 }
 
@@ -43,7 +43,7 @@ export default function DailyBookingCard({
     const diffTime = departureDate.getTime() - arrivalDate.getTime();
     const calculatedNights = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24))) || 1;
 
-    const noteData = bookingNotes[booking.id];
+    const noteData = bookingNotes[booking.id] || bookingNotes[Number(booking.id)] || bookingNotes[String(booking.id)];
     const hasMemo = Boolean(noteData && noteData.note);
     const activeTags = noteData ? noteData.tags || [] : [];
 

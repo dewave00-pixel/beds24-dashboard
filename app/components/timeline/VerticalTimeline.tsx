@@ -15,7 +15,7 @@ interface VerticalTimelineProps {
     todayStr: string;
     selectedDate: string | null;
     bookings: Booking[];
-    bookingNotes: { [bookingId: number]: BookingNoteData };
+    bookingNotes: Record<string | number, BookingNoteData>;
     ROW_HEIGHT: number;
     displayDaysCount: number;
     onDateClick: (dateStr: string) => void;
@@ -162,7 +162,7 @@ export default function VerticalTimeline({
                                                         barHeight={barHeight}
                                                         nightsCount={nightsCount}
                                                         isDimmed={isBookingDimmed}
-                                                        noteData={bookingNotes[b.id]}
+                                                        noteData={bookingNotes[b.id] || bookingNotes[Number(b.id)] || bookingNotes[String(b.id)]}
                                                         onClick={onBookingClick}
                                                     />
                                                 );

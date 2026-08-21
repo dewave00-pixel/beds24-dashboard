@@ -15,7 +15,7 @@ interface DailyStatusModalProps {
     dateStr: string;
     checkInBookings: Booking[];
     checkOutBookings: Booking[];
-    bookingNotes: { [bookingId: number]: BookingNoteData };
+    bookingNotes: Record<string | number, BookingNoteData>;
     onClose: () => void;
     onSelectBooking: (booking: Booking) => void;
 }

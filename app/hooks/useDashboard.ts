@@ -21,7 +21,7 @@ export function useDashboard() {
     const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
     const [memoInput, setMemoInput] = useState<string>('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [bookingNotes, setBookingNotes] = useState<{ [bookingId: number]: BookingNoteData }>({});
+    const [bookingNotes, setBookingNotes] = useState<Record<string | number, BookingNoteData>>({});
 
     // 팝업 모달 상태
     const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
@@ -40,7 +40,7 @@ export function useDashboard() {
     // 1. Supabase 메모/태그 불러오기
     const fetchNotes = async () => {
         try {
-            const res = await fetch('/api/notes');
+            const res = await fetch('/api/notes', { cache: 'no-store' });
             const data = await res.json();
             if (data.success && data.data) {
                 setBookingNotes(data.data);
@@ -55,7 +55,7 @@ export function useDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/reservations');
+            const res = await fetch('/api/reservations', { cache: 'no-store' });
             const data = await res.json();
 
             if (data.success) {
@@ -147,7 +147,7 @@ export function useDashboard() {
 
     const openBookingDetail = (booking: Booking) => {
         setActiveBooking(booking);
-        const existing = bookingNotes[booking.id];
+        const existing = bookingNotes[booking.id] || bookingNotes[Number(booking.id)] || bookingNotes[String(booking.id)];
         setMemoInput(existing ? existing.note : '');
         setSelectedTags(existing ? existing.tags || [] : []);
     };

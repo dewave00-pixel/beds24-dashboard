@@ -10,7 +10,7 @@ interface BookingNoteData {
 
 interface TotalNotesModalProps {
     bookings: Booking[];
-    bookingNotes: { [bookingId: number]: BookingNoteData };
+    bookingNotes: Record<string | number, BookingNoteData>;
     onClose: () => void;
     onSelectBooking: (booking: Booking) => void;
 }
@@ -31,7 +31,7 @@ export default function TotalNotesModal({
 
     // 📌 텍스트 메모가 있거나, 4대 태그 중 하나라도 걸려 있는 예약만 100% 필터링
     const notedBookings = bookings.filter((b) => {
-        const data = bookingNotes[b.id];
+        const data = bookingNotes[b.id] || bookingNotes[Number(b.id)] || bookingNotes[String(b.id)];
         if (!data) return false;
         const hasTextNote = Boolean(data.note && data.note.trim().length > 0);
         const hasTags = Boolean(data.tags && data.tags.length > 0);
@@ -74,7 +74,7 @@ export default function TotalNotesModal({
                                     ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
                                     : '이름 없음';
 
-                            const noteData = bookingNotes[b.id];
+                            const noteData = bookingNotes[b.id] || bookingNotes[Number(b.id)] || bookingNotes[String(b.id)];
                             const memoText = noteData?.note || '';
                             const tags = noteData?.tags || [];
 
