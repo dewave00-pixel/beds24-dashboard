@@ -42,10 +42,12 @@ export default function DashboardPage() {
           tomorrowCheckOuts={d.tomorrowCheckOuts}
           viewMode={d.viewMode}
           loading={d.loading}
+          isSyncing={d.isSyncing}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenDailyModal={d.setDailyModalType}
           onToggleViewMode={d.toggleViewMode}
           onReload={d.reloadAll}
+          onSyncWithBeds24={d.syncWithBeds24}
         />
 
         <div className="p-2 md:p-3 flex-1 flex flex-col gap-3">

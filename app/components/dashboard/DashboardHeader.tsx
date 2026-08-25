@@ -12,10 +12,12 @@ export interface DashboardHeaderProps {
     tomorrowCheckOuts: Booking[];
     viewMode: 'vertical' | 'horizontal';
     loading: boolean;
+    isSyncing?: boolean;
     onOpenMobileMenu?: () => void;
     onOpenDailyModal: (type: 'today' | 'tomorrow') => void;
     onToggleViewMode: (mode: 'vertical' | 'horizontal') => void;
     onReload: () => Promise<void> | void;
+    onSyncWithBeds24?: () => Promise<void> | void;
 }
 
 export default function DashboardHeader({
@@ -26,11 +28,23 @@ export default function DashboardHeader({
     tomorrowCheckOuts = [],
     viewMode = 'vertical',
     loading = false,
+    isSyncing = false,
     onOpenMobileMenu,
     onOpenDailyModal,
     onToggleViewMode,
     onReload,
+    onSyncWithBeds24,
 }: DashboardHeaderProps) {
+    const handleSyncClick = () => {
+        if (onSyncWithBeds24) {
+            onSyncWithBeds24();
+        } else {
+            onReload();
+        }
+    };
+
+    const isBusy = loading || isSyncing;
+
     return (
         <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xs shrink-0">
 
@@ -59,7 +73,7 @@ export default function DashboardHeader({
                 <button
                     type="button"
                     onClick={() => onOpenDailyModal('today')}
-                    className="px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-xl transition flex flex-col items-start cursor-pointer shadow-2xs text-left"
+                    className="px-2.5 py-1 md:px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-xl transition flex flex-col items-start cursor-pointer shadow-2xs text-left"
                 >
                     <span className="text-[10px] font-black tracking-tight text-blue-600">오늘 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
@@ -73,7 +87,7 @@ export default function DashboardHeader({
                 <button
                     type="button"
                     onClick={() => onOpenDailyModal('tomorrow')}
-                    className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 rounded-xl transition flex flex-col items-start cursor-pointer shadow-2xs text-left"
+                    className="px-2.5 py-1 md:px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 rounded-xl transition flex flex-col items-start cursor-pointer shadow-2xs text-left"
                 >
                     <span className="text-[10px] font-black tracking-tight text-slate-500">내일 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
@@ -89,38 +103,47 @@ export default function DashboardHeader({
                         type="button"
                         onClick={() => onToggleViewMode('vertical')}
                         title="세로 달력 뷰 (시간이 아래로 흐름)"
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-2 md:px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
                             viewMode === 'vertical'
                                 ? 'bg-white text-blue-600 shadow-2xs'
                                 : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
-                        <span>⬇️</span> 세로 뷰
+                        <span>⬇️</span> <span className="hidden sm:inline">세로 뷰</span><span className="sm:hidden">세로</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => onToggleViewMode('horizontal')}
                         title="가로 달력 뷰 (시간이 오른쪽으로 흐름)"
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-2 md:px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
                             viewMode === 'horizontal'
                                 ? 'bg-white text-blue-600 shadow-2xs'
                                 : 'text-gray-500 hover:text-gray-900'
                         }`}
                     >
-                        <span>➡️</span> 가로 뷰
+                        <span>➡️</span> <span className="hidden sm:inline">가로 뷰</span><span className="sm:hidden">가로</span>
                     </button>
                 </div>
 
-                {/* 🔄 실시간 새로고침 버튼 */}
+                {/* 🔄 Beds24 실시간 강제 동기화 버튼 */}
                 <button
                     type="button"
-                    onClick={() => onReload()}
-                    disabled={loading}
-                    className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs rounded-xl border border-gray-200 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                    title="Beds24 실시간 데이터 동기화"
+                    onClick={handleSyncClick}
+                    disabled={isBusy}
+                    className={`px-2.5 py-1.5 font-black text-xs rounded-xl border transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60 shadow-2xs ${
+                        isSyncing
+                            ? 'bg-blue-50 text-blue-700 border-blue-300'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300'
+                    }`}
+                    title="Beds24 본사 최신 예약 실시간 동기화 & 정합성 일치화"
                 >
-                    <span className={loading ? 'animate-spin' : ''}>🔄</span>
-                    <span className="hidden sm:inline">{loading ? '동기화 중...' : '새로고침'}</span>
+                    <span className={isBusy ? 'animate-spin inline-block' : ''}>🔄</span>
+                    <span className="hidden sm:inline">
+                        {isSyncing ? 'Beds24 동기화 중...' : (loading ? '조회 중...' : '실시간 동기화')}
+                    </span>
+                    <span className="sm:hidden">
+                        {isSyncing ? '동기화 중' : '동기화'}
+                    </span>
                 </button>
             </div>
         </header>
