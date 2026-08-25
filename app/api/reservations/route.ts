@@ -81,69 +81,84 @@ async function syncFromBeds24(): Promise<any[]> {
     return allBookings;
 }
 
+// Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼
+async function fetchFormattedBookingsFromSupabase() {
+    const today = new Date();
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 45);
+    const pastDateStr = pastDate.toISOString().split('T')[0];
+
+    const { data: dbBookings, error } = await supabase
+        .from('bookings')
+        .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data')
+        .gte('departure', pastDateStr)
+        .neq('status', 'cancelled')
+        .neq('status', 'deleted')
+        .neq('status', 'inquiry')
+        .order('arrival', { ascending: true });
+
+    if (error || !dbBookings) {
+        return [];
+    }
+
+    return dbBookings.map((row) => ({
+        id: row.id,
+        propertyId: row.property_id,
+        propId: row.property_id,
+        roomId: row.room_id,
+        unitId: row.unit_id,
+        arrival: row.arrival,
+        departure: row.departure,
+        firstName: row.first_name || '',
+        lastName: row.last_name || '',
+        numAdult: row.num_guests || 1,
+        numChild: 0,
+        status: row.status || 'confirmed',
+        apiSourceId: row.api_source_id,
+        price: row.price || 0,
+        notes: row.notes || '',
+        bookingTime: row.raw_data?.bookingTime || row.raw_data?.booking_time || row.raw_data?.created || row.arrival,
+        country: row.raw_data?.country || row.raw_data?.guestCountry || '',
+        lang: row.raw_data?.lang || row.raw_data?.language || '',
+        phone: row.raw_data?.phone || row.raw_data?.mobile || '',
+        mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
+    }));
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const forceSync = searchParams.get('sync') === 'true';
 
-        // 1. 강제 동기화 요청(?sync=true)인 경우 Beds24에서 직접 긁어와 동기화
+        // 1. 강제 동기화 요청(?sync=true)인 경우: Beds24에서 긁어와 Supabase 완전 동기화 후 최신 데이터 반환
         if (forceSync) {
             console.log('🔄 [Reservations] 수동 동기화 요청 감지 -> Beds24 직접 동기화 실행');
-            const syncedData = await syncFromBeds24();
+            await syncFromBeds24();
+            const formatted = await fetchFormattedBookingsFromSupabase();
             return NextResponse.json({
                 success: true,
-                count: syncedData.length,
-                data: syncedData,
+                count: formatted.length,
+                data: formatted,
                 source: 'beds24_synced',
             });
         }
 
         // 2. 평상시: Supabase bookings 테이블에서 슬림 컬럼 초고속 조회! (60KB 초경량)
-        const today = new Date();
-        const pastDate = new Date(today);
-        pastDate.setDate(today.getDate() - 45);
-        const pastDateStr = pastDate.toISOString().split('T')[0];
+        const cachedBookings = await fetchFormattedBookingsFromSupabase();
 
-        const { data: dbBookings, error } = await supabase
-            .from('bookings')
-            .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes')
-            .gte('departure', pastDateStr)
-            .neq('status', 'cancelled')
-            .neq('status', 'deleted')
-            .neq('status', 'inquiry')
-            .order('arrival', { ascending: true });
-
-        // 만약 DB 조회가 성공했고 데이터가 있으면 즉시 반환
-        if (!error && dbBookings && dbBookings.length > 0) {
-            const formatted = dbBookings.map((row) => ({
-                id: row.id,
-                propertyId: row.property_id,
-                propId: row.property_id,
-                roomId: row.room_id,
-                unitId: row.unit_id,
-                arrival: row.arrival,
-                departure: row.departure,
-                firstName: row.first_name || '',
-                lastName: row.last_name || '',
-                numAdult: row.num_guests || 1,
-                numChild: 0,
-                status: row.status || 'confirmed',
-                apiSourceId: row.api_source_id,
-                price: row.price || 0,
-                notes: row.notes || '',
-            }));
-
+        if (cachedBookings.length > 0) {
             return NextResponse.json({
                 success: true,
-                count: formatted.length,
-                data: formatted,
+                count: cachedBookings.length,
+                data: cachedBookings,
                 source: 'supabase_cache',
             });
         }
 
         // 3. Supabase DB가 비어있는 경우(초기 상태) 자동 동기화 실행 (Fallback)
         console.log('⚠️ [Reservations] Supabase DB가 비어있음 -> 최초 자동 동기화 실행');
-        const fallbackData = await syncFromBeds24();
+        await syncFromBeds24();
+        const fallbackData = await fetchFormattedBookingsFromSupabase();
 
         return NextResponse.json({
             success: true,

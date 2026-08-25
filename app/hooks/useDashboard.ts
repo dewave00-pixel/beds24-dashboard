@@ -11,6 +11,7 @@ export interface BookingNoteData {
 export function useDashboard() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isSyncing, setIsSyncing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -50,12 +51,13 @@ export function useDashboard() {
         }
     };
 
-    // 2. Beds24 실시간 예약 데이터 불러오기
-    const fetchReservations = async () => {
-        setLoading(true);
+    // 2. Beds24 실시간 예약 데이터 불러오기 (forceSync=true 시 Beds24 본사 직접 긁어오기)
+    const fetchReservations = async (forceSync: boolean = false) => {
+        if (!forceSync) setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/reservations', { cache: 'no-store' });
+            const url = forceSync ? '/api/reservations?sync=true' : '/api/reservations';
+            const res = await fetch(url, { cache: 'no-store' });
             const data = await res.json();
 
             if (data.success) {
@@ -66,12 +68,26 @@ export function useDashboard() {
         } catch (err) {
             setError('서버 통신 오류가 발생했습니다.');
         } finally {
-            setLoading(false);
+            if (!forceSync) setLoading(false);
         }
     };
 
+    // 일반 새로고침 (DB 캐시 기반 빠른 재조회)
     const reloadAll = async () => {
-        await Promise.all([fetchReservations(), fetchNotes()]);
+        await Promise.all([fetchReservations(false), fetchNotes()]);
+    };
+
+    // 🔄 Beds24 실시간 강제 동기화 (버튼 클릭 시 Beds24 본사 직접 긁어와 Supabase 정합성 맞추기)
+    const syncWithBeds24 = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        try {
+            await Promise.all([fetchReservations(true), fetchNotes()]);
+        } catch (e) {
+            console.error('Beds24 실시간 동기화 오류:', e);
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     useEffect(() => {
@@ -213,6 +229,7 @@ export function useDashboard() {
     return {
         bookings,
         loading,
+        isSyncing,
         error,
         selectedDate,
         setSelectedDate,
@@ -241,6 +258,7 @@ export function useDashboard() {
         moveDays,
         goToday,
         reloadAll,
+        syncWithBeds24,
         zoomLevel,
         updateZoomLevel,
         changeZoom,
