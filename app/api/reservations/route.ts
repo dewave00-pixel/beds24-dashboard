@@ -106,7 +106,7 @@ export async function GET(request: Request) {
 
         const { data: dbBookings, error } = await supabase
             .from('bookings')
-            .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes')
+            .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data')
             .gte('departure', pastDateStr)
             .neq('status', 'cancelled')
             .neq('status', 'deleted')
@@ -131,6 +131,11 @@ export async function GET(request: Request) {
                 apiSourceId: row.api_source_id,
                 price: row.price || 0,
                 notes: row.notes || '',
+                bookingTime: row.raw_data?.bookingTime || row.raw_data?.booking_time || row.raw_data?.created || row.arrival,
+                country: row.raw_data?.country || row.raw_data?.guestCountry || '',
+                lang: row.raw_data?.lang || row.raw_data?.language || '',
+                phone: row.raw_data?.phone || row.raw_data?.mobile || '',
+                mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
             }));
 
             return NextResponse.json({

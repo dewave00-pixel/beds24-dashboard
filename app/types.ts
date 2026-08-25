@@ -15,6 +15,11 @@ export interface Booking {
     apiSourceId?: number;
     price?: number;
     notes?: string;
+    bookingTime?: string;
+    country?: string;
+    lang?: string;
+    phone?: string;
+    mobile?: string;
 }
 
 // 세부 호실/유닛 정보 구조 정의
