@@ -209,13 +209,13 @@ body {
     color: #b91c1c !important;
 }
 
-/* 행 선택 및 강조 */
+/* 행 선택 및 강조 (선택한 날짜 행은 골드 옐로우 하이라이트) */
 .row-selected {
     background-color: #fef3c7 !important;
 }
 
 .row-dimmed {
-    opacity: 0.35;
+    background-color: #fafafa;
 }
 
 /* 🏢 건물(Property) 전용 짙은 회색 구분 기둥 (흐려짐 없이 100% 선명도 유지) */

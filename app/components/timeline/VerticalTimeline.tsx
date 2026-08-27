@@ -70,17 +70,18 @@ export default function VerticalTimeline({
     };
 
     return (
-        <div className="vertical-timeline-container flex-1 overflow-auto bg-white">
-            <div className="inline-block min-w-full">
+        <div className="grid-table-container">
+            <div className="min-w-max">
                 {/* 2단 고정 헤더 */}
                 <TimelineHeader />
 
                 {/* 타임라인 메인 바디 영역 */}
-                <div className="relative">
+                <div className="relative w-full">
                     {/* 날짜 행 목록 */}
                     {timelineDates.map((dStr) => {
                         const isToday = dStr === todayStr;
                         const isSelected = selectedDate === dStr;
+                        const isOtherSelected = selectedDate !== null && !isSelected;
                         const dayInfo = getDayType(dStr);
 
                         const dateObj = new Date(dStr);
@@ -88,11 +89,15 @@ export default function VerticalTimeline({
                         const dayNum = dateObj.getDate();
                         const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
 
-                        let dayColorClass = 'text-gray-900 bg-white';
-                        if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') {
-                            dayColorClass = 'text-red-700 bg-red-50/50 font-black';
+                        let cellStyleClass = 'bg-white text-gray-950 font-bold';
+                        if (isSelected) {
+                            cellStyleClass = '!bg-amber-500 !text-white font-black shadow-inner';
+                        } else if (isToday) {
+                            cellStyleClass = '!bg-blue-600 !text-white font-black shadow-inner';
+                        } else if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') {
+                            cellStyleClass = '!bg-red-50 !text-red-700 font-black';
                         } else if (dayInfo.type === 'saturday') {
-                            dayColorClass = 'text-blue-700 bg-blue-50/50 font-black';
+                            cellStyleClass = '!bg-blue-50 !text-blue-700 font-black';
                         }
 
                         return (
@@ -100,21 +105,16 @@ export default function VerticalTimeline({
                                 key={`row-${dStr}`}
                                 onClick={() => onDateClick(dStr)}
                                 style={{ height: `${ROW_HEIGHT}px`, gridTemplateColumns: VERTICAL_GRID_COLUMNS }}
-                                className={`grid border-b border-gray-200 cursor-pointer transition-colors duration-150 ${isSelected
-                                    ? 'bg-amber-100/60 font-black'
-                                    : isToday
-                                        ? 'bg-blue-100/30'
-                                        : 'hover:bg-gray-100/70'
+                                className={`grid divide-x divide-gray-300 border-b border-gray-300 transition-all duration-150 cursor-pointer ${isSelected
+                                    ? 'bg-amber-50/80 font-black'
+                                    : isOtherSelected
+                                        ? 'bg-gray-50/40 hover:bg-gray-100/60'
+                                        : 'bg-white hover:bg-gray-50/80'
                                     }`}
                             >
-                                {/* 날짜 인덱스 열 */}
+                                {/* 📌 좌측 날짜 2중 틀고정 열 */}
                                 <div
-                                    className={`sticky-date-col flex flex-col items-center justify-center p-1 border-r border-gray-300 select-none text-xs ${isSelected
-                                        ? 'bg-amber-500 text-white font-black'
-                                        : isToday
-                                            ? 'bg-blue-600 text-white font-black'
-                                            : dayColorClass
-                                        }`}
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center text-xs transition-colors border-r border-gray-300 select-none shadow-xs ${cellStyleClass}`}
                                 >
                                     <div>{month}/{dayNum}</div>
                                     <div className="text-[10px] opacity-90 flex items-center gap-1 font-extrabold">
@@ -128,13 +128,15 @@ export default function VerticalTimeline({
                                         {group.units.map((col) => (
                                             <div
                                                 key={`${dStr}-${col.key}`}
-                                                className={`h-full ${isToday && !isSelected
-                                                    ? 'bg-blue-50/30'
-                                                    : dayInfo.type === 'saturday'
-                                                        ? 'bg-blue-50/10'
-                                                        : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                            ? 'bg-red-50/10'
-                                                            : ''
+                                                className={`h-full ${isSelected
+                                                    ? 'bg-amber-100/30'
+                                                    : isToday
+                                                        ? 'bg-blue-50/30'
+                                                        : dayInfo.type === 'saturday'
+                                                            ? 'bg-blue-50/10'
+                                                            : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
+                                                                ? 'bg-red-50/10'
+                                                                : ''
                                                     }`}
                                             />
                                         ))}
@@ -255,19 +257,25 @@ export default function VerticalTimeline({
                     </div>
 
                     {/* 격자선 레이어 */}
-                    <div
-                        className="absolute top-0 left-0 w-full h-full pointer-events-none grid divide-x divide-gray-300"
-                        style={{ gridTemplateColumns: VERTICAL_GRID_COLUMNS }}
-                    >
-                        <div />
-                        {PROPERTY_GROUPS.map((group, idx) => (
-                            <div key={`grid-group-${group.name}`} className="contents">
-                                {group.units.map((col) => (
-                                    <div key={`grid-${col.key}`} />
+                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+                        {timelineDates.map((dStr) => (
+                            <div
+                                key={`grid-line-${dStr}`}
+                                className="grid divide-x divide-gray-300/60 border-b border-gray-300/60"
+                                style={{
+                                    gridTemplateColumns: VERTICAL_GRID_COLUMNS,
+                                    height: `${ROW_HEIGHT}px`,
+                                }}
+                            >
+                                <div />
+                                {PROPERTY_GROUPS.map((group, idx) => (
+                                    <div key={`grid-group-${dStr}-${group.name}`} className="contents">
+                                        {group.units.map((col) => (
+                                            <div key={`grid-cell-${dStr}-${col.key}`} className="h-full" />
+                                        ))}
+                                        {idx < PROPERTY_GROUPS.length - 1 && <div />}
+                                    </div>
                                 ))}
-                                {idx < PROPERTY_GROUPS.length - 1 && (
-                                    <div className="property-divider-pillar" />
-                                )}
                             </div>
                         ))}
                     </div>
