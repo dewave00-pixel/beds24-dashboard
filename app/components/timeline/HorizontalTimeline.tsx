@@ -2,6 +2,7 @@
 
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../../config';
+import { isValidBooking } from '../../utils/bookingUtils';
 
 interface BookingNoteData {
     note: string;
@@ -142,6 +143,7 @@ export default function HorizontalTimeline({
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                         {ALL_UNITS.map((unit, globalUnitIdx) => {
                             const unitBookings = bookings.filter((b) => {
+                                if (!isValidBooking(b)) return false;
                                 const isRoomMatch = Number(b.roomId) === unit.roomId;
                                 const isUnitMatch = unit.unitId ? Number(b.unitId) === unit.unitId : true;
                                 return isRoomMatch && isUnitMatch;

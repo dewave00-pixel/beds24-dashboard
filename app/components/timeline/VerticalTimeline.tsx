@@ -2,6 +2,7 @@
 
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, VERTICAL_GRID_COLUMNS, getDayType } from '../../config';
+import { isValidBooking } from '../../utils/bookingUtils';
 import TimelineHeader from './TimelineHeader';
 import BookingBar from './BookingBar';
 
@@ -125,6 +126,7 @@ export default function VerticalTimeline({
                             <div key={`overlay-group-${group.name}`} className="contents">
                                 {group.units.map((col) => {
                                     const unitBookings = bookings.filter((b) => {
+                                        if (!isValidBooking(b)) return false;
                                         const isRoomMatch = Number(b.roomId) === col.roomId;
                                         const isUnitMatch = col.unitId ? Number(b.unitId) === col.unitId : true;
                                         return isRoomMatch && isUnitMatch;

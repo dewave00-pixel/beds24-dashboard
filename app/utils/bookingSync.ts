@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Booking } from '../types';
+import { isValidBooking } from './bookingUtils';
 
 export interface SupabaseBookingRow {
     id: number;
@@ -48,13 +49,20 @@ export function formatBeds24ToSupabaseRow(b: any): SupabaseBookingRow {
 
 /**
  * 여러 예약 데이터를 Supabase bookings 테이블에 일괄 upsert (중복 시 최신으로 갱신)
+ * 🛡️ inquiry(단순 문의), cancelled(취소), deleted(삭제) 건은 DB 저장 자체를 원천 차단
  */
 export async function upsertBookingsToSupabase(beds24Bookings: any[]): Promise<{ success: boolean; count: number; error?: string }> {
     if (!beds24Bookings || beds24Bookings.length === 0) {
         return { success: true, count: 0 };
     }
 
-    const rows = beds24Bookings.map(formatBeds24ToSupabaseRow);
+    // 🛡️ 유효한 활성 예약만 필터링 (단순 문의 inquiry, 취소, 삭제 제외)
+    const validBookings = beds24Bookings.filter((b) => isValidBooking(b));
+    if (validBookings.length === 0) {
+        return { success: true, count: 0 };
+    }
+
+    const rows = validBookings.map(formatBeds24ToSupabaseRow);
 
     // Supabase 대량 upsert (500개씩 청크 분할하여 안전하게 저장)
     const chunkSize = 500;
@@ -114,13 +122,31 @@ export async function syncAllBookingsWithSupabase(
             };
         }
 
-        // 2. 동기화 날짜 범위가 주어진 경우, 삭제된 유령 예약(Ghost Bookings) 청소
+        // 2. 동기화 날짜 범위가 주어진 경우, 삭제된 유령 예약(Ghost Bookings) 및 취소/문의 데이터 청소
         let deletedGhostCount = 0;
 
+        // DB에 혹시 남아있는 inquiry / cancelled / deleted 상태 데이터 선제적 정리
+        const { data: invalidDbRows } = await supabase
+            .from('bookings')
+            .select('id')
+            .or('status.eq.inquiry,status.eq.cancelled,status.eq.deleted');
+
+        if (invalidDbRows && invalidDbRows.length > 0) {
+            const invalidIds = invalidDbRows.map((r) => Number(r.id));
+            const chunkSize = 500;
+            for (let i = 0; i < invalidIds.length; i += chunkSize) {
+                const chunk = invalidIds.slice(i, i + chunkSize);
+                await supabase.from('bookings').delete().in('id', chunk);
+                deletedGhostCount += chunk.length;
+            }
+            console.log(`🧹 [Reconciliation] DB 내 문의/취소/삭제 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
+        }
+
         if (arrivalFrom && arrivalTo) {
-            // Beds24 API에 존재하는 ID 목록 (Set)
+            // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 취소 건 제외
             const beds24ValidIds = new Set(
                 beds24Bookings
+                    .filter((b) => isValidBooking(b))
                     .map((b) => Number(b.id || b.bookId))
                     .filter((id) => id > 0)
             );
@@ -137,13 +163,13 @@ export async function syncAllBookingsWithSupabase(
             if (dbQueryError) {
                 console.error('⚠️ [Reconciliation DB Query Error]:', dbQueryError);
             } else if (dbRows && dbRows.length > 0) {
-                // DB에는 있지만 Beds24 응답 목록에는 없는 유령 ID 추출
+                // DB에는 있지만 유효 예약 목록에는 없는 유령 ID 추출
                 const ghostIds = dbRows
                     .map((r) => Number(r.id))
                     .filter((id) => !beds24ValidIds.has(id));
 
                 if (ghostIds.length > 0) {
-                    console.log(`🧹 [Reconciliation] Beds24에서 삭제된 유령 예약 ${ghostIds.length}건 감지 -> DB 삭제 진행:`, ghostIds);
+                    console.log(`🧹 [Reconciliation] Beds24에서 삭제/문의/취소된 예약 ${ghostIds.length}건 감지 -> DB 삭제 진행:`, ghostIds);
 
                     // 500개씩 청크 분할 삭제
                     const chunkSize = 500;

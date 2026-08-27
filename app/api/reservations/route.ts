@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getValidBeds24Token } from '../../utils/beds24Client';
 import { upsertBookingsToSupabase, syncAllBookingsWithSupabase } from '../../utils/bookingSync';
+import { isValidBooking } from '../../utils/bookingUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +102,7 @@ async function fetchFormattedBookingsFromSupabase() {
         return [];
     }
 
-    return dbBookings.map((row) => ({
+    const formatted = dbBookings.map((row) => ({
         id: row.id,
         propertyId: row.property_id,
         propId: row.property_id,
@@ -123,6 +124,8 @@ async function fetchFormattedBookingsFromSupabase() {
         phone: row.raw_data?.phone || row.raw_data?.mobile || '',
         mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
     }));
+
+    return formatted.filter((b) => isValidBooking(b));
 }
 
 export async function GET(request: Request) {

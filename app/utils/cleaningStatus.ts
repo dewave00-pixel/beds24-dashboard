@@ -1,4 +1,5 @@
 import { Booking, UnitConfig } from '../types';
+import { isValidBooking } from './bookingUtils';
 
 export type CleaningStatusCode =
     | 'URGENT_CHECKIN'          // 🚨 당일 체크인 있음 (즉시 청소 필요 - 턴어라운드 또는 신규 입실)
@@ -36,7 +37,7 @@ export function getUnitCleaningStatus(
     dateStr: string,
     bookings: Booking[]
 ): CleaningStatusInfo {
-    const unitBookings = bookings.filter((b) => isBookingForUnit(b, unit));
+    const unitBookings = bookings.filter((b) => isValidBooking(b) && isBookingForUnit(b, unit));
 
     const checkoutBooking = unitBookings.find((b) => b.departure === dateStr);
     const checkinBooking = unitBookings.find((b) => b.arrival === dateStr);
