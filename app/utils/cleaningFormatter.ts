@@ -54,7 +54,7 @@ export function generateCleaningShareText(
         const earlyTag = checkinNoteData?.tags?.find((t) => t.startsWith('early_'));
         const checkinTime = earlyTag
             ? `${earlyTag.replace('early_', '')} (얼리 체크인 ⚡)`
-            : '15:00 (체크인 예정)';
+            : '17:00 (체크인 예정)';
 
         // 4. 특이사항 태그 취합
         const allTags: string[] = [];
