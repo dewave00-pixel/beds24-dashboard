@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBeds24Bookings } from '../../utils/beds24Client';
+import { isValidBooking } from '../../utils/bookingUtils';
 
 export async function GET(req: NextRequest) {
     try {
@@ -8,10 +9,12 @@ export async function GET(req: NextRequest) {
         const endDate = searchParams.get('endDate') || undefined;
 
         const data = await fetchBeds24Bookings(startDate, endDate);
+        const rawList = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+        const validList = rawList.filter((b: any) => isValidBooking(b));
 
         return NextResponse.json({
             success: true,
-            data: data.data || data,
+            data: validList,
         });
     } catch (error: any) {
         console.error('Beds24 API Error:', error.message);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Booking } from '../types';
+import { isValidBooking } from '../utils/bookingUtils';
 
 export interface BookingNoteData {
     note: string;
@@ -61,7 +62,8 @@ export function useDashboard() {
             const data = await res.json();
 
             if (data.success) {
-                setBookings(Array.isArray(data.data) ? data.data : []);
+                const list = Array.isArray(data.data) ? data.data : [];
+                setBookings(list.filter((b: Booking) => isValidBooking(b)));
             } else {
                 setError(data.error || '예약 데이터를 불러오지 못했습니다.');
             }
@@ -132,10 +134,12 @@ export function useDashboard() {
     tomorrow.setDate(today.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    const todayCheckIns = bookings.filter((b) => b.arrival === todayStr);
-    const todayCheckOuts = bookings.filter((b) => b.departure === todayStr);
-    const tomorrowCheckIns = bookings.filter((b) => b.arrival === tomorrowStr);
-    const tomorrowCheckOuts = bookings.filter((b) => b.departure === tomorrowStr);
+    // 🛡️ 유효한 예약만 입/퇴실 목록에 포함 (inquiry, cancelled 등 제외)
+    const activeBookings = bookings.filter((b) => isValidBooking(b));
+    const todayCheckIns = activeBookings.filter((b) => b.arrival === todayStr);
+    const todayCheckOuts = activeBookings.filter((b) => b.departure === todayStr);
+    const tomorrowCheckIns = activeBookings.filter((b) => b.arrival === tomorrowStr);
+    const tomorrowCheckOuts = activeBookings.filter((b) => b.departure === tomorrowStr);
 
     // 14일 날짜 배열 생성
     const timelineDates: string[] = [];

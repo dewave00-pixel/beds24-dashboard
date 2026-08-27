@@ -2,6 +2,7 @@
 
 import { Booking } from '../../types';
 import { ALL_UNITS, getChannelStyle, parseBookingTag } from '../../config';
+import { getUnitForBooking } from '../../utils/bookingUtils';
 
 interface BookingNoteData {
     note: string;
@@ -27,15 +28,13 @@ export default function DailyBookingCard({
             ? `${booking.firstName || ''} ${booking.lastName || ''}`.trim()
             : `예약 #${booking.id}`;
 
-    // 1. propName 정확한 필드 매칭
-    const unitInfo = ALL_UNITS.find((u) => {
-        const isRoomMatch = u.roomId === Number(booking.roomId);
-        const isUnitMatch = u.unitId ? u.unitId === Number(booking.unitId) : true;
-        return isRoomMatch && isUnitMatch;
-    });
+    // 1. 호실 안전 매칭 (unitId가 없는 경우도 roomId 기반으로 정확 매칭)
+    const unitInfo = getUnitForBooking(booking);
 
     const propertyName = unitInfo?.propName || '기타 숙소';
-    const unitDisplayName = unitInfo?.displayName || `Room ${booking.roomId}`;
+    const unitDisplayName = unitInfo?.displayName
+        ? (unitInfo.subName ? `${unitInfo.displayName} (${unitInfo.subName})` : unitInfo.displayName)
+        : `Room ${booking.roomId}`;
 
     // 2. 박수(Nights) 안전 계산 (체크아웃 - 체크인)
     const arrivalDate = new Date(booking.arrival);
