@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Booking } from '../../types';
 import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../../config';
+import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings } from '../../utils/bookingUtils';
 
 interface BookingModalProps {
     booking: Booking;
+    allBookings?: Booking[];
     memoInput: string;
     setMemoInput: (val: string) => void;
     selectedTags: string[];
@@ -12,10 +15,12 @@ interface BookingModalProps {
     onSave: () => void;
     onDelete: () => void;
     onClose: () => void;
+    onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function BookingModal({
     booking,
+    allBookings = [],
     memoInput,
     setMemoInput,
     selectedTags,
@@ -23,12 +28,25 @@ export default function BookingModal({
     onSave,
     onDelete,
     onClose,
+    onAssignUnit,
 }: BookingModalProps) {
     const ch = getChannelStyle(booking.apiSourceId);
     const guestName =
         booking.firstName || booking.lastName
             ? `${booking.firstName || ''} ${booking.lastName || ''}`.trim()
             : '이름 없음';
+
+    const candidateUnits = getUnitsForRoomId(booking.roomId);
+    const currentUnit = getUnitForBooking(booking);
+    const [selectedUnitId, setSelectedUnitId] = useState<number>(Number(booking.unitId) || (candidateUnits[0]?.unitId ?? 1));
+    const [isAssigning, setIsAssigning] = useState<boolean>(false);
+    const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // 🛡️ 선택된 호실에 더블 부킹 충돌이 있는지 실시간 계산 (0은 미배정 해제이므로 충돌 없음)
+    const currentConflicts = selectedUnitId > 0
+        ? findConflictingBookings(booking, Number(booking.roomId), selectedUnitId, allBookings)
+        : [];
+    const hasConflictOnSelectedUnit = currentConflicts.length > 0;
 
     const currentEarlyTag = selectedTags.find((t) => t.startsWith('early_'));
     const isEarlyActive = Boolean(currentEarlyTag);
@@ -69,6 +87,29 @@ export default function BookingModal({
             onToggleTag(currentLateTag);
         }
         onToggleTag(`late_${newTime}`);
+    };
+
+    const handleAssignUnitClick = async () => {
+        if (!onAssignUnit || !booking.roomId) return;
+
+        // 🛡️ 더블 부킹 사전 경고
+        if (hasConflictOnSelectedUnit) {
+            const c = currentConflicts[0];
+            const cName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || `#${c.id}`;
+            const ok = confirm(`⚠️ 더블 부킹 경고!\n해당 기간(${c.arrival} ~ ${c.departure})에 이미 [${cName}]님의 예약(#${c.id})이 배정되어 있습니다.\n\n정말 강제로 이동/배정하시겠습니까? (권장하지 않음)`);
+            if (!ok) return;
+        }
+
+        setIsAssigning(true);
+        setAssignMsg(null);
+        const result = await onAssignUnit(booking.id, Number(booking.roomId), selectedUnitId);
+        setIsAssigning(false);
+        if (result.success) {
+            setAssignMsg({ text: '✅ Beds24 호실 배정 완료!', type: 'success' });
+            setTimeout(() => setAssignMsg(null), 3000);
+        } else {
+            setAssignMsg({ text: `❌ ${result.error || '배정 실패'}`, type: 'error' });
+        }
     };
 
     return (
@@ -124,6 +165,86 @@ export default function BookingModal({
                             </span>
                         </div>
                     </div>
+
+                    {/* 🏠 호실 배정 관리 섹션 */}
+                    {candidateUnits.length > 0 && (
+                        <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-300 flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-amber-950 flex items-center gap-1">
+                                    <span>🏠</span> 호실 배정 상태:
+                                </span>
+                                <span className={`text-xs font-black px-2 py-0.5 rounded ${Number(booking.unitId) > 0 ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-700'}`}>
+                                    {Number(booking.unitId) > 0
+                                        ? `${currentUnit?.displayName || `Unit ${booking.unitId}`} (배정됨)`
+                                        : '⚠️ 미배정 상태'}
+                                </span>
+                            </div>
+
+                            {onAssignUnit && (
+                                <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1 flex-1">
+                                            <span className="text-[11px] font-bold text-gray-700 shrink-0">변경 호실:</span>
+                                            <select
+                                                value={selectedUnitId}
+                                                onChange={(e) => setSelectedUnitId(Number(e.target.value))}
+                                                className={`px-2 py-1 text-xs font-black bg-white border rounded-md text-gray-800 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50' : 'border-gray-300'}`}
+                                            >
+                                                {/* ⚠️ 미배정 상태로 되돌리기 옵션 */}
+                                                <option value={0}>⚠️ [미배정 상태로 변경 (호실 해제)]</option>
+
+                                                {candidateUnits.map((u) => {
+                                                    const conf = u.unitId ? findConflictingBookings(booking, Number(booking.roomId), u.unitId, allBookings) : [];
+                                                    return (
+                                                        <option key={`opt-${u.key}`} value={u.unitId}>
+                                                            🏠 {u.displayName} {u.subName ? `(${u.subName})` : ''} {conf.length > 0 ? '(⚠️ 중복)' : ''}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            disabled={isAssigning || selectedUnitId === (Number(booking.unitId) || 0)}
+                                            onClick={handleAssignUnitClick}
+                                            className={`px-3 py-1 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1 ${
+                                                selectedUnitId === 0
+                                                    ? 'bg-amber-600 hover:bg-amber-700'
+                                                    : hasConflictOnSelectedUnit
+                                                        ? 'bg-rose-600 hover:bg-rose-700'
+                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                            }`}
+                                        >
+                                            {isAssigning
+                                                ? '처리 중...'
+                                                : selectedUnitId === 0
+                                                    ? '⚠️ 미배정으로 해제'
+                                                    : hasConflictOnSelectedUnit
+                                                        ? '⚠️ 중복 배정'
+                                                        : 'Beds24 배정'}
+                                        </button>
+                                    </div>
+
+                                    {/* 실시간 더블 부킹 경고 메시지 */}
+                                    {hasConflictOnSelectedUnit && (
+                                        <div className="p-1.5 bg-rose-100 border border-rose-300 rounded text-rose-900 text-[11px] font-black flex items-center gap-1">
+                                            <span>🚨</span>
+                                            <span>
+                                                {currentConflicts[0]?.arrival} ~ {currentConflicts[0]?.departure}에 [{currentConflicts[0]?.firstName || ''} {currentConflicts[0]?.lastName || ''}]님 예약과 겹칩니다!
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {assignMsg && (
+                                <div className={`text-[11px] font-black ${assignMsg.type === 'success' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {assignMsg.text}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* 🏷️ 빠른 상태 옵션 */}
                     <div className="flex flex-col gap-1.5">
