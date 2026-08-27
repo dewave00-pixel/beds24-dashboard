@@ -6,19 +6,37 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
     try {
         console.log('🔔 [Beds24 Webhook] 웹훅 수신!');
-        let body: any;
+        let body: any = null;
 
-        const contentType = request.headers.get('content-type') || '';
+        // 1. 안전하게 본문(rawText) 추출
+        const rawText = await request.text();
 
-        if (contentType.includes('application/json')) {
-            body = await request.json();
+        if (!rawText || rawText.trim() === '') {
+            // 본문이 비어있는 경우 URL 쿼리 파라미터 확인 (GET/POST searchParams 대응)
+            const { searchParams } = new URL(request.url);
+            const queryParams = Object.fromEntries(searchParams.entries());
+
+            if (Object.keys(queryParams).length > 0) {
+                body = queryParams;
+            } else {
+                // Beds24의 연결 테스트 Ping 또는 빈 헬스체크 요청일 경우 에러 없이 200 OK 반환
+                console.log('ℹ️ [Beds24 Webhook] 빈 페이로드 수신 (테스트 Ping 또는 헬스체크)');
+                return NextResponse.json({
+                    success: true,
+                    message: 'Empty webhook payload received (Ping/HealthCheck handled successfully)',
+                });
+            }
         } else {
-            // x-www-form-urlencoded 등 텍스트 또는 폼 데이터 대응
-            const rawText = await request.text();
+            // 본문이 있는 경우: JSON 파싱 우선 시도 -> 실패 시 폼 데이터(URLSearchParams) 변환
             try {
                 body = JSON.parse(rawText);
             } catch {
-                body = Object.fromEntries(new URLSearchParams(rawText));
+                try {
+                    const parsedForm = Object.fromEntries(new URLSearchParams(rawText));
+                    body = Object.keys(parsedForm).length > 0 ? parsedForm : { raw: rawText };
+                } catch {
+                    body = { raw: rawText };
+                }
             }
         }
 
