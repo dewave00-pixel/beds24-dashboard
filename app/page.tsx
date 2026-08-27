@@ -130,7 +130,7 @@ export default function DashboardPage() {
 
       {d.dailyModalType && (
         <DailyStatusModal
-          title={d.dailyModalType === 'today' ? '오늘 입/퇴실 현황' : '내일 입/퇴실 현황'}
+          title={d.dailyModalType === 'today' ? '오늘 체크인/체크아웃 현황' : '내일 체크인/체크아웃 현황'}
           dateStr={d.dailyModalType === 'today' ? d.todayStr : d.tomorrowStr}
           checkInBookings={d.dailyModalType === 'today' ? d.todayCheckIns : d.tomorrowCheckIns}
           checkOutBookings={d.dailyModalType === 'today' ? d.todayCheckOuts : d.tomorrowCheckOuts}

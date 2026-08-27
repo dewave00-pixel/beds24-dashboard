@@ -48,7 +48,7 @@ export function getUnitCleaningStatus(
         const isTurnaround = !!checkoutBooking;
         return {
             statusCode: 'URGENT_CHECKIN',
-            label: isTurnaround ? '🚨 오늘 입실 (당일 교대)' : '🚨 오늘 입실 예정',
+            label: isTurnaround ? '🚨 오늘 체크인 (당일 교대)' : '🚨 오늘 체크인 예정',
             subLabel: isTurnaround ? '체크아웃 + 체크인' : '신규 체크인',
             badgeBg: 'bg-rose-500 text-white',
             cardBg: 'bg-rose-50/80',
@@ -63,7 +63,7 @@ export function getUnitCleaningStatus(
     if (checkoutBooking) {
         return {
             statusCode: 'STANDBY_CHECKOUT_ONLY',
-            label: '⏳ 오늘 퇴실 (당일 입실 없음)',
+            label: '⏳ 오늘 체크아웃 (당일 체크인 없음)',
             subLabel: '여유 청소 가능',
             badgeBg: 'bg-amber-500 text-white',
             cardBg: 'bg-amber-50/60',

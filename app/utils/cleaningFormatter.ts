@@ -23,7 +23,7 @@ export function generateCleaningShareText(
         const unit = ALL_UNITS.find((u) => u.key === key);
         const unitName = unit ? `${unit.propName} ${unit.displayName}` : key;
 
-        // 1. 해당 세부 호실(roomId + unitId)의 오늘 퇴실 / 입실 예약 정확한 매칭
+        // 1. 해당 세부 호실(roomId + unitId)의 오늘 체크아웃 / 체크인 예약 정확한 매칭
         const checkoutBooking = bookings.find((b) => {
             if (!isValidBooking(b) || b.departure !== dateStr) return false;
             const isRoomMatch = Number(b.roomId) === unit?.roomId;
@@ -38,16 +38,16 @@ export function generateCleaningShareText(
             return isRoomMatch && isUnitMatch;
         });
 
-        // 2. 퇴실 시간 계산 (레이트체크아웃 태그 반영)
+        // 2. 체크아웃 시간 계산 (레이트체크아웃 태그 반영)
         const checkoutNoteData = checkoutBooking
             ? bookingNotes[checkoutBooking.id] || bookingNotes[Number(checkoutBooking.id)] || bookingNotes[String(checkoutBooking.id)]
             : null;
         const lateTag = checkoutNoteData?.tags?.find((t) => t.startsWith('late_'));
         const checkoutTime = lateTag
-            ? `${lateTag.replace('late_', '')} (레이트 퇴실 ⏰)`
+            ? `${lateTag.replace('late_', '')} (레이트 체크아웃 ⏰)`
             : '11:00 (체크아웃)';
 
-        // 3. 입실 시간 계산 (얼리체크인 태그 반영)
+        // 3. 체크인 시간 계산 (얼리체크인 태그 반영)
         const checkinNoteData = checkinBooking
             ? bookingNotes[checkinBooking.id] || bookingNotes[Number(checkinBooking.id)] || bookingNotes[String(checkinBooking.id)]
             : null;
@@ -71,16 +71,16 @@ export function generateCleaningShareText(
         // 5. 메모 취합
         const notes: string[] = [];
         if (checkoutNoteData?.note?.trim()) {
-            notes.push(`[퇴실] ${checkoutNoteData.note.trim()}`);
+            notes.push(`[체크아웃] ${checkoutNoteData.note.trim()}`);
         }
         if (checkinNoteData?.note?.trim()) {
-            notes.push(`[입실] ${checkinNoteData.note.trim()}`);
+            notes.push(`[체크인] ${checkinNoteData.note.trim()}`);
         }
 
         // 6. 호실별 텍스트 조립
         text += `${index + 1}. 🏠 ${unitName}\n`;
-        text += `   • 퇴실: ${checkoutBooking ? checkoutTime : '없음 (전일 공실)'}\n`;
-        text += `   • 입실: ${checkinBooking ? checkinTime : '없음 (당일 공실)'}\n`;
+        text += `   • 체크아웃: ${checkoutBooking ? checkoutTime : '없음 (전일 공실)'}\n`;
+        text += `   • 체크인: ${checkinBooking ? checkinTime : '없음 (당일 공실)'}\n`;
         if (uniqueTags) text += `   • 특이사항: ${uniqueTags}\n`;
         if (notes.length > 0) text += `   • 메모: ${notes.join(' / ')}\n`;
         text += `\n`;

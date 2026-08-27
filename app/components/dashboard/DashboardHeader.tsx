@@ -81,9 +81,9 @@ export default function DashboardHeader({
                 >
                     <span className="text-[10px] font-black tracking-tight text-blue-600">오늘 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
-                        <span>입실 {todayCheckIns.length}</span>
+                        <span>체크인 {todayCheckIns.length}</span>
                         <span className="text-blue-300">|</span>
-                        <span>퇴실 {todayCheckOuts.length}</span>
+                        <span>체크아웃 {todayCheckOuts.length}</span>
                     </span>
                 </button>
 
@@ -95,9 +95,9 @@ export default function DashboardHeader({
                 >
                     <span className="text-[10px] font-black tracking-tight text-slate-500">내일 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
-                        <span>입실 {tomorrowCheckIns.length}</span>
+                        <span>체크인 {tomorrowCheckIns.length}</span>
                         <span className="text-slate-300">|</span>
-                        <span>퇴실 {tomorrowCheckOuts.length}</span>
+                        <span>체크아웃 {tomorrowCheckOuts.length}</span>
                     </span>
                 </button>
 

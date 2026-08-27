@@ -55,7 +55,7 @@ export default function CleaningPage() {
                                     청소 배정 & 카톡 발송 보드
                                 </h1>
                                 <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
-                                    숙소별 그리드 및 당일 입실/퇴실 우선순위 관리
+                                    숙소별 그리드 및 당일 체크인/체크아웃 우선순위 관리
                                 </span>
                             </div>
                         </div>
