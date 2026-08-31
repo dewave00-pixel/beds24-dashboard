@@ -146,13 +146,13 @@ export default function BookingModal({
                             <span className="text-[11px] text-gray-500 font-bold block">예약 번호</span>
                             <span className="font-bold text-gray-900 text-xs md:text-sm font-mono">{booking.id}</span>
                         </div>
-                        <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                        <div>
                             <span className="text-[11px] text-gray-500 font-bold block">체크인</span>
-                            <span className="font-black text-xs text-gray-800">{booking.arrival}</span>
+                            <span className="font-extrabold text-blue-700">{booking.arrival}</span>
                         </div>
-                        <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                        <div>
                             <span className="text-[11px] text-gray-500 font-bold block">체크아웃</span>
-                            <span className="font-black text-xs text-gray-800">{booking.departure}</span>
+                            <span className="font-extrabold text-orange-700">{booking.departure}</span>
                         </div>
                         <div>
                             <span className="text-[11px] text-gray-500 font-bold block">투숙 인원</span>
