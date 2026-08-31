@@ -38,20 +38,49 @@ export function useCleaningBoard() {
         });
     }, [dash.bookings, selectedDate]);
 
+    // 스태프 이름 맵 DB 불러오기
     useEffect(() => {
+        // 1. 빠른 초기 렌더링을 위해 로컬 캐시 우선 적용
         const saved = localStorage.getItem('beds24_staff_map');
         if (saved) {
             try {
                 setStaffMap(JSON.parse(saved));
             } catch (e) {
-                console.error('Failed to parse staff map');
+                console.error('Failed to parse cached staff map');
             }
         }
+
+        // 2. Supabase DB에서 최신 스태프 명단 동기화
+        const fetchStaffMapFromDB = async () => {
+            try {
+                const res = await fetch('/api/staff');
+                const result = await res.json();
+                if (result.success && result.data) {
+                    setStaffMap(result.data);
+                    localStorage.setItem('beds24_staff_map', JSON.stringify(result.data));
+                }
+            } catch (err) {
+                console.error('스태프 목록 DB 불러오기 실패:', err);
+            }
+        };
+
+        fetchStaffMapFromDB();
     }, []);
 
-    const updateStaffMap = (newMap: Record<string, string>) => {
+    // 스태프 이름 맵 업데이트 (화면 즉시 반영 + DB 영구 저장)
+    const updateStaffMap = async (newMap: Record<string, string>) => {
         setStaffMap(newMap);
         localStorage.setItem('beds24_staff_map', JSON.stringify(newMap));
+
+        try {
+            await fetch('/api/staff', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ staffMap: newMap }),
+            });
+        } catch (err) {
+            console.error('스태프 목록 DB 저장 실패:', err);
+        }
     };
 
     const staffList = useMemo(() => Object.values(staffMap), [staffMap]);

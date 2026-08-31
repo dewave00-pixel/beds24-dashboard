@@ -10,11 +10,13 @@ export interface DashboardHeaderProps {
     todayCheckOuts: Booking[];
     tomorrowCheckIns: Booking[];
     tomorrowCheckOuts: Booking[];
+    unallocatedCount?: number;
     viewMode: 'vertical' | 'horizontal';
     loading: boolean;
     isSyncing?: boolean;
     onOpenMobileMenu?: () => void;
     onOpenDailyModal: (type: 'today' | 'tomorrow') => void;
+    onOpenUnallocatedModal?: () => void;
     onToggleViewMode: (mode: 'vertical' | 'horizontal') => void;
     onReload: () => Promise<void> | void;
     onSyncWithBeds24?: () => Promise<void> | void;
@@ -26,11 +28,13 @@ export default function DashboardHeader({
     todayCheckOuts = [],
     tomorrowCheckIns = [],
     tomorrowCheckOuts = [],
+    unallocatedCount = 0,
     viewMode = 'vertical',
     loading = false,
     isSyncing = false,
     onOpenMobileMenu,
     onOpenDailyModal,
+    onOpenUnallocatedModal,
     onToggleViewMode,
     onReload,
     onSyncWithBeds24,
@@ -77,9 +81,9 @@ export default function DashboardHeader({
                 >
                     <span className="text-[10px] font-black tracking-tight text-blue-600">오늘 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
-                        <span>입실 {todayCheckIns.length}</span>
+                        <span>체크인 {todayCheckIns.length}</span>
                         <span className="text-blue-300">|</span>
-                        <span>퇴실 {todayCheckOuts.length}</span>
+                        <span>체크아웃 {todayCheckOuts.length}</span>
                     </span>
                 </button>
 
@@ -91,11 +95,28 @@ export default function DashboardHeader({
                 >
                     <span className="text-[10px] font-black tracking-tight text-slate-500">내일 현황</span>
                     <span className="text-xs font-black flex items-center gap-1">
-                        <span>입실 {tomorrowCheckIns.length}</span>
+                        <span>체크인 {tomorrowCheckIns.length}</span>
                         <span className="text-slate-300">|</span>
-                        <span>퇴실 {tomorrowCheckOuts.length}</span>
+                        <span>체크아웃 {tomorrowCheckOuts.length}</span>
                     </span>
                 </button>
+
+                {/* ⚠️ 미배정 예약 알림 버튼 (미배정이 1건 이상일 때만 표시) */}
+                {unallocatedCount > 0 && (
+                    <button
+                        type="button"
+                        onClick={onOpenUnallocatedModal}
+                        title="호실 미배정 예약 목록 열기"
+                        className="px-2.5 py-1 md:px-3 bg-amber-50 hover:bg-amber-100 border-2 border-amber-400 text-amber-950 rounded-xl transition flex flex-col items-start cursor-pointer shadow-sm animate-pulse text-left"
+                    >
+                        <span className="text-[10px] font-black tracking-tight text-amber-700 flex items-center gap-0.5">
+                            <span>⚠️</span> 호실 미배정
+                        </span>
+                        <span className="text-xs font-black text-rose-600">
+                            {unallocatedCount}건 배정 필요
+                        </span>
+                    </button>
+                )}
 
                 {/* 🔄 세로/가로 뷰 전환 토글 버튼 */}
                 <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200">

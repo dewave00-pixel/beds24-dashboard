@@ -114,7 +114,7 @@ export default function CleaningGroupGrid({
                         📊 {dateStr} 현황:
                     </span>
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black">
-                        <span>🚨 당일 입실 (우선):</span>
+                        <span>🚨 당일 체크인 (우선):</span>
                         <span className="text-rose-900 font-black">{totalUrgentCheckinCount}곳</span>
                     </div>
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-black">

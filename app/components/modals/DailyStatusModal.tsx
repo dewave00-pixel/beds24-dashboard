@@ -70,11 +70,11 @@ export default function DailyStatusModal({
                     {/* 🖥️ PC 전용: 정확한 50:50 좌우 반반 분할 뷰 */}
                     <div className="daily-modal-desktop">
 
-                        {/* 좌측 50%: 체크인(입실) 컬럼 */}
+                        {/* 좌측 50%: 체크인 컬럼 */}
                         <div className="daily-modal-col-half flex flex-col gap-2.5 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <div className="flex items-center justify-between pb-2 border-b-2 border-blue-500">
                                 <span className="font-black text-sm text-blue-900 flex items-center gap-1">
-                                    <span>📥</span> 오늘 입실 (체크인)
+                                    <span>📥</span> 오늘 체크인
                                 </span>
                                 <span className="text-xs font-black bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
                                     {checkInBookings.length}건
@@ -84,7 +84,7 @@ export default function DailyStatusModal({
                             <div className="flex flex-col gap-2 max-h-[58vh] overflow-y-auto pr-1">
                                 {checkInBookings.length === 0 ? (
                                     <div className="text-center py-12 text-gray-400 font-bold text-xs bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                                        입실 예정 예약이 없습니다.
+                                        체크인 예정 예약이 없습니다.
                                     </div>
                                 ) : (
                                     checkInBookings.map((b) => (
@@ -100,11 +100,11 @@ export default function DailyStatusModal({
                             </div>
                         </div>
 
-                        {/* 우측 50%: 체크아웃(퇴실) 컬럼 */}
+                        {/* 우측 50%: 체크아웃 컬럼 */}
                         <div className="daily-modal-col-half flex flex-col gap-2.5 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
                             <div className="flex items-center justify-between pb-2 border-b-2 border-orange-500">
                                 <span className="font-black text-sm text-orange-900 flex items-center gap-1">
-                                    <span>📤</span> 오늘 퇴실 (체크아웃)
+                                    <span>📤</span> 오늘 체크아웃
                                 </span>
                                 <span className="text-xs font-black bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full">
                                     {checkOutBookings.length}건
@@ -114,7 +114,7 @@ export default function DailyStatusModal({
                             <div className="flex flex-col gap-2 max-h-[58vh] overflow-y-auto pr-1">
                                 {checkOutBookings.length === 0 ? (
                                     <div className="text-center py-12 text-gray-400 font-bold text-xs bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                                        퇴실 예정 예약이 없습니다.
+                                        체크아웃 예정 예약이 없습니다.
                                     </div>
                                 ) : (
                                     checkOutBookings.map((b) => (
@@ -137,7 +137,7 @@ export default function DailyStatusModal({
                         {mobileTab === 'checkIn' ? (
                             checkInBookings.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400 font-bold text-xs bg-white rounded-xl border border-dashed border-gray-300">
-                                    입실 예정 예약이 없습니다.
+                                    체크인 예정 예약이 없습니다.
                                 </div>
                             ) : (
                                 checkInBookings.map((b) => (
@@ -153,7 +153,7 @@ export default function DailyStatusModal({
                         ) : (
                             checkOutBookings.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400 font-bold text-xs bg-white rounded-xl border border-dashed border-gray-300">
-                                    퇴실 예정 예약이 없습니다.
+                                    체크아웃 예정 예약이 없습니다.
                                 </div>
                             ) : (
                                 checkOutBookings.map((b) => (

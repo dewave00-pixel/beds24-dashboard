@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Booking } from '../types';
-import { isValidBooking } from '../utils/bookingUtils';
+import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
 
 export interface BookingNoteData {
     note: string;
@@ -29,6 +29,7 @@ export function useDashboard() {
     const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
     const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
     const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+    const [isUnallocatedModalOpen, setIsUnallocatedModalOpen] = useState<boolean>(false);
 
     // 날짜 계산 기준 (기본값: 오늘 기준 이틀 전부터)
     const [startDate, setStartDate] = useState<Date>(() => {
@@ -141,6 +142,9 @@ export function useDashboard() {
     const tomorrowCheckIns = activeBookings.filter((b) => b.arrival === tomorrowStr);
     const tomorrowCheckOuts = activeBookings.filter((b) => b.departure === tomorrowStr);
 
+    // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않은 예약)
+    const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b));
+
     // 14일 날짜 배열 생성
     const timelineDates: string[] = [];
     for (let i = 0; i < displayDaysCount; i++) {
@@ -165,33 +169,38 @@ export function useDashboard() {
         setSelectedDate((prev) => (prev === dStr ? null : dStr));
     };
 
+    const handleBookingClick = (e?: React.MouseEvent, booking?: Booking) => {
+        if (e && typeof e.stopPropagation === 'function') {
+            e.stopPropagation();
+        }
+        if (booking) {
+            openBookingDetail(booking);
+        }
+    };
+
     const openBookingDetail = (booking: Booking) => {
         setActiveBooking(booking);
-        const existing = bookingNotes[booking.id] || bookingNotes[Number(booking.id)] || bookingNotes[String(booking.id)];
-        setMemoInput(existing ? existing.note : '');
-        setSelectedTags(existing ? existing.tags || [] : []);
+        const data = bookingNotes[booking.id] || { note: '', tags: [] };
+        setMemoInput(data.note || '');
+        setSelectedTags(data.tags || []);
     };
 
-    const handleBookingClick = (e: React.MouseEvent, booking: Booking) => {
-        e.stopPropagation();
-        openBookingDetail(booking);
-    };
-
-    const handleToggleTag = (tagKey: string) => {
+    const handleToggleTag = (tag: string) => {
         setSelectedTags((prev) =>
-            prev.includes(tagKey) ? prev.filter((k) => k !== tagKey) : [...prev, tagKey]
+            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
         );
     };
 
-    // 메모 & 태그 저장
-    const handleSaveMemo = async () => {
-        if (!activeBooking) return;
+    const handleSaveMemo = async (bookingId?: number | any) => {
+        const targetId = typeof bookingId === 'number' ? bookingId : activeBooking?.id;
+        if (!targetId || typeof targetId !== 'number') return;
+
         try {
             const res = await fetch('/api/notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    bookingId: activeBooking.id,
+                    bookingId: Number(targetId),
                     note: memoInput,
                     tags: selectedTags,
                 }),
@@ -200,34 +209,66 @@ export function useDashboard() {
             if (data.success) {
                 setBookingNotes((prev) => ({
                     ...prev,
-                    [activeBooking.id]: { note: memoInput, tags: selectedTags },
+                    [targetId]: { note: memoInput, tags: selectedTags },
                 }));
+                setActiveBooking(null);
             }
         } catch (e) {
-            console.error('메모/태그 저장 실패:', e);
+            console.error('메모 저장 실패:', e);
         }
-        setActiveBooking(null);
     };
 
-    // 메모 & 태그 삭제
-    const handleDeleteMemo = async () => {
-        if (!activeBooking) return;
+    const handleDeleteMemo = async (bookingId?: number | any) => {
+        const targetId = typeof bookingId === 'number' ? bookingId : activeBooking?.id;
+        if (!targetId || typeof targetId !== 'number') return;
+
         try {
-            const res = await fetch(`/api/notes?bookingId=${activeBooking.id}`, {
+            const res = await fetch(`/api/notes?bookingId=${Number(targetId)}`, {
                 method: 'DELETE',
             });
             const data = await res.json();
             if (data.success) {
                 setBookingNotes((prev) => {
-                    const updated = { ...prev };
-                    delete updated[activeBooking.id];
-                    return updated;
+                    const next = { ...prev };
+                    delete next[targetId];
+                    return next;
                 });
+                setMemoInput('');
+                setSelectedTags([]);
+                setActiveBooking(null);
             }
         } catch (e) {
-            console.error('메모/태그 삭제 실패:', e);
+            console.error('메모 삭제 실패:', e);
         }
-        setActiveBooking(null);
+    };
+
+    // 🏠 호실 배정 변경 (Beds24 API + Supabase DB + 로컬 상태 즉시 동기화)
+    const handleAssignUnit = async (bookingId: number, roomId: number, unitId: number): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const res = await fetch('/api/bookings/assign-unit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, roomId, unitId }),
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                // 로컬 예약 목록 상태 즉시 업데이트
+                setBookings((prev) =>
+                    prev.map((b) => (b.id === bookingId ? { ...b, roomId, unitId } : b))
+                );
+                // 모달 내 activeBooking도 업데이트
+                if (activeBooking && activeBooking.id === bookingId) {
+                    setActiveBooking((prev) => (prev ? { ...prev, roomId, unitId } : null));
+                }
+                return { success: true };
+            } else {
+                return { success: false, error: result.error || '호실 배정 실패' };
+            }
+        } catch (err: any) {
+            console.error('호실 배정 API 호출 에러:', err);
+            return { success: false, error: err.message || '네트워크 오류가 발생했습니다.' };
+        }
     };
 
     return {
@@ -251,6 +292,8 @@ export function useDashboard() {
         setIsTotalNotesOpen,
         isSearchOpen,
         setIsSearchOpen,
+        isUnallocatedModalOpen,
+        setIsUnallocatedModalOpen,
         displayDaysCount,
         todayStr,
         tomorrowStr,
@@ -258,6 +301,7 @@ export function useDashboard() {
         todayCheckOuts,
         tomorrowCheckIns,
         tomorrowCheckOuts,
+        unallocatedBookings,
         timelineDates,
         moveDays,
         goToday,
@@ -273,5 +317,6 @@ export function useDashboard() {
         handleToggleTag,
         handleSaveMemo,
         handleDeleteMemo,
+        handleAssignUnit,
     };
 }

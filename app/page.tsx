@@ -13,6 +13,7 @@ import BookingModal from './components/modals/BookingModal';
 import DailyStatusModal from './components/modals/DailyStatusModal';
 import TotalNotesModal from './components/modals/TotalNotesModal';
 import SearchModal from './components/modals/SearchModal';
+import UnallocatedBookingsModal from './components/modals/UnallocatedBookingsModal';
 import ZoomableTimelineWrapper from './components/timeline/ZoomableTimelineWrapper';
 
 const ROW_HEIGHT = 65;
@@ -40,11 +41,13 @@ export default function DashboardPage() {
           todayCheckOuts={d.todayCheckOuts}
           tomorrowCheckIns={d.tomorrowCheckIns}
           tomorrowCheckOuts={d.tomorrowCheckOuts}
+          unallocatedCount={d.unallocatedBookings.length}
           viewMode={d.viewMode}
           loading={d.loading}
           isSyncing={d.isSyncing}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenDailyModal={d.setDailyModalType}
+          onOpenUnallocatedModal={() => d.setIsUnallocatedModalOpen(true)}
           onToggleViewMode={d.toggleViewMode}
           onReload={d.reloadAll}
           onSyncWithBeds24={d.syncWithBeds24}
@@ -113,19 +116,21 @@ export default function DashboardPage() {
       {d.activeBooking && (
         <BookingModal
           booking={d.activeBooking}
+          allBookings={d.bookings}
           memoInput={d.memoInput}
           setMemoInput={d.setMemoInput}
           selectedTags={d.selectedTags}
           onToggleTag={d.handleToggleTag}
-          onSave={d.handleSaveMemo}
-          onDelete={d.handleDeleteMemo}
+          onSave={() => d.handleSaveMemo()}
+          onDelete={() => d.handleDeleteMemo()}
           onClose={() => d.setActiveBooking(null)}
+          onAssignUnit={d.handleAssignUnit}
         />
       )}
 
       {d.dailyModalType && (
         <DailyStatusModal
-          title={d.dailyModalType === 'today' ? '오늘 입/퇴실 현황' : '내일 입/퇴실 현황'}
+          title={d.dailyModalType === 'today' ? '오늘 체크인/체크아웃 현황' : '내일 체크인/체크아웃 현황'}
           dateStr={d.dailyModalType === 'today' ? d.todayStr : d.tomorrowStr}
           checkInBookings={d.dailyModalType === 'today' ? d.todayCheckIns : d.tomorrowCheckIns}
           checkOutBookings={d.dailyModalType === 'today' ? d.todayCheckOuts : d.tomorrowCheckOuts}
@@ -156,6 +161,19 @@ export default function DashboardPage() {
           onClose={() => d.setIsSearchOpen(false)}
           onSelectBooking={(b) => {
             d.setIsSearchOpen(false);
+            d.openBookingDetail(b);
+          }}
+        />
+      )}
+
+      {d.isUnallocatedModalOpen && (
+        <UnallocatedBookingsModal
+          bookings={d.unallocatedBookings}
+          allBookings={d.bookings}
+          bookingNotes={d.bookingNotes}
+          onClose={() => d.setIsUnallocatedModalOpen(false)}
+          onAssignUnit={d.handleAssignUnit}
+          onSelectBooking={(b) => {
             d.openBookingDetail(b);
           }}
         />

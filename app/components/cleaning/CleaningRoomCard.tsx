@@ -158,7 +158,7 @@ export default function CleaningRoomCard({
                     {checkoutBooking && (
                         <div className="text-amber-800 flex items-center justify-between">
                             <span className="flex items-center gap-0.5">
-                                <span className="text-amber-600">📤</span> 퇴실
+                                <span className="text-amber-600">📤</span> 체크아웃
                             </span>
                             <span className="text-[9.5px] text-gray-600 truncate max-w-[110px]">
                                 {checkoutBooking.firstName || checkoutBooking.lastName || '게스트'}
@@ -168,7 +168,7 @@ export default function CleaningRoomCard({
                     {checkinBooking && (
                         <div className="text-rose-700 flex items-center justify-between">
                             <span className="flex items-center gap-0.5">
-                                <span className="text-rose-600">📥</span> 입실
+                                <span className="text-rose-600">📥</span> 체크인
                             </span>
                             <span className="text-[9.5px] text-gray-600 truncate max-w-[110px]">
                                 {checkinBooking.firstName || checkinBooking.lastName || '게스트'}

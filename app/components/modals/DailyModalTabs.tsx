@@ -15,7 +15,7 @@ export default function DailyModalTabs({
 }: DailyModalTabsProps) {
     return (
         <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100 rounded-xl md:hidden">
-            {/* 모바일 입실 탭 */}
+            {/* 모바일 체크인 탭 */}
             <button
                 type="button"
                 onClick={() => onTabChange('checkIn')}
@@ -24,7 +24,7 @@ export default function DailyModalTabs({
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
             >
-                <span>📥 입실 목록</span>
+                <span>📥 체크인 목록</span>
                 <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${activeTab === 'checkIn' ? 'bg-white text-blue-600' : 'bg-gray-200 text-gray-700'
                         }`}
@@ -33,7 +33,7 @@ export default function DailyModalTabs({
                 </span>
             </button>
 
-            {/* 모바일 퇴실 탭 */}
+            {/* 모바일 체크아웃 탭 */}
             <button
                 type="button"
                 onClick={() => onTabChange('checkOut')}
@@ -42,7 +42,7 @@ export default function DailyModalTabs({
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
             >
-                <span>📤 퇴실 목록</span>
+                <span>📤 체크아웃 목록</span>
                 <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${activeTab === 'checkOut' ? 'bg-white text-orange-600' : 'bg-gray-200 text-gray-700'
                         }`}
