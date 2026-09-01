@@ -16,6 +16,12 @@ export interface BookingNoteData {
     tags: string[];
 }
 
+export interface UnitPropertyInfo {
+    doorPassword: string;
+    maxGuests: number;
+    repairNotes: string;
+}
+
 export function useDashboard() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -31,6 +37,8 @@ export function useDashboard() {
     const [memoInput, setMemoInput] = useState<string>('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [bookingNotes, setBookingNotes] = useState<Record<string | number, BookingNoteData>>({});
+    // 🔑 숙소 호실별 비밀번호/정보 상태
+    const [propertiesInfo, setPropertiesInfo] = useState<Record<string, UnitPropertyInfo>>({});
 
     // 팝업 모달 상태
     const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
@@ -78,9 +86,22 @@ export function useDashboard() {
         }
     };
 
+    // 3. Supabase 숙소 호실별 비밀번호/정보 불러오기
+    const fetchPropertiesInfo = async () => {
+        try {
+            const res = await fetch('/api/properties-info', { cache: 'no-store' });
+            const data = await res.json();
+            if (data.success && data.data) {
+                setPropertiesInfo(data.data);
+            }
+        } catch (e) {
+            console.error('숙소 정보 불러오기 실패:', e);
+        }
+    };
+
     // 일반 새로고침 (DB 캐시 기반 빠른 재조회)
     const reloadAll = async () => {
-        await Promise.all([fetchReservations(false), fetchNotes()]);
+        await Promise.all([fetchReservations(false), fetchNotes(), fetchPropertiesInfo()]);
     };
 
     // 🔄 Beds24 실시간 강제 동기화 (버튼 클릭 시 Beds24 본사 직접 긁어와 Supabase 정합성 맞추기)
@@ -88,7 +109,7 @@ export function useDashboard() {
         if (isSyncing) return;
         setIsSyncing(true);
         try {
-            await Promise.all([fetchReservations(true), fetchNotes()]);
+            await Promise.all([fetchReservations(true), fetchNotes(), fetchPropertiesInfo()]);
         } catch (e) {
             console.error('Beds24 실시간 동기화 오류:', e);
         } finally {
@@ -326,6 +347,7 @@ export function useDashboard() {
         setMemoInput,
         selectedTags,
         bookingNotes,
+        propertiesInfo,
         dailyModalType,
         setDailyModalType,
         isTotalNotesOpen,

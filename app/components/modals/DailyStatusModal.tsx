@@ -16,6 +16,7 @@ interface DailyStatusModalProps {
     checkInBookings: Booking[];
     checkOutBookings: Booking[];
     bookingNotes: Record<string | number, BookingNoteData>;
+    propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
     onClose: () => void;
     onSelectBooking: (booking: Booking) => void;
 }
@@ -26,6 +27,7 @@ export default function DailyStatusModal({
     checkInBookings,
     checkOutBookings,
     bookingNotes,
+    propertiesInfo,
     onClose,
     onSelectBooking,
 }: DailyStatusModalProps) {
@@ -93,6 +95,7 @@ export default function DailyStatusModal({
                                             booking={b}
                                             type="checkIn"
                                             bookingNotes={bookingNotes}
+                                            propertiesInfo={propertiesInfo}
                                             onSelectBooking={onSelectBooking}
                                         />
                                     ))
@@ -123,6 +126,7 @@ export default function DailyStatusModal({
                                             booking={b}
                                             type="checkOut"
                                             bookingNotes={bookingNotes}
+                                            propertiesInfo={propertiesInfo}
                                             onSelectBooking={onSelectBooking}
                                         />
                                     ))
@@ -146,6 +150,7 @@ export default function DailyStatusModal({
                                         booking={b}
                                         type="checkIn"
                                         bookingNotes={bookingNotes}
+                                        propertiesInfo={propertiesInfo}
                                         onSelectBooking={onSelectBooking}
                                     />
                                 ))
@@ -162,6 +167,7 @@ export default function DailyStatusModal({
                                         booking={b}
                                         type="checkOut"
                                         bookingNotes={bookingNotes}
+                                        propertiesInfo={propertiesInfo}
                                         onSelectBooking={onSelectBooking}
                                     />
                                 ))
