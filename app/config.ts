@@ -54,6 +54,7 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
 export const ALL_UNITS: UnitConfig[] = PROPERTY_GROUPS.flatMap((group) =>
     group.units.map((unit) => ({
         ...unit,
+        unitKey: unit.key, // 📌 표준 식별자 보장
         propName: group.name,
         themeClass: group.themeClass,
     }))

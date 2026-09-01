@@ -15,6 +15,11 @@ export const DEFAULT_STAFF_MAP: Record<string, string> = {
 export function useCleaningBoard() {
     const dash = useDashboard();
     const [selectedDate, setSelectedDate] = useState<string>(dash.todayStr);
+
+    // ⏰ 자정에 오늘 날짜가 갱신되면 청소 기준일도 자동 갱신
+    useEffect(() => {
+        setSelectedDate(dash.todayStr);
+    }, [dash.todayStr]);
     
     // 상태 기반 담당자 맵
     const [staffMap, setStaffMap] = useState<Record<string, string>>(DEFAULT_STAFF_MAP);

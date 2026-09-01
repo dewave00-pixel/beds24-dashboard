@@ -20,6 +20,7 @@ export interface Booking {
 // 세부 호실/유닛 정보 구조 정의
 export interface UnitConfig {
     key: string;
+    unitKey?: string; // 📌 호실 고유 식별자 표준 키 (key와 동일한 값 보장)
     roomId: number;
     unitId?: number;
     propName?: string;
