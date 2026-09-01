@@ -125,6 +125,7 @@ export default function DashboardPage() {
           onDelete={() => d.handleDeleteMemo()}
           onClose={() => d.setActiveBooking(null)}
           onAssignUnit={d.handleAssignUnit}
+          propertiesInfo={d.propertiesInfo}
         />
       )}
 
@@ -135,6 +136,7 @@ export default function DashboardPage() {
           checkInBookings={d.dailyModalType === 'today' ? d.todayCheckIns : d.tomorrowCheckIns}
           checkOutBookings={d.dailyModalType === 'today' ? d.todayCheckOuts : d.tomorrowCheckOuts}
           bookingNotes={d.bookingNotes}
+          propertiesInfo={d.propertiesInfo}
           onClose={() => d.setDailyModalType(null)}
           onSelectBooking={(b) => {
             d.setDailyModalType(null);
