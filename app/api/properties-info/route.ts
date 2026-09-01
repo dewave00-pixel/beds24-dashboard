@@ -40,17 +40,19 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { id, roomId, unitId, doorPassword, maxGuests, repairNotes } = body;
+        // 📌 unitKey로 식별자 표준화 (기존 id 필드도 하위 호환)
+        const unitKey = body.unitKey || body.id;
+        const { roomId, unitId, doorPassword, maxGuests, repairNotes } = body;
 
-        if (!id) {
-            return NextResponse.json({ success: false, error: '호실 고유 식별자(id)가 필요합니다.' }, { status: 400 });
+        if (!unitKey) {
+            return NextResponse.json({ success: false, error: '호실 고유 식별자(unitKey)가 필요합니다.' }, { status: 400 });
         }
 
         const { data, error } = await supabase
             .from('properties_info')
             .upsert(
                 {
-                    id,
+                    id: unitKey, // Supabase 테이블의 PK 컬럼(id)에 unitKey 매핑
                     room_id: roomId ? Number(roomId) : null,
                     unit_id: unitId ? Number(unitId) : null,
                     door_password: doorPassword || '',

@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Booking } from '../types';
 import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
+import {
+    getKSTTodayStr,
+    getKSTTomorrowStr,
+    getKSTDateOffset,
+    formatKSTDate,
+    getMsUntilNextMidnightKST,
+} from '../utils/dateUtils';
 
 export interface BookingNoteData {
     note: string;
@@ -31,12 +38,8 @@ export function useDashboard() {
     const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
     const [isUnallocatedModalOpen, setIsUnallocatedModalOpen] = useState<boolean>(false);
 
-    // 날짜 계산 기준 (기본값: 오늘 기준 이틀 전부터)
-    const [startDate, setStartDate] = useState<Date>(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 2);
-        return d;
-    });
+    // 날짜 계산 기준 (기본값: 한국 시간 오늘 기준 이틀 전부터)
+    const [startDate, setStartDate] = useState<Date>(() => getKSTDateOffset(-2));
 
     const displayDaysCount = 14;
 
@@ -127,13 +130,52 @@ export function useDashboard() {
         updateZoomLevel(1.0);
     };
 
-    // 오늘 / 내일 날짜 계산
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    // 🕒 한국 시간(KST) 기준 오늘 / 내일 날짜 (자정 자동 갱신을 위해 상태로 관리)
+    const [todayStr, setTodayStr] = useState<string>(() => getKSTTodayStr());
+    const [tomorrowStr, setTomorrowStr] = useState<string>(() => getKSTTomorrowStr());
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    // ⏰ 자정(00:00:01) 감지 타이머 & 탭 활성화 시 자동 날짜 갱신
+    useEffect(() => {
+        let timerId: NodeJS.Timeout;
+
+        const scheduleMidnightCheck = () => {
+            const msUntilMidnight = getMsUntilNextMidnightKST();
+            timerId = setTimeout(() => {
+                // 자정 도달 시 새로운 날짜로 갱신
+                const newToday = getKSTTodayStr();
+                const newTomorrow = getKSTTomorrowStr();
+                setTodayStr(newToday);
+                setTomorrowStr(newTomorrow);
+                setStartDate(getKSTDateOffset(-2));
+                reloadAll();
+
+                // 다음 자정 예약
+                scheduleMidnightCheck();
+            }, msUntilMidnight);
+        };
+
+        scheduleMidnightCheck();
+
+        // 📱 브라우저 탭 복귀 / 절전 모드 해제 시 날짜 변경 감지
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                const currentToday = getKSTTodayStr();
+                if (currentToday !== todayStr) {
+                    setTodayStr(currentToday);
+                    setTomorrowStr(getKSTTomorrowStr());
+                    setStartDate(getKSTDateOffset(-2));
+                    reloadAll();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [todayStr]);
 
     // 🛡️ 유효한 예약만 입/퇴실 목록에 포함 (inquiry, cancelled 등 제외)
     const activeBookings = bookings.filter((b) => isValidBooking(b));
@@ -145,12 +187,12 @@ export function useDashboard() {
     // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않은 예약)
     const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b));
 
-    // 14일 날짜 배열 생성
+    // 14일 날짜 배열 생성 (한국 시간 기준 정확한 포맷팅)
     const timelineDates: string[] = [];
     for (let i = 0; i < displayDaysCount; i++) {
         const d = new Date(startDate);
         d.setDate(d.getDate() + i);
-        timelineDates.push(d.toISOString().split('T')[0]);
+        timelineDates.push(formatKSTDate(d));
     }
 
     const moveDays = (days: number) => {
@@ -160,9 +202,7 @@ export function useDashboard() {
     };
 
     const goToday = () => {
-        const d = new Date();
-        d.setDate(d.getDate() - 2);
-        setStartDate(d);
+        setStartDate(getKSTDateOffset(-2));
     };
 
     const handleDateClick = (dStr: string) => {

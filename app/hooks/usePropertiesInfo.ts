@@ -63,6 +63,7 @@ export function usePropertiesInfo() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    unitKey,
                     id: unitKey,
                     roomId,
                     unitId: unitId || null,
