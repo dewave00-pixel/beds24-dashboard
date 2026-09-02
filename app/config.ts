@@ -134,30 +134,67 @@ export interface BookingTagDef {
 export const EARLY_CHECKIN_HOURS = ['오후 1시', '오후 2시', '오후 3시', '오후 4시'];
 export const LATE_CHECKOUT_HOURS = ['오후 1시', '오후 2시', '오후 3시'];
 
-// 태그 키 문자열을 받아서 대시보드 카드에 노출할 뱃지 정보를 반환하는 모듈 함수
-export function parseBookingTag(tagKey: string): { label: string; icon: string } | null {
-    // 1. 얼리체크인 (예: early_오후 2시)
+export interface BookingTagBadgeInfo {
+    icon: string;
+    label: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+    badgeClass: string;
+}
+
+// 태그 키 문자열을 받아서 대시보드 카드에 노출할 뱃지 정보를 반환하는 모듈 함수 (상세 모달과 100% 동일 색상 테마)
+export function parseBookingTag(tagKey: string): BookingTagBadgeInfo | null {
+    // 1. 얼리체크인 (예: early_오후 2시) ➔ Blue
     if (tagKey.startsWith('early_')) {
         const timeStr = tagKey.replace('early_', '');
         const simpleTime = timeStr.replace('오후 ', '');
-        return { icon: '', label: `${simpleTime} 인` };
+        return {
+            icon: '',
+            label: `${simpleTime} 인`,
+            bgClass: 'bg-blue-600',
+            textClass: 'text-blue-900',
+            borderClass: 'border-blue-500',
+            badgeClass: 'bg-blue-50 text-blue-800 border border-blue-300 font-black',
+        };
     }
 
-    // 2. 레이트체크아웃 (예: late_오후 1시)
+    // 2. 레이트체크아웃 (예: late_오후 1시) ➔ Indigo
     if (tagKey.startsWith('late_')) {
         const timeStr = tagKey.replace('late_', '');
         const simpleTime = timeStr.replace('오후 ', '');
-        return { icon: '', label: `${simpleTime} 아웃` };
+        return {
+            icon: '',
+            label: `${simpleTime} 아웃`,
+            bgClass: 'bg-indigo-600',
+            textClass: 'text-indigo-900',
+            borderClass: 'border-indigo-500',
+            badgeClass: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-black',
+        };
     }
 
-    // 3. 청소안함
+    // 3. 청소안함 ➔ Rose
     if (tagKey === 'no_cleaning') {
-        return { icon: '', label: '청소안함' };
+        return {
+            icon: '',
+            label: '청소안함',
+            bgClass: 'bg-rose-600',
+            textClass: 'text-rose-900',
+            borderClass: 'border-rose-500',
+            badgeClass: 'bg-rose-50 text-rose-800 border border-rose-300 font-black',
+        };
     }
 
-    // 4. 수리/점검
+    // 4. 수리/점검 ➔ Amber
     if (tagKey === 'repair') {
-        return { icon: '', label: '수리' };
+        return {
+            icon: '',
+            label: '수리',
+            bgClass: 'bg-amber-500',
+            textClass: 'text-amber-950',
+            borderClass: 'border-amber-500',
+            badgeClass: 'bg-amber-50 text-amber-900 border border-amber-300 font-black',
+        };
     }
 
     return null;

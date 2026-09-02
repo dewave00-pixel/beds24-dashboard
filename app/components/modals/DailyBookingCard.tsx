@@ -126,7 +126,7 @@ export default function DailyBookingCard({
                         return (
                             <span
                                 key={tagKey}
-                                className="text-[9px] font-black px-1.5 py-0.5 rounded bg-black/80 text-white shadow-sm"
+                                className={`text-[9.5px] px-1.5 py-0.5 rounded shadow-2xs ${tagInfo.badgeClass}`}
                             >
                                 {tagInfo.label}
                             </span>

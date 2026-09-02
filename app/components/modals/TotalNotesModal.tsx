@@ -116,7 +116,7 @@ export default function TotalNotesModal({
                                                 return (
                                                     <span
                                                         key={tagKey}
-                                                        className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white shadow-sm"
+                                                        className={`text-[9.5px] px-1.5 py-0.5 rounded shadow-2xs ${tagInfo.badgeClass}`}
                                                     >
                                                         {tagInfo.label}
                                                     </span>
