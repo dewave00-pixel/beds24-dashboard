@@ -16,7 +16,7 @@ export function generateCleaningShareText(
 ): string {
     if (assignedUnits.length === 0) return '';
 
-    let text = `🧹 [청소 배정 안내 - ${staffName}님]\n📅 청소 일자: ${dateStr}\n배정 호실 수: 총 ${assignedUnits.length}개\n`;
+    let text = `[청소 배정 안내 - ${staffName}님]\n청소 일자: ${dateStr}\n배정 호실 수: 총 ${assignedUnits.length}개\n`;
     text += `---------------------------\n`;
 
     assignedUnits.forEach((key, index) => {
@@ -45,7 +45,7 @@ export function generateCleaningShareText(
             : null;
         const lateTag = checkoutNoteData?.tags?.find((t) => t.startsWith('late_'));
         const checkoutTime = lateTag
-            ? `${lateTag.replace('late_', '')} (레이트 체크아웃 ⏰)`
+            ? `${lateTag.replace('late_', '')} (레이트 체크아웃)`
             : '11:00 (체크아웃)';
 
         // 3. 체크인 시간 계산 (오늘 입실 손님의 얼리체크인 태그만 반영)
@@ -54,10 +54,10 @@ export function generateCleaningShareText(
             : null;
         const earlyTag = checkinNoteData?.tags?.find((t) => t.startsWith('early_'));
         const checkinTime = earlyTag
-            ? `${earlyTag.replace('early_', '')} (얼리 체크인 ⚡)`
+            ? `${earlyTag.replace('early_', '')} (얼리 체크인)`
             : '17:00 (체크인 예정)';
 
-        // 4. 🧹 순수 특이사항 태그 취합 (얼리/레이트 시간 태그는 상단 시간에 이미 표시되었으므로 중복 및 오염 제거)
+        // 4. 순수 특이사항 태그 취합 (얼리/레이트 시간 태그는 상단 시간에 이미 표시되었으므로 중복 및 오염 제거, 이모티콘 없이 텍스트만)
         const specialTags: string[] = [];
         [checkoutNoteData?.tags, checkinNoteData?.tags].forEach((tags) => {
             if (tags) {
@@ -65,14 +65,14 @@ export function generateCleaningShareText(
                     // early_ 와 late_ 는 시간 항목에 표시되므로 특이사항에서는 제외
                     if (!t.startsWith('early_') && !t.startsWith('late_')) {
                         const info = parseBookingTag(t);
-                        if (info) specialTags.push(`${info.icon} ${info.label}`);
+                        if (info) specialTags.push(info.label);
                     }
                 });
             }
         });
         const uniqueSpecialTags = Array.from(new Set(specialTags)).join(' / ');
 
-        // 5. 📝 메모 취합 (해당 호실의 정확한 예약에 달린 메모만 출력)
+        // 5. 메모 취합 (해당 호실의 정확한 예약에 달린 메모만 출력)
         const notes: string[] = [];
         if (checkoutNoteData?.note?.trim()) {
             notes.push(`[체크아웃] ${checkoutNoteData.note.trim()}`);
@@ -82,7 +82,7 @@ export function generateCleaningShareText(
         }
 
         // 6. 호실별 텍스트 조립
-        text += `${index + 1}. 🏠 ${unitName}\n`;
+        text += `${index + 1}. ${unitName}\n`;
         text += `   • 체크아웃: ${checkoutBooking ? checkoutTime : '없음 (전일 공실)'}\n`;
         text += `   • 체크인: ${checkinBooking ? checkinTime : '없음 (당일 공실)'}\n`;
         if (uniqueSpecialTags) text += `   • 특이사항: ${uniqueSpecialTags}\n`;
@@ -90,6 +90,6 @@ export function generateCleaningShareText(
         text += `\n`;
     });
 
-    text += `깨끗하고 안전한 청소 부탁드립니다! 감사합니다. 🙏`;
+    text += `깨끗하고 안전한 청소 부탁드립니다. 감사합니다.`;
     return text;
 }

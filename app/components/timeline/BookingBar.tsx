@@ -70,7 +70,7 @@ export default function BookingBar({
             <div className="flex flex-col leading-none overflow-hidden gap-0.5">
                 <div className="flex items-center justify-between">
                     <span className="text-[10px] md:text-[11px] font-black truncate">
-                        📥 {guestName}
+                        {guestName}
                     </span>
                     {isOneNight && (
                         <span className="text-[8.5px] font-black opacity-90 shrink-0 ml-1">

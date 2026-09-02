@@ -88,10 +88,10 @@ export default function TotalNotesModal({
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-1.5">
                                             <span className="font-black text-xs md:text-sm text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                                🏠 {getUnitName(b)}
+                                                {getUnitName(b)}
                                             </span>
                                             <span className="font-extrabold text-sm text-gray-900">
-                                                📥 {guestName}
+                                                {guestName}
                                             </span>
                                         </div>
 
@@ -103,24 +103,22 @@ export default function TotalNotesModal({
                                         </span>
                                     </div>
 
-                                    {/* 중단: 투숙 일정 및 태그 뱃지 목록 */}
-                                    <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-gray-600 font-bold bg-gray-50 p-2 rounded">
-                                        <div>
-                                            📅 {b.arrival} ~ {b.departure} ({b.numAdult || 1}명)
-                                        </div>
+                                    {/* 중단: 체크인/아웃 날짜 및 태그들 */}
+                                    <div className="flex items-center justify-between text-xs text-gray-600 font-bold border-t border-gray-100 pt-2">
+                                        <span>
+                                            {b.arrival} ~ {b.departure}
+                                        </span>
 
-                                        {/* 태그 뱃지들 */}
-                                        <div className="flex flex-wrap items-center gap-1">
+                                        <div className="flex flex-wrap gap-1">
                                             {tags.map((tagKey) => {
                                                 const tagInfo = parseBookingTag(tagKey);
                                                 if (!tagInfo) return null;
                                                 return (
                                                     <span
                                                         key={tagKey}
-                                                        className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white shadow-sm flex items-center gap-0.5"
+                                                        className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-gray-800 text-white shadow-sm"
                                                     >
-                                                        <span>{tagInfo.icon}</span>
-                                                        <span>{tagInfo.label}</span>
+                                                        {tagInfo.label}
                                                     </span>
                                                 );
                                             })}
@@ -129,8 +127,8 @@ export default function TotalNotesModal({
 
                                     {/* 하단: 특이사항 메모 텍스트 */}
                                     {memoText && (
-                                        <div className="p-2 bg-yellow-50 border border-yellow-300 rounded text-xs font-bold text-gray-900 flex items-start gap-1">
-                                            <span className="shrink-0">🔥</span>
+                                        <div className="p-2 bg-yellow-50 border border-yellow-300 rounded text-xs font-bold text-gray-900 flex items-start gap-1.5">
+                                            <span className="shrink-0 font-black text-amber-700">메모:</span>
                                             <span className="break-all">{memoText}</span>
                                         </div>
                                     )}

@@ -66,13 +66,13 @@ export default function CleaningBatchSender({
         }
 
         const shareText = `[숙소 청소 배정 안내]
-📅 일자: ${dateStr}
+일자: ${dateStr}
 
 오늘 청소 배정이 완료되었습니다.
 청소 관리 페이지에 로그인하여 본인 담당 호실과 특이사항(체크인·체크아웃/얼리/메모)을 확인해 주세요!
 
-🔗 청소 목록 확인: ${typeof window !== 'undefined' ? window.location.origin : ''}/cleaning
-깨끗하고 안전한 청소 부탁드립니다. 감사합니다. 🙏`;
+청소 목록 확인: ${typeof window !== 'undefined' ? window.location.origin : ''}/cleaning
+깨끗하고 안전한 청소 부탁드립니다. 감사합니다.`;
 
         executeShareOrCopy(
             '[청소 배정 전체 공지]',

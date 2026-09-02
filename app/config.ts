@@ -140,24 +140,24 @@ export function parseBookingTag(tagKey: string): { label: string; icon: string }
     if (tagKey.startsWith('early_')) {
         const timeStr = tagKey.replace('early_', '');
         const simpleTime = timeStr.replace('오후 ', '');
-        return { icon: '🕒', label: `${simpleTime} 인` };
+        return { icon: '', label: `${simpleTime} 인` };
     }
 
     // 2. 레이트체크아웃 (예: late_오후 1시)
     if (tagKey.startsWith('late_')) {
         const timeStr = tagKey.replace('late_', '');
         const simpleTime = timeStr.replace('오후 ', '');
-        return { icon: '⏱️', label: `${simpleTime} 아웃` };
+        return { icon: '', label: `${simpleTime} 아웃` };
     }
 
     // 3. 청소안함
     if (tagKey === 'no_cleaning') {
-        return { icon: '🧹', label: '청소안함' };
+        return { icon: '', label: '청소안함' };
     }
 
     // 4. 수리/점검
     if (tagKey === 'repair') {
-        return { icon: '🛠️', label: '수리' };
+        return { icon: '', label: '수리' };
     }
 
     return null;
