@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import DailyBookingCard from './DailyBookingCard';
 import DailyModalTabs from './DailyModalTabs';
+import { sortBookingsByEarlyCheckin } from '../../utils/bookingUtils';
 
 interface BookingNoteData {
     note: string;
@@ -32,6 +33,11 @@ export default function DailyStatusModal({
     onSelectBooking,
 }: DailyStatusModalProps) {
     const [mobileTab, setMobileTab] = useState<'checkIn' | 'checkOut'>('checkIn');
+
+    // 🕒 체크인 목록: 얼리체크인 빠른 시간 순서(13시 -> 14시 -> 15시 -> 16시 -> 일반)로 우선 정렬
+    const sortedCheckInBookings = useMemo(() => {
+        return sortBookingsByEarlyCheckin(checkInBookings, bookingNotes);
+    }, [checkInBookings, bookingNotes]);
 
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2.5 md:p-6 animate-fadeIn">
@@ -89,7 +95,7 @@ export default function DailyStatusModal({
                                         체크인 예정 예약이 없습니다.
                                     </div>
                                 ) : (
-                                    checkInBookings.map((b) => (
+                                    sortedCheckInBookings.map((b) => (
                                         <DailyBookingCard
                                             key={`pc-in-${b.id}`}
                                             booking={b}
@@ -144,7 +150,7 @@ export default function DailyStatusModal({
                                     체크인 예정 예약이 없습니다.
                                 </div>
                             ) : (
-                                checkInBookings.map((b) => (
+                                sortedCheckInBookings.map((b) => (
                                     <DailyBookingCard
                                         key={`mob-in-${b.id}`}
                                         booking={b}
