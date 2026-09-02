@@ -218,7 +218,7 @@ export default function HorizontalTimeline({
                                                 {/* 좌측: 이름 + 사이트 + [얼리 뱃지] */}
                                                 <div className="flex items-center gap-1 truncate shrink">
                                                     <span className="text-[10px] md:text-[11px] font-black truncate">
-                                                        📥 {guestName}
+                                                        {guestName}
                                                     </span>
                                                     <span className="text-[8.5px] opacity-85 font-bold truncate">
                                                         ({ch.name})

@@ -219,7 +219,7 @@ export default function SearchModal({
                                                 {/* 예약자명 */}
                                                 <div className="flex items-center gap-1 truncate">
                                                     <span className="font-black text-xs md:text-sm text-gray-900 truncate">
-                                                        📥 {guestName}
+                                                        {guestName}
                                                     </span>
                                                     <span className="text-[10px] md:text-xs text-gray-600 font-extrabold shrink-0">
                                                         ({b.numAdult || 1}명)
