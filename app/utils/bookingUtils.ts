@@ -95,3 +95,64 @@ export function findConflictingBookings(
         return isOverlap;
     });
 }
+
+/**
+ * 🕒 얼리체크인 태그에서 시간(분 단위) 추출
+ * - 오후 1시: 780분 (13:00)
+ * - 오후 2시: 840분 (14:00)
+ * - 오후 3시: 900분 (15:00)
+ * - 오후 4시: 960분 (16:00)
+ * - 얼리체크인 없음: 9999분 (맨 뒤 정렬)
+ */
+export function getEarlyCheckinMinutes(tags?: string[] | null): number {
+    if (!tags || tags.length === 0) return 9999;
+    const earlyTag = tags.find((t) => t.startsWith('early_') || t === 'early');
+    if (!earlyTag) return 9999;
+
+    if (earlyTag.includes('오후 1시')) return 13 * 60;
+    if (earlyTag.includes('오후 2시')) return 14 * 60;
+    if (earlyTag.includes('오후 3시')) return 15 * 60;
+    if (earlyTag.includes('오후 4시')) return 16 * 60;
+    if (earlyTag.includes('오전')) {
+        const m = earlyTag.match(/오전\s*(\d+)시/);
+        if (m) return parseInt(m[1], 10) * 60;
+    }
+    if (earlyTag.includes('오후')) {
+        const m = earlyTag.match(/오후\s*(\d+)시/);
+        if (m) {
+            let h = parseInt(m[1], 10);
+            if (h < 12) h += 12;
+            return h * 60;
+        }
+    }
+    const timeMatch = earlyTag.match(/(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+        return parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+    }
+    return 14 * 60; // 시간 미기재 시 기본 14시 취급
+}
+
+/**
+ * 📥 체크인 예약 목록을 '얼리체크인 빠른 시간 순서'로 우선 정렬
+ * 1순위: 얼리체크인 시간 빠른 순 (13시 -> 14시 -> 15시 -> 16시)
+ * 2순위: 얼리체크인 없는 일반 예약
+ */
+export function sortBookingsByEarlyCheckin(
+    bookings: Booking[],
+    bookingNotes: Record<string | number, { tags?: string[] }>
+): Booking[] {
+    return [...bookings].sort((a, b) => {
+        const aNotes = bookingNotes[a.id] || bookingNotes[Number(a.id)] || bookingNotes[String(a.id)];
+        const bNotes = bookingNotes[b.id] || bookingNotes[Number(b.id)] || bookingNotes[String(b.id)];
+
+        const aMinutes = getEarlyCheckinMinutes(aNotes?.tags);
+        const bMinutes = getEarlyCheckinMinutes(bNotes?.tags);
+
+        if (aMinutes !== bMinutes) {
+            return aMinutes - bMinutes; // 빠른 시간 순
+        }
+
+        return Number(a.id) - Number(b.id);
+    });
+}
+

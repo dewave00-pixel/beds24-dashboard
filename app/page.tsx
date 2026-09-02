@@ -139,7 +139,6 @@ export default function DashboardPage() {
           propertiesInfo={d.propertiesInfo}
           onClose={() => d.setDailyModalType(null)}
           onSelectBooking={(b) => {
-            d.setDailyModalType(null);
             d.openBookingDetail(b);
           }}
         />
@@ -151,7 +150,6 @@ export default function DashboardPage() {
           bookingNotes={d.bookingNotes}
           onClose={() => d.setIsTotalNotesOpen(false)}
           onSelectBooking={(b) => {
-            d.setIsTotalNotesOpen(false);
             d.openBookingDetail(b);
           }}
         />
@@ -162,7 +160,6 @@ export default function DashboardPage() {
           bookings={d.bookings}
           onClose={() => d.setIsSearchOpen(false)}
           onSelectBooking={(b) => {
-            d.setIsSearchOpen(false);
             d.openBookingDetail(b);
           }}
         />
