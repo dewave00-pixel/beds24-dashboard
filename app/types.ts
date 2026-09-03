@@ -15,6 +15,7 @@ export interface Booking {
     apiSourceId?: number;
     price?: number;
     notes?: string;
+    bookingTime?: string;
 }
 
 // 세부 호실/유닛 정보 구조 정의
