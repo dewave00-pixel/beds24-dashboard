@@ -88,3 +88,41 @@ export function getMsUntilNextMidnightKST(): number {
     // 자정 정각 직후 1초(00:00:01)에 안전하게 트리거되도록 1500ms 버퍼 추가
     return Math.max(1000, secondsUntilMidnight * 1000 + 1500);
 }
+
+/**
+ * 📌 ISO 문자열 또는 날짜 문자열을 한국 시간(KST, UTC+9) 기준 'YYYY.MM.DD HH:mm' 형식으로 변환
+ * 예: '2026-09-01T08:39:14Z' ➔ '2026.09.01 17:39'
+ */
+export function formatKSTDateTime(dateTimeStr?: string | null): string {
+    if (!dateTimeStr) return '';
+    try {
+        const date = new Date(dateTimeStr);
+        if (isNaN(date.getTime())) {
+            return dateTimeStr;
+        }
+
+        const parts = new Intl.DateTimeFormat('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).formatToParts(date);
+
+        let y = '', m = '', d = '', h = '', min = '';
+        for (const p of parts) {
+            if (p.type === 'year') y = p.value;
+            if (p.type === 'month') m = p.value;
+            if (p.type === 'day') d = p.value;
+            if (p.type === 'hour') h = p.value;
+            if (p.type === 'minute') min = p.value;
+        }
+
+        if (!y || !m || !d) return dateTimeStr;
+        return `${y}.${m}.${d} ${h}:${min}`;
+    } catch {
+        return dateTimeStr;
+    }
+}

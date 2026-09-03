@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Booking } from '../../types';
 import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../../config';
 import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings } from '../../utils/bookingUtils';
+import { formatKSTDateTime } from '../../utils/dateUtils';
 
 interface BookingModalProps {
     booking: Booking;
@@ -40,16 +41,6 @@ export default function BookingModal({
 
     const candidateUnits = getUnitsForRoomId(booking.roomId);
     const currentUnit = getUnitForBooking(booking);
-    const currentUnitKey = currentUnit?.unitKey || currentUnit?.key;
-    const doorPassword = currentUnitKey && propertiesInfo ? propertiesInfo[currentUnitKey]?.doorPassword : null;
-    const [isDoorCopied, setIsDoorCopied] = useState(false);
-
-    const handleCopyDoorPassword = () => {
-        if (!doorPassword) return;
-        navigator.clipboard.writeText(doorPassword);
-        setIsDoorCopied(true);
-        setTimeout(() => setIsDoorCopied(false), 1500);
-    };
 
     const [selectedUnitId, setSelectedUnitId] = useState<number>(Number(booking.unitId) || (candidateUnits[0]?.unitId ?? 1));
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
@@ -131,18 +122,23 @@ export default function BookingModal({
 
                 {/* 상단 헤더 */}
                 <div
-                    className="p-3.5 flex items-center justify-between text-white shadow"
+                    className="p-3 md:p-3.5 flex items-center justify-between text-white shadow gap-2"
                     style={{ backgroundColor: ch.bg, color: ch.text }}
                 >
-                    <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm md:text-base">예약 상세정보</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-black/30 font-bold border border-white/20">
+                    <div className="flex items-center gap-1.5 md:gap-2 flex-wrap min-w-0">
+                        <span className="font-extrabold text-sm md:text-base shrink-0">예약 상세정보</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-black/30 font-bold border border-white/20 shrink-0">
                             {ch.name}
                         </span>
+                        {booking.bookingTime && (
+                            <span className="text-[11px] md:text-xs px-2 py-0.5 rounded-full bg-black/20 font-bold text-white/90 border border-white/15 shrink-0">
+                                예약: {formatKSTDateTime(booking.bookingTime)}
+                            </span>
+                        )}
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-lg font-extrabold hover:opacity-80 transition px-2 py-0.5 rounded bg-black/20"
+                        className="text-lg font-extrabold hover:opacity-80 transition px-2 py-0.5 rounded bg-black/20 shrink-0 cursor-pointer"
                     >
                         ✕
                     </button>
@@ -178,28 +174,6 @@ export default function BookingModal({
                             </span>
                         </div>
                     </div>
-
-                    {/* 🔑 도어락 비밀번호 바로보기 & 원클릭 복사 */}
-                    {doorPassword && (
-                        <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200 px-3 py-2 rounded-lg text-xs">
-                            <span className="font-bold text-blue-950 flex items-center gap-1.5">
-                                <span>🔑</span> 도어락 비밀번호:
-                                <span className="font-black text-sm text-blue-800 font-mono tracking-wider">{doorPassword}</span>
-                            </span>
-                            <button
-                                type="button"
-                                onClick={handleCopyDoorPassword}
-                                className={`px-2.5 py-1 rounded font-black text-xs transition flex items-center gap-1 cursor-pointer border ${
-                                    isDoorCopied
-                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                        : 'bg-white hover:bg-blue-600 text-blue-700 hover:text-white border-blue-300 shadow-xs'
-                                }`}
-                            >
-                                <span>{isDoorCopied ? '복사됨!' : '비밀번호 복사'}</span>
-                                <span>{isDoorCopied ? '✅' : '📋'}</span>
-                            </button>
-                        </div>
-                    )}
 
                     {/* 🏠 호실 배정 관리 섹션 */}
                     {candidateUnits.length > 0 && (
