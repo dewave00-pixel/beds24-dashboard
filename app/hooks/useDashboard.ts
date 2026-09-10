@@ -10,6 +10,7 @@ import {
     formatKSTDate,
     getMsUntilNextMidnightKST,
 } from '../utils/dateUtils';
+import { useRealtimeBookings } from './useRealtimeBookings';
 
 export interface BookingNoteData {
     note: string;
@@ -117,8 +118,31 @@ export function useDashboard() {
         }
     };
 
+    // ⚡ Supabase 실시간 웹소켓 구독 (DB 변경 시 화면 자동 갱신)
+    const { isConnected: isRealtimeConnected } = useRealtimeBookings({
+        enabled: true,
+        onBookingChange: (change) => {
+            console.log('⚡ [Dashboard Realtime] 예약 변경 감지 -> 최신 데이터 자동 리로드:', change.eventType);
+            fetchReservations(false);
+        },
+    });
+
     useEffect(() => {
         reloadAll();
+
+        // 15분마다 가벼운 증분 동기화 자동 호출 (웹훅 누락 완벽 방어)
+        const syncInterval = setInterval(() => {
+            fetch('/api/sync/incremental?minutes=30', { cache: 'no-store' }).catch(() => {});
+        }, 15 * 60 * 1000);
+
+        // 📱 모바일/PC 탭 화면 복귀 시(비활성 -> 활성) 최신 데이터 자동 확인
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchReservations(false);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         const savedMode = localStorage.getItem('beds24_view_mode');
         if (savedMode === 'horizontal' || savedMode === 'vertical') {
             setViewMode(savedMode);
@@ -130,6 +154,11 @@ export function useDashboard() {
                 setZoomLevel(z);
             }
         }
+
+        return () => {
+            clearInterval(syncInterval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const toggleViewMode = (mode: 'vertical' | 'horizontal') => {
@@ -380,5 +409,6 @@ export function useDashboard() {
         handleSaveMemo,
         handleDeleteMemo,
         handleAssignUnit,
+        isRealtimeConnected,
     };
 }
