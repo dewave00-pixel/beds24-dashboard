@@ -68,8 +68,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                         <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200">
                             <th className="py-2.5 px-3">순위 & 호실명</th>
                             <th className="py-2.5 px-3">소속 숙소</th>
-                            <th className="py-2.5 px-3 text-right">총 매출액 (Gross)</th>
-                            <th className="py-2.5 px-3 text-right">순매출 (Net 80%)</th>
+                            <th className="py-2.5 px-3 text-right">매출액</th>
                             <th className="py-2.5 px-3 text-center">판매 / 공실 박수</th>
                             <th className="py-2.5 px-3 text-center">가동률 (Occ)</th>
                             <th className="py-2.5 px-3 text-right">1박 평균단가 (ADR)</th>
@@ -103,14 +102,9 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                         {room.propName}
                                     </td>
 
-                                    {/* 총 매출 */}
+                                    {/* 매출액 */}
                                     <td className="py-3 px-3 text-right font-black text-gray-900 font-mono text-sm">
                                         ₩{room.totalRevenue.toLocaleString()}
-                                    </td>
-
-                                    {/* 순매출 (80%) */}
-                                    <td className="py-3 px-3 text-right font-black text-emerald-700 font-mono text-sm">
-                                        ₩{room.netRevenue.toLocaleString()}
                                     </td>
 
                                     {/* 판매 박수 vs 공실 박수 */}
@@ -252,8 +246,8 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
 
                             <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-gray-200/60 text-[11px]">
                                 <div>
-                                    <span className="text-gray-400 text-[10px] block">순매출 (80%)</span>
-                                    <span className="font-bold text-emerald-700">₩{room.netRevenue.toLocaleString()}</span>
+                                    <span className="text-gray-400 text-[10px] block">가동률</span>
+                                    <span className="font-bold text-indigo-700">{room.occupancyRate}%</span>
                                 </div>
                                 <div>
                                     <span className="text-gray-400 text-[10px] block">판매/공실</span>

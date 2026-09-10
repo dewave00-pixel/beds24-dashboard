@@ -23,7 +23,7 @@ export default function KpiSummaryCards({ summary }: KpiSummaryCardsProps) {
             {/* 1. 총 매출 카드 */}
             <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-gray-500">💰 총 매출 (Gross)</span>
+                    <span className="text-xs font-black text-gray-500">💰 총 정산 매출액</span>
                     <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                         {periodDays}일간
                     </span>
@@ -32,13 +32,9 @@ export default function KpiSummaryCards({ summary }: KpiSummaryCardsProps) {
                     <div className="text-lg md:text-2xl font-black text-gray-900 font-mono tracking-tight">
                         ₩{totalRevenue.toLocaleString()}
                     </div>
-                    <div className="text-[11px] font-bold text-gray-500 flex items-center gap-1 mt-0.5">
-                        <span>순매출(추정):</span>
-                        <span className="text-emerald-600 font-extrabold">₩{netRevenue.toLocaleString()}</span>
-                    </div>
                 </div>
                 <div className="text-[10px] text-gray-400 font-medium pt-1.5 border-t border-gray-100">
-                    Beds24 등록 결제 총액 (수수료 20% 제외 순매출)
+                    체크아웃 완료 예약 기준 정산 총액
                 </div>
             </div>
 

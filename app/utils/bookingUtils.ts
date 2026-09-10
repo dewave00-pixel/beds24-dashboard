@@ -1,5 +1,42 @@
 import { Booking, UnitConfig } from '../types';
-import { ALL_UNITS } from '../config';
+import { ALL_UNITS, OTA_COMMISSION_RATES } from '../config';
+
+// 💳 OTA 채널별 실수령 정산금 수수료율 폴백 (안전한 방어용)
+const FALLBACK_COMMISSION_RATES: Record<number, number> = {
+    46: 0.155, // Airbnb 15.5%
+    19: 0.175, // Booking.com 17.5%
+    53: 0.0,   // Trip.com (이미 정산금)
+    17: 0.0,   // Agoda (이미 정산금)
+    14: 0.0,   // Expedia (이미 정산금)
+};
+
+/**
+ * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
+ * - Airbnb(46): 15.5% 공제
+ * - Booking.com(19): 17.5% 공제
+ * - Trip.com(53), Agoda(17), Expedia(14): 0% 공제 (이미 정산금)
+ */
+export function calculateNetPayout(price: number, apiSourceId?: number): number {
+    const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
+    if (rate <= 0) return Math.round(price);
+    return Math.round(price * (1 - rate));
+}
+
+/**
+ * ℹ️ 예약의 수수료 공제율 및 정산 요약 정보 반환
+ */
+export function getCommissionInfo(price: number, apiSourceId?: number) {
+    const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
+    const netPayout = calculateNetPayout(price, apiSourceId);
+    const hasDeduction = rate > 0;
+    return {
+        grossPrice: price,
+        netPayout,
+        feeRate: rate,
+        feeAmount: Math.round(price * rate),
+        hasDeduction,
+    };
+}
 
 /**
  * 🛡️ 유효한 활성 예약인지 검증 (취소, 삭제, 단순 숙소 문의 필터링)

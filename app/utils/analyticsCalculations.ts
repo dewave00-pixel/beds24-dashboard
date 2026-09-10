@@ -3,6 +3,7 @@
 import { Booking } from '../types';
 import { ALL_UNITS, getChannelStyle } from '../config';
 import { getGuestCountryInfo } from './countryHelper';
+import { calculateNetPayout, getUnitForBooking } from './bookingUtils';
 
 export type TimeFilterRange = 'last7' | 'last30' | 'thisMonth' | 'next30' | 'all' | 'custom';
 export type DateFilterMode = 'booked' | 'stay'; // 🛒 예약 접수일 기준 (Beds24 공식) vs 🛏️ 체크아웃/정산 기준
@@ -26,7 +27,8 @@ export interface OverallSummary {
 export function getDateRangeByFilter(
     filter: TimeFilterRange,
     customStart?: string,
-    customEnd?: string
+    customEnd?: string,
+    bookings?: Booking[]
 ): { start: string; end: string; days: number } {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -69,15 +71,47 @@ export function getDateRangeByFilter(
         return { start: todayStr, end: future.toISOString().split('T')[0], days: 31 };
     }
 
-    // 'all' (과거 60일 ~ 미래 180일)
-    const pastAll = new Date(today);
-    pastAll.setDate(today.getDate() - 60);
-    const futureAll = new Date(today);
-    futureAll.setDate(today.getDate() + 180);
+    // 'all' (전체 기간: 첫 예약 arrival ~ 마지막 예약 departure)
+    if (filter === 'all') {
+        if (bookings && bookings.length > 0) {
+            const valid = bookings.filter(isValidBooking);
+            if (valid.length > 0) {
+                let minArrival = valid[0].arrival;
+                let maxDeparture = valid[0].departure;
+                for (let i = 1; i < valid.length; i++) {
+                    const b = valid[i];
+                    if (b.arrival < minArrival) minArrival = b.arrival;
+                    if (b.departure > maxDeparture) maxDeparture = b.departure;
+                }
+                const s = new Date(minArrival);
+                const e = new Date(maxDeparture);
+                const diffMs = e.getTime() - s.getTime();
+                const days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+                return {
+                    start: minArrival,
+                    end: maxDeparture,
+                    days,
+                };
+            }
+        }
+
+        // bookings가 아직 로드되지 않은 초기 상태 폴백 (과거 2년 ~ 미래 1년)
+        const pastAll = new Date(today);
+        pastAll.setDate(today.getDate() - 730);
+        const futureAll = new Date(today);
+        futureAll.setDate(today.getDate() + 365);
+        const diffMs = futureAll.getTime() - pastAll.getTime();
+        return {
+            start: pastAll.toISOString().split('T')[0],
+            end: futureAll.toISOString().split('T')[0],
+            days: Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1,
+        };
+    }
+
     return {
-        start: pastAll.toISOString().split('T')[0],
-        end: futureAll.toISOString().split('T')[0],
-        days: 240,
+        start: todayStr,
+        end: todayStr,
+        days: 1,
     };
 }
 
@@ -111,7 +145,7 @@ export function calculateOverallSummary(
     customEnd?: string,
     mode: DateFilterMode = 'stay'
 ): OverallSummary {
-    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
     // 1. 💰 매출액 & ADR: 기간 내 체크아웃(departure)한 예약 집계
@@ -123,7 +157,7 @@ export function calculateOverallSummary(
     let checkoutNights = 0;
 
     checkoutBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -132,7 +166,7 @@ export function calculateOverallSummary(
         checkoutNights += nights;
     });
 
-    const netRevenue = Math.round(totalRevenue * 0.80);
+    const netRevenue = totalRevenue;
     const adr = checkoutNights > 0 ? Math.round(totalRevenue / checkoutNights) : 0;
 
     // 2. 📈 가동률: 기간(start ~ end) 내에 각 날짜별 실제 판매된 숙박일수(Nights) 합산
@@ -208,7 +242,7 @@ export function calculatePropertyStats(
     customEnd?: string,
     mode: DateFilterMode = 'stay'
 ): PropertyStats[] {
-    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
     // 숙소별 데이터 맵 초기화
@@ -251,16 +285,14 @@ export function calculatePropertyStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
-        const matchedUnit = ALL_UNITS.find(
-            (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-        );
+        const matchedUnit = getUnitForBooking(b);
         const propName = matchedUnit?.propName || '기타 숙소';
 
         if (!propMap[propName]) {
@@ -293,9 +325,7 @@ export function calculatePropertyStats(
 
         validBookings.forEach((b) => {
             if (b.arrival <= targetDate && b.departure > targetDate) {
-                const matchedUnit = ALL_UNITS.find(
-                    (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-                );
+                const matchedUnit = getUnitForBooking(b);
                 const propName = matchedUnit?.propName || '기타 숙소';
                 if (propMap[propName]) {
                     propMap[propName].stayNights += 1;
@@ -303,7 +333,7 @@ export function calculatePropertyStats(
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = (Number(b.price) || 0) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         propMap[propName].weekdayRev += dailyRate;
@@ -326,7 +356,7 @@ export function calculatePropertyStats(
         const occ = availNights > 0 ? Math.min(100, Math.round((data.stayNights / availNights) * 1000) / 10) : 0;
         const propAdr = data.checkoutNights > 0 ? Math.round(data.revenue / data.checkoutNights) : 0;
         const share = overallTotalRevenue > 0 ? Math.round((data.revenue / overallTotalRevenue) * 1000) / 10 : 0;
-        const net = Math.round(data.revenue * 0.80);
+        const net = data.revenue;
 
         const weekdayAdr = data.weekdayNights > 0 ? Math.round(data.weekdayRev / data.weekdayNights) : 0;
         const weekendAdr = data.weekendNights > 0 ? Math.round(data.weekendRev / data.weekendNights) : 0;
@@ -383,7 +413,7 @@ export function calculateRoomStats(
     customEnd?: string,
     mode: DateFilterMode = 'stay'
 ): RoomStats[] {
-    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
     // 14개 전체 호실 맵 초기화
@@ -429,16 +459,14 @@ export function calculateRoomStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
-        const matchedUnit = ALL_UNITS.find(
-            (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-        );
+        const matchedUnit = getUnitForBooking(b);
 
         if (matchedUnit && roomMap[matchedUnit.key]) {
             roomMap[matchedUnit.key].revenue += price;
@@ -457,16 +485,14 @@ export function calculateRoomStats(
 
         validBookings.forEach((b) => {
             if (b.arrival <= targetDate && b.departure > targetDate) {
-                const matchedUnit = ALL_UNITS.find(
-                    (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-                );
+                const matchedUnit = getUnitForBooking(b);
                 if (matchedUnit && roomMap[matchedUnit.key]) {
                     roomMap[matchedUnit.key].stayNights += 1;
 
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = (Number(b.price) || 0) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         roomMap[matchedUnit.key].weekdayRev += dailyRate;
@@ -488,7 +514,7 @@ export function calculateRoomStats(
         const occ = days > 0 ? Math.min(100, Math.round((data.stayNights / days) * 1000) / 10) : 0;
         const roomAdr = data.checkoutNights > 0 ? Math.round(data.revenue / data.checkoutNights) : 0;
         const share = overallTotalRevenue > 0 ? Math.round((data.revenue / overallTotalRevenue) * 1000) / 10 : 0;
-        const net = Math.round(data.revenue * 0.80);
+        const net = data.revenue;
         const vacant = Math.max(0, days - data.stayNights);
 
         const weekdayAdr = data.weekdayNights > 0 ? Math.round(data.weekdayRev / data.weekdayNights) : 0;
@@ -559,7 +585,7 @@ export function calculateChannelStats(
     customEnd?: string,
     mode: DateFilterMode = 'booked'
 ): { channelList: ChannelStats[]; totalBookings: number; totalRevenue: number } {
-    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
     // 모드별 필터링
@@ -578,7 +604,7 @@ export function calculateChannelStats(
     const channelMap: Record<string, { count: number; nights: number; revenue: number; color: string }> = {};
 
     targetBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -601,7 +627,7 @@ export function calculateChannelStats(
         const countPct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 1000) / 10 : 0;
         const revShare = totalRevenue > 0 ? Math.round((data.revenue / totalRevenue) * 1000) / 10 : 0;
         const adr = data.nights > 0 ? Math.round(data.revenue / data.nights) : 0;
-        const net = Math.round(data.revenue * 0.80);
+        const net = data.revenue;
 
         return {
             name,
@@ -651,15 +677,13 @@ export function calculateCountryStats(
     mode: DateFilterMode = 'booked',
     unitKeyFilter?: string
 ): { countryList: CountryStats[]; totalBookings: number; totalRevenue: number } {
-    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
     // 모드 및 특정 호실 필터링
     const targetBookings = validBookings.filter((b) => {
         if (unitKeyFilter && unitKeyFilter !== 'all') {
-            const matchedUnit = ALL_UNITS.find(
-                (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-            );
+            const matchedUnit = getUnitForBooking(b);
             if (!matchedUnit || matchedUnit.key !== unitKeyFilter) return false;
         }
 
@@ -683,7 +707,7 @@ export function calculateCountryStats(
     }> = {};
 
     targetBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -712,7 +736,7 @@ export function calculateCountryStats(
         const countPct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 1000) / 10 : 0;
         const revShare = totalRevenue > 0 ? Math.round((data.revenue / totalRevenue) * 1000) / 10 : 0;
         const adr = data.nights > 0 ? Math.round(data.revenue / data.nights) : 0;
-        const net = Math.round(data.revenue * 0.80);
+        const net = data.revenue;
 
         return {
             countryCode: code,
@@ -778,14 +802,12 @@ export function calculateCountryRoomPreferences(
     const roomMap: Record<string, { roomName: string; propName: string; count: number; nights: number; revenue: number }> = {};
 
     targetBookings.forEach((b) => {
-        const price = Number(b.price) || 0;
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
-        const matchedUnit = ALL_UNITS.find(
-            (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
-        );
+        const matchedUnit = getUnitForBooking(b);
         const uKey = matchedUnit ? matchedUnit.key : `${b.roomId}-${b.unitId || 1}`;
         const rName = matchedUnit ? matchedUnit.displayName + (matchedUnit.subName ? ` (${matchedUnit.subName})` : '') : `호실(${b.roomId})`;
         const pName = matchedUnit?.propName || '기타 숙소';
@@ -801,7 +823,7 @@ export function calculateCountryRoomPreferences(
     const result: CountryRoomPreference[] = Object.entries(roomMap).map(([key, data]) => {
         const pct = totalCountryBookings > 0 ? Math.round((data.count / totalCountryBookings) * 1000) / 10 : 0;
         const adr = data.nights > 0 ? Math.round(data.revenue / data.nights) : 0;
-        const net = Math.round(data.revenue * 0.80);
+        const net = data.revenue;
 
         return {
             unitKey: key,

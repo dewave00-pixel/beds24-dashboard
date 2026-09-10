@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Booking } from '../../types';
 import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../../config';
-import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings } from '../../utils/bookingUtils';
+import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings, getCommissionInfo } from '../../utils/bookingUtils';
 import { formatKSTDateTime } from '../../utils/dateUtils';
 
 interface BookingModalProps {
@@ -41,6 +41,7 @@ export default function BookingModal({
 
     const candidateUnits = getUnitsForRoomId(booking.roomId);
     const currentUnit = getUnitForBooking(booking);
+    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId);
 
     const [selectedUnitId, setSelectedUnitId] = useState<number>(Number(booking.unitId) || (candidateUnits[0]?.unitId ?? 1));
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
@@ -168,10 +169,17 @@ export default function BookingModal({
                             <span className="font-extrabold text-gray-900">{booking.numAdult || 1}명</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">💰 예약 금액</span>
-                            <span className="font-black text-emerald-700 text-sm md:text-base font-mono">
-                                {booking.price ? `${Number(booking.price).toLocaleString()}원` : '0원'}
-                            </span>
+                            <span className="text-[11px] text-gray-500 font-bold block">정산 금액</span>
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                                <span className="font-black text-emerald-700 text-sm md:text-base font-mono">
+                                    {commInfo.netPayout.toLocaleString()}원
+                                </span>
+                                {commInfo.hasDeduction && (
+                                    <span className="text-xs text-gray-500 font-medium">
+                                        (결제: {commInfo.grossPrice.toLocaleString()}원)
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 

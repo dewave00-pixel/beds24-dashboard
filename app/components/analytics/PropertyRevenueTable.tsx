@@ -45,8 +45,7 @@ export default function PropertyRevenueTable({ propertyStats = [] }: PropertyRev
                         <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200">
                             <th className="py-2.5 px-3">순위 & 숙소명</th>
                             <th className="py-2.5 px-3 text-center">호실 수</th>
-                            <th className="py-2.5 px-3 text-right">총 매출액 (Gross)</th>
-                            <th className="py-2.5 px-3 text-right">순매출 (Net 80%)</th>
+                            <th className="py-2.5 px-3 text-right">매출액</th>
                             <th className="py-2.5 px-3 text-center">매출 비중</th>
                             <th className="py-2.5 px-3 text-center">예약 / 박수</th>
                             <th className="py-2.5 px-3 text-center">가동률 (Occ)</th>
@@ -81,14 +80,9 @@ export default function PropertyRevenueTable({ propertyStats = [] }: PropertyRev
                                         {prop.roomCount}개
                                     </td>
 
-                                    {/* 총 매출 */}
+                                    {/* 매출액 */}
                                     <td className="py-3 px-3 text-right font-black text-gray-900 font-mono text-sm">
                                         ₩{prop.totalRevenue.toLocaleString()}
-                                    </td>
-
-                                    {/* 순매출 (80%) */}
-                                    <td className="py-3 px-3 text-right font-black text-emerald-700 font-mono text-sm">
-                                        ₩{prop.netRevenue.toLocaleString()}
                                     </td>
 
                                     {/* 매출 비중 바 */}
@@ -241,8 +235,8 @@ export default function PropertyRevenueTable({ propertyStats = [] }: PropertyRev
 
                             <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-gray-200/60 text-[11px]">
                                 <div>
-                                    <span className="text-gray-400 text-[10px] block">순매출 (80%)</span>
-                                    <span className="font-bold text-emerald-700">₩{prop.netRevenue.toLocaleString()}</span>
+                                    <span className="text-gray-400 text-[10px] block">매출 비중</span>
+                                    <span className="font-bold text-indigo-700">{prop.revenueShare}%</span>
                                 </div>
                                 <div>
                                     <span className="text-gray-400 text-[10px] block">가동률 / 박수</span>

@@ -15,7 +15,7 @@ async function syncFromBeds24(): Promise<any[]> {
 
     const today = new Date();
     const fromDate = new Date(today);
-    fromDate.setDate(today.getDate() - 60);
+    fromDate.setDate(today.getDate() - 730); // 👈 과거 2년(730일) 전부터 과거 전체 수집
     const toDate = new Date(today);
     toDate.setDate(today.getDate() + 365);
 
@@ -83,20 +83,26 @@ async function syncFromBeds24(): Promise<any[]> {
 }
 
 // Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼
-async function fetchFormattedBookingsFromSupabase() {
-    const today = new Date();
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - 45);
-    const pastDateStr = pastDate.toISOString().split('T')[0];
-
-    const { data: dbBookings, error } = await supabase
+async function fetchFormattedBookingsFromSupabase(pastDays?: number) {
+    let query = supabase
         .from('bookings')
         .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data')
-        .gte('departure', pastDateStr)
         .neq('status', 'cancelled')
         .neq('status', 'deleted')
         .neq('status', 'inquiry')
-        .order('arrival', { ascending: true });
+        .order('arrival', { ascending: true })
+        .limit(10000);
+
+    // pastDays가 지정된 경우에만 체크아웃 날짜(departure) 필터 적용
+    if (pastDays !== undefined && pastDays > 0) {
+        const today = new Date();
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - pastDays);
+        const pastDateStr = pastDate.toISOString().split('T')[0];
+        query = query.gte('departure', pastDateStr);
+    }
+
+    const { data: dbBookings, error } = await query;
 
     if (error || !dbBookings) {
         return [];
@@ -132,12 +138,24 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const forceSync = searchParams.get('sync') === 'true';
+        const scope = searchParams.get('scope'); // 'analytics' 등
+        const customPastDays = searchParams.get('pastDays');
+
+        // 통계 페이지는 전체 데이터(과거 제한 없음), 메인 대시보드는 과거 3개월(90일)
+        let pastDays: number | undefined = undefined;
+        if (customPastDays !== null && !isNaN(Number(customPastDays)) && Number(customPastDays) > 0) {
+            pastDays = Number(customPastDays);
+        } else if (scope === 'analytics') {
+            pastDays = undefined; // 👈 통계: Supabase 내 모든 과거/현재/미래 예약 전체 로드
+        } else {
+            pastDays = 90; // 👈 대시보드: 과거 3개월(90일)부터
+        }
 
         // 1. 강제 동기화 요청(?sync=true)인 경우: Beds24에서 긁어와 Supabase 완전 동기화 후 최신 데이터 반환
         if (forceSync) {
             console.log('🔄 [Reservations] 수동 동기화 요청 감지 -> Beds24 직접 동기화 실행');
             await syncFromBeds24();
-            const formatted = await fetchFormattedBookingsFromSupabase();
+            const formatted = await fetchFormattedBookingsFromSupabase(pastDays);
             return NextResponse.json({
                 success: true,
                 count: formatted.length,
@@ -147,7 +165,7 @@ export async function GET(request: Request) {
         }
 
         // 2. 평상시: Supabase bookings 테이블에서 슬림 컬럼 초고속 조회! (60KB 초경량)
-        const cachedBookings = await fetchFormattedBookingsFromSupabase();
+        const cachedBookings = await fetchFormattedBookingsFromSupabase(pastDays);
 
         if (cachedBookings.length > 0) {
             return NextResponse.json({
@@ -161,7 +179,7 @@ export async function GET(request: Request) {
         // 3. Supabase DB가 비어있는 경우(초기 상태) 자동 동기화 실행 (Fallback)
         console.log('⚠️ [Reservations] Supabase DB가 비어있음 -> 최초 자동 동기화 실행');
         await syncFromBeds24();
-        const fallbackData = await fetchFormattedBookingsFromSupabase();
+        const fallbackData = await fetchFormattedBookingsFromSupabase(pastDays);
 
         return NextResponse.json({
             success: true,

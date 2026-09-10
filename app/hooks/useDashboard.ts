@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Booking } from '../types';
 import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
 import {
@@ -65,8 +65,12 @@ export function useDashboard() {
         }
     };
 
+    const isFetchingReservationsRef = useRef<boolean>(false);
+
     // 2. Beds24 실시간 예약 데이터 불러오기 (forceSync=true 시 Beds24 본사 직접 긁어오기)
     const fetchReservations = async (forceSync: boolean = false) => {
+        if (isFetchingReservationsRef.current && !forceSync) return;
+        isFetchingReservationsRef.current = true;
         if (!forceSync) setLoading(true);
         setError(null);
         try {
@@ -84,6 +88,7 @@ export function useDashboard() {
             setError('서버 통신 오류가 발생했습니다.');
         } finally {
             if (!forceSync) setLoading(false);
+            isFetchingReservationsRef.current = false;
         }
     };
 
@@ -234,8 +239,8 @@ export function useDashboard() {
     const tomorrowCheckIns = activeBookings.filter((b) => b.arrival === tomorrowStr);
     const tomorrowCheckOuts = activeBookings.filter((b) => b.departure === tomorrowStr);
 
-    // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않은 예약)
-    const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b));
+    // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않았으며 오늘 이후 퇴실하는 현재/미래 예약만 표시)
+    const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b) && b.departure >= todayStr);
 
     // 14일 날짜 배열 생성 (한국 시간 기준 정확한 포맷팅)
     const timelineDates: string[] = [];

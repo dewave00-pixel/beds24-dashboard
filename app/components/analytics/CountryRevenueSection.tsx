@@ -301,8 +301,7 @@ export default function CountryRevenueSection({
                                 <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 sticky top-0 bg-white z-10">
                                     <th className="py-2 px-3">순위 & 국적 (클릭 시 인기호실 조회)</th>
                                     <th className="py-2 px-3 text-center">예약건수 (비중)</th>
-                                    <th className="py-2 px-3 text-right">총 결제금액 (Gross)</th>
-                                    <th className="py-2 px-3 text-right">순매출 (Net 80%)</th>
+                                    <th className="py-2 px-3 text-right">매출액</th>
                                     <th className="py-2 px-3 text-right">1박 단가 (ADR)</th>
                                 </tr>
                             </thead>
@@ -339,9 +338,6 @@ export default function CountryRevenueSection({
                                             </td>
                                             <td className="py-2 px-3 text-right font-black text-gray-900 font-mono text-sm">
                                                 ₩{c.revenue.toLocaleString()}
-                                            </td>
-                                            <td className="py-2 px-3 text-right font-black text-emerald-700 font-mono text-sm">
-                                                ₩{c.netRevenue.toLocaleString()}
                                             </td>
                                             <td className="py-2 px-3 text-right font-black text-purple-700 font-mono">
                                                 ₩{c.adr.toLocaleString()}
@@ -466,14 +462,9 @@ export default function CountryRevenueSection({
                                         <span className="text-gray-600 font-bold">
                                             {room.count}건 <span className="text-gray-400 font-normal">({room.nights}박)</span>
                                         </span>
-                                        <div className="text-right">
-                                            <span className="font-black text-gray-900 font-mono block leading-tight">
-                                                ₩{room.revenue.toLocaleString()}
-                                            </span>
-                                            <span className="text-[10px] text-emerald-700 font-bold font-mono">
-                                                순 ₩{room.netRevenue.toLocaleString()}
-                                            </span>
-                                        </div>
+                                        <span className="font-black text-gray-900 font-mono text-xs">
+                                            ₩{room.revenue.toLocaleString()}
+                                        </span>
                                     </div>
                                 </div>
                             ))}

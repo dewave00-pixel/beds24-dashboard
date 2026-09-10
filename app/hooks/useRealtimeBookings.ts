@@ -27,6 +27,7 @@ export function useRealtimeBookings({
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [lastChange, setLastChange] = useState<RealtimeChangeInfo | null>(null);
     const callbackRef = useRef(onBookingChange);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // 최신 콜백 참조 유지
     useEffect(() => {
@@ -48,8 +49,6 @@ export function useRealtimeBookings({
                     table: 'bookings',
                 },
                 (payload) => {
-                    console.log(`⚡ [Realtime 이벤트 수신: ${payload.eventType}]`, payload);
-
                     const changeInfo: RealtimeChangeInfo = {
                         eventType: payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE',
                         table: payload.table,
@@ -60,9 +59,17 @@ export function useRealtimeBookings({
 
                     setLastChange(changeInfo);
 
-                    if (callbackRef.current) {
-                        callbackRef.current(changeInfo);
+                    // 🛡️ 디바운스: 연속으로 이벤트가 쏟아져 들어올 때 800ms 동안 모아서 마지막 1번만 실행
+                    if (debounceTimerRef.current) {
+                        clearTimeout(debounceTimerRef.current);
                     }
+
+                    debounceTimerRef.current = setTimeout(() => {
+                        console.log(`⚡ [Realtime 디바운스 실행] 최신 예약 변경 반영 (${changeInfo.eventType})`);
+                        if (callbackRef.current) {
+                            callbackRef.current(changeInfo);
+                        }
+                    }, 800);
                 }
             )
             .subscribe((status, err) => {
@@ -77,6 +84,9 @@ export function useRealtimeBookings({
 
         return () => {
             console.log('🔌 [Realtime] bookings 테이블 WebSocket 채널 해제');
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
             supabaseClient.removeChannel(channel);
             setIsConnected(false);
         };

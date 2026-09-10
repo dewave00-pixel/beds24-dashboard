@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import '../dashboard.css';
 import { Booking } from '../types';
 import AppSidebar from '../components/layout/AppSidebar';
@@ -9,6 +9,9 @@ import PropertyRevenueTable from '../components/analytics/PropertyRevenueTable';
 import RoomRevenueTable from '../components/analytics/RoomRevenueTable';
 import ChannelRevenueSection from '../components/analytics/ChannelRevenueSection';
 import CountryRevenueSection from '../components/analytics/CountryRevenueSection';
+import TrendComparisonCards from '../components/analytics/TrendComparisonCards';
+import PeriodicBarChart from '../components/analytics/PeriodicBarChart';
+import { useRealtimeBookings } from '../hooks/useRealtimeBookings';
 import {
     TimeFilterRange,
     calculateOverallSummary,
@@ -16,13 +19,18 @@ import {
     calculateRoomStats,
     getDateRangeByFilter,
 } from '../utils/analyticsCalculations';
+import {
+    calculateTrendComparison,
+    getWeeklyTimeSeries,
+    getMonthlyTimeSeries,
+} from '../utils/trendCalculations';
 
-const FILTER_TABS: { key: TimeFilterRange; label: string; icon: string }[] = [
-    { key: 'last7', label: '최근 7일', icon: '⚡' },
-    { key: 'last30', label: '최근 30일', icon: '📅' },
-    { key: 'thisMonth', label: '이번 달', icon: '📆' },
-    { key: 'next30', label: '향후 30일(OTB)', icon: '🔮' },
-    { key: 'all', label: '전체 기간', icon: '🌐' },
+const FILTER_TABS: { key: TimeFilterRange; label: string }[] = [
+    { key: 'last7', label: '최근 7일' },
+    { key: 'last30', label: '최근 30일' },
+    { key: 'thisMonth', label: '이번 달' },
+    { key: 'next30', label: '향후 30일(OTB)' },
+    { key: 'all', label: '전체 기간' },
 ];
 
 export type AnalyticsViewTab = 'properties' | 'rooms' | 'channels' | 'countries';
@@ -39,10 +47,14 @@ export default function AnalyticsPage() {
     const [customStartDate, setCustomStartDate] = useState<string>(initialRange.start);
     const [customEndDate, setCustomEndDate] = useState<string>(initialRange.end);
 
+    const isFetchingRef = useRef<boolean>(false);
+
     const fetchReservations = async () => {
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
         setLoading(true);
         try {
-            const res = await fetch('/api/reservations', { cache: 'no-store' });
+            const res = await fetch('/api/reservations?scope=analytics', { cache: 'no-store' });
             const data = await res.json();
             if (data.success && Array.isArray(data.data)) {
                 setBookings(data.data);
@@ -51,6 +63,7 @@ export default function AnalyticsPage() {
             console.error('예약 데이터 불러오기 실패:', e);
         } finally {
             setLoading(false);
+            isFetchingRef.current = false;
         }
     };
 
@@ -61,7 +74,7 @@ export default function AnalyticsPage() {
     // 간편 탭 변경 핸들러
     const handleSelectPresetTab = (key: TimeFilterRange) => {
         setTimeFilter(key);
-        const range = getDateRangeByFilter(key);
+        const range = getDateRangeByFilter(key, undefined, undefined, bookings);
         setCustomStartDate(range.start);
         setCustomEndDate(range.end);
     };
@@ -95,7 +108,32 @@ export default function AnalyticsPage() {
         return calculateRoomStats(bookings, timeFilter, customStartDate, customEndDate, 'stay');
     }, [bookings, timeFilter, customStartDate, customEndDate]);
 
-    const activeRange = getDateRangeByFilter(timeFilter, customStartDate, customEndDate);
+    const activeRange = useMemo(() => {
+        return getDateRangeByFilter(timeFilter, customStartDate, customEndDate, bookings);
+    }, [timeFilter, customStartDate, customEndDate, bookings]);
+
+    // ⚡ 실적 추이 비교 계산 (선택 기간 vs 직전 동기간 vs 전전 동기간 동적 연동)
+    const trendComparison = useMemo(() => {
+        return calculateTrendComparison(bookings, activeRange.start, activeRange.end);
+    }, [bookings, activeRange.start, activeRange.end]);
+
+    // 주간(최근 12주/3달) 시계열 버킷 계산
+    const weeklyTimeSeries = useMemo(() => {
+        return getWeeklyTimeSeries(bookings, 12);
+    }, [bookings]);
+
+    // 월간(최근 12개월/1년) 시계열 버킷 계산
+    const monthlyTimeSeries = useMemo(() => {
+        return getMonthlyTimeSeries(bookings, 12);
+    }, [bookings]);
+
+    // ⚡ 실시간 웹소켓 구독 (새 예약 발생 시 통계 데이터 즉각 갱신)
+    const { isConnected: isRealtimeConnected } = useRealtimeBookings({
+        enabled: true,
+        onBookingChange: () => {
+            fetchReservations();
+        },
+    });
 
     return (
         <div className="flex min-h-screen bg-gray-100">
@@ -123,9 +161,17 @@ export default function AnalyticsPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-xl">📈</span>
                             <div>
-                                <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
-                                    매출 및 수익 운영 관리
-                                </h1>
+                                <div className="flex items-center gap-1.5">
+                                    <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
+                                        매출 및 수익 운영 관리
+                                    </h1>
+                                    {isRealtimeConnected && (
+                                        <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            실시간
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
                                     실시간 수익 지표, 건물별/객실별/플랫폼별 성과 대시보드
                                 </span>
@@ -164,18 +210,16 @@ export default function AnalyticsPage() {
                                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
                                         }`}
                                     >
-                                        <span>{tab.icon}</span>
                                         <span>{tab.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
 
-                        {/* 📅 직접 날짜 선택 (달력 Input) */}
+                        {/* 직접 날짜 선택 (달력 Input) */}
                         <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1.5 px-2.5 rounded-xl border border-gray-200 text-xs font-bold">
-                            <span className="text-gray-600 font-black flex items-center gap-1">
-                                <span>📅</span>
-                                <span>조회 기간:</span>
+                            <span className="text-gray-600 font-black">
+                                조회 기간:
                             </span>
                             <input
                                 type="date"
@@ -209,7 +253,17 @@ export default function AnalyticsPage() {
                             {/* 3. 전체 4대 핵심 KPI 요약 카드 (실제 투숙일 기준) */}
                             <KpiSummaryCards summary={summary} />
 
-                            {/* 4. 3대 분석 기준 전환 탭 */}
+                            {/* 4. 추이 비교 위젯 */}
+                            <TrendComparisonCards data={trendComparison} loading={loading} />
+
+                            {/* 5. 매주 / 매월 비교 막대 그래프 (12주 / 12개월) */}
+                            <PeriodicBarChart
+                                weeklyData={weeklyTimeSeries}
+                                monthlyData={monthlyTimeSeries}
+                                loading={loading}
+                            />
+
+                            {/* 6. 3대 분석 기준 전환 탭 */}
                             <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-xs flex flex-col gap-3">
                                 <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl border border-gray-200 self-start">
                                     <button
