@@ -14,6 +14,7 @@ export interface DashboardHeaderProps {
     viewMode: 'vertical' | 'horizontal';
     loading: boolean;
     isSyncing?: boolean;
+    isRealtimeConnected?: boolean;
     onOpenMobileMenu?: () => void;
     onOpenDailyModal: (type: 'today' | 'tomorrow') => void;
     onOpenUnallocatedModal?: () => void;
@@ -32,6 +33,7 @@ export default function DashboardHeader({
     viewMode = 'vertical',
     loading = false,
     isSyncing = false,
+    isRealtimeConnected = false,
     onOpenMobileMenu,
     onOpenDailyModal,
     onOpenUnallocatedModal,
@@ -67,6 +69,12 @@ export default function DashboardHeader({
                 <div className="flex items-center gap-1.5 text-gray-900 font-black text-sm md:text-base tracking-tight">
                     <span>🏨</span>
                     <span>예약 타임라인 대시보드</span>
+                    {isRealtimeConnected && (
+                        <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            실시간
+                        </span>
+                    )}
                 </div>
             </div>
 

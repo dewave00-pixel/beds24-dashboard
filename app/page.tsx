@@ -45,6 +45,7 @@ export default function DashboardPage() {
           viewMode={d.viewMode}
           loading={d.loading}
           isSyncing={d.isSyncing}
+          isRealtimeConnected={d.isRealtimeConnected}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenDailyModal={d.setDailyModalType}
           onOpenUnallocatedModal={() => d.setIsUnallocatedModalOpen(true)}
