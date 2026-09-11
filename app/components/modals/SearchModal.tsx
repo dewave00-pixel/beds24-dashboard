@@ -7,7 +7,7 @@ import { getChannelStyle, getUnitDisplayInfo } from '../../config';
 interface SearchModalProps {
     bookings: Booking[];
     onClose: () => void;
-    onSelectBooking: (booking: Booking) => void;
+    onSelectBooking?: (booking: Booking) => void;
 }
 
 /**
@@ -197,8 +197,10 @@ export default function SearchModal({
                                 return (
                                     <div
                                         key={b.id}
-                                        onClick={() => onSelectBooking(b)}
-                                        className="p-2.5 md:p-3 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-500 hover:shadow-md transition cursor-pointer flex flex-col gap-1.5"
+                                        onClick={onSelectBooking ? () => onSelectBooking(b) : undefined}
+                                        className={`p-2.5 md:p-3 bg-white rounded-lg border border-gray-300 shadow-sm transition flex flex-col gap-1.5 ${
+                                            onSelectBooking ? 'hover:border-blue-500 hover:shadow-md cursor-pointer' : 'cursor-default'
+                                        }`}
                                     >
                                         {/* 상단: 숙소명 + 호실 + 예약자명 + 채널 뱃지 */}
                                         <div className="flex items-start justify-between gap-1.5">

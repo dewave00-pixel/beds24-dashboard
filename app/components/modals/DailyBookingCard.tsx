@@ -15,7 +15,7 @@ interface DailyBookingCardProps {
     type: 'checkIn' | 'checkOut';
     bookingNotes: Record<string | number, BookingNoteData>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
-    onSelectBooking: (booking: Booking) => void;
+    onSelectBooking?: (booking: Booking) => void;
 }
 
 export default function DailyBookingCard({
@@ -62,8 +62,10 @@ export default function DailyBookingCard({
 
     return (
         <div
-            onClick={() => onSelectBooking(booking)}
-            className="p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer flex flex-col gap-2"
+            onClick={onSelectBooking ? () => onSelectBooking(booking) : undefined}
+            className={`p-3 bg-white rounded-xl border border-gray-200 transition flex flex-col gap-2 ${
+                onSelectBooking ? 'hover:border-blue-400 hover:shadow-md cursor-pointer' : 'cursor-default'
+            }`}
         >
             {/* 1줄: 숙소명/호실명 + 도어락 비밀번호 뱃지 + 채널 뱃지 */}
             <div className="flex items-center justify-between gap-1.5">

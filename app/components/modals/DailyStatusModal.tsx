@@ -19,7 +19,7 @@ interface DailyStatusModalProps {
     bookingNotes: Record<string | number, BookingNoteData>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
     onClose: () => void;
-    onSelectBooking: (booking: Booking) => void;
+    onSelectBooking?: (booking: Booking) => void;
 }
 
 export default function DailyStatusModal({

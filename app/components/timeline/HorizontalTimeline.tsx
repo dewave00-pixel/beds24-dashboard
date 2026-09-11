@@ -19,7 +19,7 @@ interface HorizontalTimelineProps {
     COL_WIDTH: number;
     ROW_HEIGHT: number;
     onDateClick: (dateStr: string) => void;
-    onBookingClick: (e: React.MouseEvent, booking: Booking) => void;
+    onBookingClick?: (e: React.MouseEvent, booking: Booking) => void;
 }
 
 export default function HorizontalTimeline({
@@ -202,8 +202,10 @@ export default function HorizontalTimeline({
                                         return (
                                             <div
                                                 key={`h-booking-${b.id}`}
-                                                onClick={(e) => onBookingClick(e, b)}
-                                                className={`absolute rounded-md shadow px-1.5 py-1 flex items-center justify-between font-bold text-xs pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/15 overflow-hidden ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
+                                                onClick={onBookingClick ? (e) => onBookingClick(e, b) : undefined}
+                                                className={`absolute rounded-md shadow px-1.5 py-1 flex items-center justify-between font-bold text-xs pointer-events-auto transition-all duration-200 border border-black/15 overflow-hidden ${
+                                                    onBookingClick ? 'hover:brightness-105 hover:z-30 cursor-pointer' : 'cursor-default'
+                                                } ${isBookingDimmed ? 'booking-card-dimmed' : 'opacity-100'
                                                     } ${hasMemo ? 'animate-pulse-memo' : ''}`}
                                                 style={{
                                                     top: `${topPos}px`,
@@ -290,8 +292,10 @@ export default function HorizontalTimeline({
                                         return (
                                             <div
                                                 key={`h-unalloc-${unit.key}-${b.id}`}
-                                                onClick={(e) => onBookingClick(e, b)}
-                                                className={`absolute rounded-md border-2 border-dashed border-amber-500 bg-amber-500/25 hover:bg-amber-500/40 hover:border-amber-600 px-2 py-1 flex items-center justify-between font-black text-xs pointer-events-auto transition-all cursor-pointer z-15 overflow-hidden select-none group ${isBookingDimmed ? 'opacity-30' : 'opacity-90 hover:opacity-100'
+                                                onClick={onBookingClick ? (e) => onBookingClick(e, b) : undefined}
+                                                className={`absolute rounded-md border-2 border-dashed border-amber-500 bg-amber-500/25 px-2 py-1 flex items-center justify-between font-black text-xs pointer-events-auto transition-all z-15 overflow-hidden select-none group ${
+                                                    onBookingClick ? 'cursor-pointer hover:bg-amber-500/40 hover:border-amber-600' : 'cursor-default'
+                                                } ${isBookingDimmed ? 'opacity-30' : 'opacity-90 hover:opacity-100'
                                                     }`}
                                                 style={{
                                                     top: `${topPos}px`,

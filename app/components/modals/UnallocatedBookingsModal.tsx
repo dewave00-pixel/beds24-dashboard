@@ -16,7 +16,7 @@ interface UnallocatedBookingsModalProps {
     bookingNotes: Record<string | number, BookingNoteData>;
     onClose: () => void;
     onAssignUnit: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
-    onSelectBooking: (booking: Booking) => void;
+    onSelectBooking?: (booking: Booking) => void;
 }
 
 export default function UnallocatedBookingsModal({
@@ -196,13 +196,15 @@ export default function UnallocatedBookingsModal({
                                                     ₩{Number(b.price).toLocaleString()}
                                                 </div>
                                             ) : null}
-                                            <button
-                                                type="button"
-                                                onClick={() => onSelectBooking(b)}
-                                                className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-0.5"
-                                            >
-                                                <span>🔍</span> 예약 상세 확인
-                                            </button>
+                                            {onSelectBooking && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSelectBooking(b)}
+                                                    className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-0.5"
+                                                >
+                                                    <span>🔍</span> 예약 상세 확인
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 

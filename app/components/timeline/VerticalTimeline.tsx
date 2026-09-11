@@ -23,7 +23,7 @@ interface VerticalTimelineProps {
     ROW_HEIGHT: number;
     displayDaysCount: number;
     onDateClick: (dateStr: string) => void;
-    onBookingClick: (e: React.MouseEvent, booking: Booking) => void;
+    onBookingClick?: (e: React.MouseEvent, booking: Booking) => void;
 }
 
 export default function VerticalTimeline({
@@ -65,7 +65,7 @@ export default function VerticalTimeline({
             });
         } else {
             // 겹치지 않는 단독 예약은 바로 상세 팝업 오픈
-            onBookingClick(e, clickedBooking);
+            onBookingClick?.(e, clickedBooking);
         }
     };
 
@@ -288,7 +288,7 @@ export default function VerticalTimeline({
                     dateStr={overlapModalData.dateStr}
                     bookings={overlapModalData.bookings}
                     onSelect={(selectedBooking) => {
-                        onBookingClick(undefined as any, selectedBooking);
+                        onBookingClick?.(undefined as any, selectedBooking);
                         setOverlapModalData(null);
                     }}
                     onClose={() => setOverlapModalData(null)}

@@ -15,7 +15,7 @@ interface BookingBarProps {
     nightsCount: number;
     isDimmed: boolean;
     noteData?: BookingNoteData;
-    onClick: (e: React.MouseEvent, booking: Booking) => void;
+    onClick?: (e: React.MouseEvent, booking: Booking) => void;
 }
 
 export default function BookingBar({
@@ -54,10 +54,11 @@ export default function BookingBar({
 
     return (
         <div
-            onClick={(e) => onClick(e, booking)}
-            className={`absolute left-1 right-1 rounded-lg shadow-md flex flex-col justify-between font-bold pointer-events-auto transition-all duration-200 hover:brightness-105 hover:z-30 cursor-pointer border border-black/15 overflow-hidden ${isOneNight ? 'p-1' : 'p-1.5'
-                } ${isDimmed ? 'booking-card-dimmed' : 'opacity-100'} ${hasMemo ? 'animate-pulse-memo' : ''
-                }`}
+            onClick={onClick ? (e) => onClick(e, booking) : undefined}
+            className={`absolute left-1 right-1 rounded-lg shadow-md flex flex-col justify-between font-bold pointer-events-auto transition-all duration-200 border border-black/15 overflow-hidden ${
+                onClick ? 'hover:brightness-105 hover:z-30 cursor-pointer' : 'cursor-default'
+            } ${isOneNight ? 'p-1' : 'p-1.5'} ${isDimmed ? 'booking-card-dimmed' : 'opacity-100'} ${hasMemo ? 'animate-pulse-memo' : ''
+            }`}
             style={{
                 top: `${topPos}px`,
                 height: `${barHeight}px`,

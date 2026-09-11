@@ -12,7 +12,7 @@ interface TotalNotesModalProps {
     bookings: Booking[];
     bookingNotes: Record<string | number, BookingNoteData>;
     onClose: () => void;
-    onSelectBooking: (booking: Booking) => void;
+    onSelectBooking?: (booking: Booking) => void;
 }
 
 export default function TotalNotesModal({
@@ -81,8 +81,10 @@ export default function TotalNotesModal({
                             return (
                                 <div
                                     key={b.id}
-                                    onClick={() => onSelectBooking(b)}
-                                    className="p-3 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-amber-500 hover:shadow-md transition cursor-pointer flex flex-col gap-1.5"
+                                    onClick={onSelectBooking ? () => onSelectBooking(b) : undefined}
+                                    className={`p-3 bg-white rounded-lg border border-gray-300 shadow-sm transition flex flex-col gap-1.5 ${
+                                        onSelectBooking ? 'hover:border-amber-500 hover:shadow-md cursor-pointer' : 'cursor-default'
+                                    }`}
                                 >
                                     {/* 상단: 호실명 + 예약채널 + 일정 */}
                                     <div className="flex items-center justify-between">

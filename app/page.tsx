@@ -95,7 +95,7 @@ export default function DashboardPage() {
                 ROW_HEIGHT={ROW_HEIGHT}
                 displayDaysCount={d.displayDaysCount}
                 onDateClick={d.handleDateClick}
-                onBookingClick={d.handleBookingClick}
+                onBookingClick={auth.isAdmin ? d.handleBookingClick : undefined}
               />
             ) : (
               <HorizontalTimeline
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                 COL_WIDTH={COL_WIDTH_HORIZ}
                 ROW_HEIGHT={ROW_HEIGHT}
                 onDateClick={d.handleDateClick}
-                onBookingClick={d.handleBookingClick}
+                onBookingClick={auth.isAdmin ? d.handleBookingClick : undefined}
               />
             )}
           </ZoomableTimelineWrapper>
@@ -115,8 +115,8 @@ export default function DashboardPage() {
       </div>
       </div>
 
-      {/* 3. 모달 레이어들 */}
-      {d.activeBooking && (
+      {/* 3. 모달 레이어들 (예약 상세 모달은 최고관리자 admin만 열람 가능) */}
+      {d.activeBooking && auth.isAdmin && (
         <BookingModal
           booking={d.activeBooking}
           allBookings={d.bookings}
@@ -141,9 +141,9 @@ export default function DashboardPage() {
           bookingNotes={d.bookingNotes}
           propertiesInfo={d.propertiesInfo}
           onClose={() => d.setDailyModalType(null)}
-          onSelectBooking={(b) => {
+          onSelectBooking={auth.isAdmin ? ((b) => {
             d.openBookingDetail(b);
-          }}
+          }) : undefined}
         />
       )}
 
@@ -152,9 +152,9 @@ export default function DashboardPage() {
           bookings={d.bookings}
           bookingNotes={d.bookingNotes}
           onClose={() => d.setIsTotalNotesOpen(false)}
-          onSelectBooking={(b) => {
+          onSelectBooking={auth.isAdmin ? ((b) => {
             d.openBookingDetail(b);
-          }}
+          }) : undefined}
         />
       )}
 
@@ -162,9 +162,9 @@ export default function DashboardPage() {
         <SearchModal
           bookings={d.bookings}
           onClose={() => d.setIsSearchOpen(false)}
-          onSelectBooking={(b) => {
+          onSelectBooking={auth.isAdmin ? ((b) => {
             d.openBookingDetail(b);
-          }}
+          }) : undefined}
         />
       )}
 
@@ -175,9 +175,9 @@ export default function DashboardPage() {
           bookingNotes={d.bookingNotes}
           onClose={() => d.setIsUnallocatedModalOpen(false)}
           onAssignUnit={d.handleAssignUnit}
-          onSelectBooking={(b) => {
+          onSelectBooking={auth.isAdmin ? ((b) => {
             d.openBookingDetail(b);
-          }}
+          }) : undefined}
         />
       )}
     </div>
