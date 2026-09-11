@@ -31,7 +31,7 @@ const MENU_ITEMS: MenuItem[] = [
         name: '매출/통계',
         href: '/analytics',
         icon: '📈',
-        roles: ['admin', 'manager'],
+        roles: ['admin'],
     },
     {
         name: '청소 배정',

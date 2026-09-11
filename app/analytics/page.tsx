@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import '../dashboard.css';
 import { Booking } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import AppSidebar from '../components/layout/AppSidebar';
 import KpiSummaryCards from '../components/analytics/KpiSummaryCards';
 import PropertyRevenueTable from '../components/analytics/PropertyRevenueTable';
@@ -43,6 +45,16 @@ export default function AnalyticsPage() {
     const [loading, setLoading] = useState<boolean>(true);
     const [timeFilter, setTimeFilter] = useState<TimeFilterRange>('last7');
     const [activeTab, setActiveTab] = useState<AnalyticsViewTab>('properties');
+
+    // 🔒 권한 체크: 오직 최고관리자(admin)만 접근 가능
+    const router = useRouter();
+    const { isAdmin, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && !isAdmin) {
+            router.replace('/');
+        }
+    }, [authLoading, isAdmin, router]);
 
     // 직접 날짜 선택을 위한 상태
     const initialRange = getDateRangeByFilter('last7');
@@ -136,6 +148,11 @@ export default function AnalyticsPage() {
             fetchReservations();
         },
     });
+
+    // 🔒 권한 검증 미통과 시 렌더링 차단
+    if (!authLoading && !isAdmin) {
+        return null;
+    }
 
     return (
         <div className="flex min-h-screen bg-gray-100">
