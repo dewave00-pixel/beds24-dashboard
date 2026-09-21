@@ -48,9 +48,6 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     // 2. 그래프 선택 지표 (매출, 가동률, ADR)
     const [activeMetric, setActiveMetric] = useState<MetricType>('revenue');
 
-    // 3. 하단 세부사항 서브 토글 (가격·공실 매트릭스 vs 호실별 상세 실적)
-    const [detailViewMode, setDetailViewMode] = useState<'matrix' | 'table'>('matrix');
-
     // 4. 그래프 호버 상태 (구글 트렌드식 인터랙션)
     const [hoveredBucketIdx, setHoveredBucketIdx] = useState<number | null>(null);
 
@@ -73,11 +70,6 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const allRoomStats: RoomStats[] = useMemo(() => {
         return calculateRoomStats(bookings, 'custom', startDate, endDate, 'stay');
     }, [bookings, startDate, endDate]);
-
-    const filteredRoomStats = useMemo(() => {
-        if (selectedProperty === 'all') return allRoomStats;
-        return allRoomStats.filter((r) => r.propName === selectedProperty);
-    }, [allRoomStats, selectedProperty]);
 
     // 8. 시계열 시간 버킷 생성 (그래프용)
     // - timeUnit === 'month': 기준 연도 1년(1월 ~ 12월 12개월) 연간 추이
@@ -707,100 +699,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 </div>
             </div>
 
-            {/* 5. 세부사항 영역: [호실별 가격 & 공실 매트릭스] vs [호실별 상세 실적 테이블] */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col overflow-hidden">
-                <div className="p-3 md:p-4 border-b border-gray-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-gray-50/60 dark:bg-slate-800/60">
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold">
-                        <button
-                            type="button"
-                            onClick={() => setDetailViewMode('matrix')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                detailViewMode === 'matrix'
-                                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            호실별 가격 & 공실 매트릭스
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setDetailViewMode('table')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                detailViewMode === 'table'
-                                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            호실별 상세 정산 테이블
-                        </button>
-                    </div>
-
-                    <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">
-                        총 {filteredRoomStats.length}개 객실
-                    </span>
-                </div>
-
-                {detailViewMode === 'matrix' ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-300 font-bold border-b border-gray-200 dark:border-slate-700">
-                                    <th className="py-2.5 px-3">사업장</th>
-                                    <th className="py-2.5 px-3">호실</th>
-                                    <th className="py-2.5 px-3 text-center">가동률</th>
-                                    <th className="py-2.5 px-3 text-center">공실 / 투숙</th>
-                                    <th className="py-2.5 px-3 text-right">평균 단가(ADR)</th>
-                                    <th className="py-2.5 px-3 text-right text-purple-700 dark:text-purple-400">주말 단가</th>
-                                    <th className="py-2.5 px-3 text-right text-blue-700 dark:text-blue-400">평일 단가</th>
-                                    <th className="py-2.5 px-3 text-right">총매출</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                                {filteredRoomStats.map((r) => {
-                                    const weekendAdr = r.dayTypeAdr?.weekendAdr || 0;
-                                    const weekdayAdr = r.dayTypeAdr?.weekdayAdr || 0;
-                                    const propKOR = r.propName === 'Namsun' ? '남선' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName;
-
-                                    return (
-                                        <tr key={r.unitKey} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition">
-                                            <td className="py-2.5 px-3 font-bold text-gray-700 dark:text-slate-300">{propKOR}</td>
-                                            <td className="py-2.5 px-3 font-extrabold text-gray-900 dark:text-slate-100">{r.roomName}</td>
-                                            <td className="py-2.5 px-3 text-center">
-                                                <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                                    {r.occupancyRate}%
-                                                </span>
-                                            </td>
-                                            <td className="py-2.5 px-3 text-center">
-                                                <span className={r.vacantNights > 0 ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-400 dark:text-slate-500'}>
-                                                    {r.vacantNights}박 공실
-                                                </span>
-                                                <span className="text-gray-300 dark:text-slate-600 mx-1">/</span>
-                                                <span className="text-gray-900 dark:text-slate-100 font-bold">{r.totalNights}박 투숙</span>
-                                            </td>
-                                            <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                                ₩{r.adr.toLocaleString()}
-                                            </td>
-                                            <td className="py-2.5 px-3 text-right font-bold text-purple-700 dark:text-purple-400 font-mono">
-                                                {weekendAdr > 0 ? `₩${weekendAdr.toLocaleString()}` : '-'}
-                                            </td>
-                                            <td className="py-2.5 px-3 text-right font-bold text-blue-700 dark:text-blue-400 font-mono">
-                                                {weekdayAdr > 0 ? `₩${weekdayAdr.toLocaleString()}` : '-'}
-                                            </td>
-                                            <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                                ₩{r.totalRevenue.toLocaleString()}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="p-3">
-                        <RoomRevenueTable roomStats={filteredRoomStats} />
-                    </div>
-                )}
-            </div>
+            {/* 5. 개별 객실(호실)별 매출 및 가동률 성과 통합 테이블 (가동률 바 + 단가 3종 + 다중 정렬) */}
+            <RoomRevenueTable roomStats={allRoomStats} />
         </div>
     );
 }
