@@ -119,11 +119,11 @@ export default function BookingModal({
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[95vh] border border-gray-300">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[95vh] border border-gray-300 dark:border-slate-700">
 
                 {/* 상단 헤더 */}
                 <div
-                    className="p-3 md:p-3.5 flex items-center justify-between text-white shadow gap-2"
+                    className="p-3 md:p-3.5 flex items-center justify-between text-white shadow gap-2 shrink-0"
                     style={{ backgroundColor: ch.bg, color: ch.text }}
                 >
                     <div className="flex items-center gap-1.5 md:gap-2 flex-wrap min-w-0">
@@ -146,36 +146,36 @@ export default function BookingModal({
                 </div>
 
                 {/* 본문 정보 */}
-                <div className="p-3 md:p-5 overflow-y-auto flex flex-col gap-3.5 text-sm text-gray-800">
-                    <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-lg border border-gray-300">
+                <div className="p-3 md:p-5 overflow-y-auto flex flex-col gap-3.5 text-sm text-gray-800 dark:text-slate-200">
+                    <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-gray-300 dark:border-slate-700">
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">게스트 이름</span>
-                            <span className="font-extrabold text-gray-900 text-sm md:text-base">{guestName}</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">게스트 이름</span>
+                            <span className="font-extrabold text-gray-900 dark:text-slate-100 text-sm md:text-base">{guestName}</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">예약 번호</span>
-                            <span className="font-bold text-gray-900 text-xs md:text-sm font-mono">{booking.id}</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">예약 번호</span>
+                            <span className="font-bold text-gray-900 dark:text-slate-200 text-xs md:text-sm font-mono">{booking.id}</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">체크인</span>
-                            <span className="font-extrabold text-blue-700">{booking.arrival}</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">체크인</span>
+                            <span className="font-extrabold text-blue-700 dark:text-blue-400">{booking.arrival}</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">체크아웃</span>
-                            <span className="font-extrabold text-orange-700">{booking.departure}</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">체크아웃</span>
+                            <span className="font-extrabold text-orange-700 dark:text-amber-400">{booking.departure}</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">투숙 인원</span>
-                            <span className="font-extrabold text-gray-900">{booking.numAdult || 1}명</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">투숙 인원</span>
+                            <span className="font-extrabold text-gray-900 dark:text-slate-100">{booking.numAdult || 1}명</span>
                         </div>
                         <div>
-                            <span className="text-[11px] text-gray-500 font-bold block">정산 금액</span>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">정산 금액</span>
                             <div className="flex items-baseline gap-1.5 flex-wrap">
-                                <span className="font-black text-emerald-700 text-sm md:text-base font-mono">
+                                <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm md:text-base font-mono">
                                     {commInfo.netPayout.toLocaleString()}원
                                 </span>
                                 {commInfo.hasDeduction && (
-                                    <span className="text-xs text-gray-500 font-medium">
+                                    <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">
                                         (결제: {commInfo.grossPrice.toLocaleString()}원)
                                     </span>
                                 )}
@@ -185,12 +185,12 @@ export default function BookingModal({
 
                     {/* 🏠 호실 배정 관리 섹션 */}
                     {candidateUnits.length > 0 && (
-                        <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-300 flex flex-col gap-2">
+                        <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-300 dark:border-amber-800/80 flex flex-col gap-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-amber-950 flex items-center gap-1">
+                                <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1">
                                     <span>🏠</span> 호실 배정 상태:
                                 </span>
-                                <span className={`text-xs font-black px-2 py-0.5 rounded ${Number(booking.unitId) > 0 ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-700'}`}>
+                                <span className={`text-xs font-black px-2 py-0.5 rounded ${Number(booking.unitId) > 0 ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200' : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200'}`}>
                                     {Number(booking.unitId) > 0
                                         ? `${currentUnit?.displayName || `Unit ${booking.unitId}`} (배정됨)`
                                         : '⚠️ 미배정 상태'}
@@ -198,22 +198,22 @@ export default function BookingModal({
                             </div>
 
                             {onAssignUnit && (
-                                <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200">
+                                <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200 dark:border-amber-800/50">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1 flex-1">
-                                            <span className="text-[11px] font-bold text-gray-700 shrink-0">변경 호실:</span>
+                                            <span className="text-[11px] font-bold text-gray-700 dark:text-slate-300 shrink-0">변경 호실:</span>
                                             <select
                                                 value={selectedUnitId}
                                                 onChange={(e) => setSelectedUnitId(Number(e.target.value))}
-                                                className={`px-2 py-1 text-xs font-black bg-white border rounded-md text-gray-800 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50' : 'border-gray-300'}`}
+                                                className={`px-2 py-1 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200' : 'border-gray-300 dark:border-slate-600'}`}
                                             >
                                                 {/* ⚠️ 미배정 상태로 되돌리기 옵션 */}
-                                                <option value={0}>⚠️ [미배정 상태로 변경 (호실 해제)]</option>
+                                                <option value={0} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">⚠️ [미배정 상태로 변경 (호실 해제)]</option>
 
                                                 {candidateUnits.map((u) => {
                                                     const conf = u.unitId ? findConflictingBookings(booking, Number(booking.roomId), u.unitId, allBookings) : [];
                                                     return (
-                                                        <option key={`opt-${u.key}`} value={u.unitId}>
+                                                        <option key={`opt-${u.key}`} value={u.unitId} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
                                                             🏠 {u.displayName} {u.subName ? `(${u.subName})` : ''} {conf.length > 0 ? '(⚠️ 중복)' : ''}
                                                         </option>
                                                     );
@@ -245,7 +245,7 @@ export default function BookingModal({
 
                                     {/* 실시간 더블 부킹 경고 메시지 */}
                                     {hasConflictOnSelectedUnit && (
-                                        <div className="p-1.5 bg-rose-100 border border-rose-300 rounded text-rose-900 text-[11px] font-black flex items-center gap-1">
+                                        <div className="p-1.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded text-rose-900 dark:text-rose-200 text-[11px] font-black flex items-center gap-1">
                                             <span>🚨</span>
                                             <span>
                                                 {currentConflicts[0]?.arrival} ~ {currentConflicts[0]?.departure}에 [{currentConflicts[0]?.firstName || ''} {currentConflicts[0]?.lastName || ''}]님 예약과 겹칩니다!
@@ -256,7 +256,7 @@ export default function BookingModal({
                             )}
 
                             {assignMsg && (
-                                <div className={`text-[11px] font-black ${assignMsg.type === 'success' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                <div className={`text-[11px] font-black ${assignMsg.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                                     {assignMsg.text}
                                 </div>
                             )}
@@ -265,7 +265,7 @@ export default function BookingModal({
 
                     {/* 🏷️ 빠른 상태 옵션 */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="font-extrabold text-xs text-gray-800 flex items-center gap-1">
+                        <label className="font-extrabold text-xs text-gray-800 dark:text-slate-200 flex items-center gap-1">
                             <span>🏷️ 빠른 상태 옵션 (시간 설정 및 다중 선택)</span>
                         </label>
 
@@ -274,14 +274,14 @@ export default function BookingModal({
                             {/* 1. 얼리체크인 */}
                             <div
                                 className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isEarlyActive
-                                    ? 'bg-blue-50 border-blue-500 border-2 shadow-sm'
-                                    : 'bg-white border-gray-300'
+                                    ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 border-2 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
                                     }`}
                             >
                                 <button
                                     type="button"
                                     onClick={handleEarlyToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 grow text-left"
+                                    className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300 grow text-left cursor-pointer"
                                 >
                                     <span>🕒</span>
                                     <span>얼리체크인</span>
@@ -292,10 +292,10 @@ export default function BookingModal({
                                     <select
                                         value={earlyTime}
                                         onChange={(e) => handleEarlyTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white border border-blue-500 rounded text-blue-900 focus:outline-none cursor-pointer"
+                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer"
                                     >
                                         {EARLY_CHECKIN_HOURS.map((h) => (
-                                            <option key={h} value={h}>
+                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
                                                 {h}
                                             </option>
                                         ))}
@@ -306,14 +306,14 @@ export default function BookingModal({
                             {/* 2. 레이트체크아웃 */}
                             <div
                                 className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isLateActive
-                                    ? 'bg-indigo-50 border-indigo-500 border-2 shadow-sm'
-                                    : 'bg-white border-gray-300'
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 border-2 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
                                     }`}
                             >
                                 <button
                                     type="button"
                                     onClick={handleLateToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 grow text-left"
+                                    className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300 grow text-left cursor-pointer"
                                 >
                                     <span>⏱️</span>
                                     <span>레이트체크아웃</span>
@@ -324,10 +324,10 @@ export default function BookingModal({
                                     <select
                                         value={lateTime}
                                         onChange={(e) => handleLateTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white border border-indigo-500 rounded text-indigo-900 focus:outline-none cursor-pointer"
+                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer"
                                     >
                                         {LATE_CHECKOUT_HOURS.map((h) => (
-                                            <option key={h} value={h}>
+                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
                                                 {h}
                                             </option>
                                         ))}
@@ -339,9 +339,9 @@ export default function BookingModal({
                             <button
                                 type="button"
                                 onClick={() => onToggleTag('no_cleaning')}
-                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all ${isNoCleaning
-                                    ? 'bg-rose-50 border-rose-500 border-2 text-rose-900 shadow-sm'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer ${isNoCleaning
+                                    ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 border-2 text-rose-900 dark:text-rose-200 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 <span className="flex items-center gap-1.5">
@@ -355,9 +355,9 @@ export default function BookingModal({
                             <button
                                 type="button"
                                 onClick={() => onToggleTag('repair')}
-                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all ${isRepair
-                                    ? 'bg-amber-50 border-amber-500 border-2 text-amber-950 shadow-sm'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer ${isRepair
+                                    ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 border-2 text-amber-950 dark:text-amber-200 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 <span className="flex items-center gap-1.5">
@@ -372,7 +372,7 @@ export default function BookingModal({
 
                     {/* 🔥 고대비 특이사항 메모 입력창 */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="font-extrabold text-xs text-gray-900 flex items-center gap-1">
+                        <label className="font-extrabold text-xs text-gray-900 dark:text-slate-100 flex items-center gap-1">
                             <span>🔥 특이사항 및 메모 (선명한 고대비)</span>
                         </label>
                         <textarea
@@ -380,29 +380,29 @@ export default function BookingModal({
                             value={memoInput}
                             onChange={(e) => setMemoInput(e.target.value)}
                             placeholder="예: 짐보관 요청(12시), 침구 추가 요청 등..."
-                            className="w-full p-2.5 border-2 border-gray-400 focus:border-blue-600 rounded-lg text-sm font-bold text-gray-900 placeholder:text-gray-400 placeholder:font-normal focus:ring-2 focus:ring-blue-500 focus:outline-none bg-yellow-50/40"
+                            className="w-full p-2.5 border-2 border-gray-400 dark:border-slate-600 focus:border-blue-600 dark:focus:border-blue-500 rounded-lg text-sm font-bold text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:ring-2 focus:ring-blue-500 focus:outline-none bg-yellow-50/40 dark:bg-slate-800"
                         />
                     </div>
                 </div>
 
                 {/* 하단 버튼 바 */}
-                <div className="p-3 md:p-4 bg-gray-100 border-t border-gray-300 flex justify-between items-center">
+                <div className="p-3 md:p-4 bg-gray-100 dark:bg-slate-950 border-t border-gray-300 dark:border-slate-800 flex justify-between items-center shrink-0">
                     <button
                         onClick={onDelete}
-                        className="px-3 py-2 text-xs font-extrabold text-red-700 hover:bg-red-100 rounded-lg border border-red-300 transition"
+                        className="px-3 py-2 text-xs font-extrabold text-red-700 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-950/50 rounded-lg border border-red-300 dark:border-rose-900/60 transition cursor-pointer"
                     >
                         초기화/삭제
                     </button>
                     <div className="flex gap-2">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-200 rounded-lg border border-gray-300 transition"
+                            className="px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
                         >
                             닫기
                         </button>
                         <button
                             onClick={onSave}
-                            className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition"
+                            className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition cursor-pointer"
                         >
                             저장하기
                         </button>

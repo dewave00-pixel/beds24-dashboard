@@ -119,10 +119,10 @@ export default function SearchModal({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300 dark:border-slate-800">
 
                 {/* 상단 헤더 */}
-                <div className="p-3.5 bg-blue-600 text-white flex items-center justify-between shadow">
+                <div className="p-3.5 bg-blue-600 dark:bg-blue-700 text-white flex items-center justify-between shadow shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="text-base md:text-lg font-black flex items-center gap-1.5">
                             <span>🔍</span> 통합 예약 검색
@@ -131,14 +131,14 @@ export default function SearchModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-base font-extrabold hover:bg-blue-700 px-2.5 py-1 rounded transition"
+                        className="text-base font-extrabold hover:bg-blue-700 dark:hover:bg-blue-800 px-2.5 py-1 rounded transition cursor-pointer"
                     >
                         ✕
                     </button>
                 </div>
 
                 {/* 검색 입력창 영역 */}
-                <div className="p-3 md:p-4 bg-gray-50 border-b border-gray-200 flex flex-col gap-1.5">
+                <div className="p-3 md:p-4 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex flex-col gap-1.5 shrink-0">
                     <div className="relative">
                         <input
                             type="text"
@@ -146,40 +146,40 @@ export default function SearchModal({
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="예약자명, 숙소/호실, 날짜(예: 0814 또는 20260814), 예약번호"
-                            className="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-gray-300 focus:border-blue-600 rounded-lg text-sm font-bold text-gray-900 placeholder:text-gray-400 placeholder:font-normal focus:outline-none shadow-sm transition"
+                            className="w-full pl-9 pr-8 py-2.5 bg-white dark:bg-slate-800 border-2 border-gray-300 dark:border-slate-700 focus:border-blue-600 dark:focus:border-blue-500 rounded-lg text-sm font-bold text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none shadow-sm transition"
                         />
-                        <span className="absolute left-3 top-3 text-gray-400 text-sm">🔍</span>
+                        <span className="absolute left-3 top-3 text-gray-400 dark:text-slate-500 text-sm">🔍</span>
                         {searchTerm && (
                             <button
                                 type="button"
                                 onClick={() => setSearchTerm('')}
-                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 font-bold text-sm p-0.5"
+                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 font-bold text-sm p-0.5 cursor-pointer"
                             >
                                 ✕
                             </button>
                         )}
                     </div>
-                    <div className="text-[11px] text-gray-500 font-medium flex items-center gap-1 pl-1">
+                    <div className="text-[11px] text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1 pl-1">
                         <span>💡</span>
                         <span>날짜 검색 시 대시(-) 없이 <strong>0814</strong> 또는 <strong>20260814</strong> 처럼 숫자만 입력해도 검색됩니다.</span>
                     </div>
                 </div>
 
                 {/* 검색 결과 리스트 본문 */}
-                <div className="p-3 md:p-4 overflow-y-auto flex flex-col gap-2 grow">
+                <div className="p-3 md:p-4 overflow-y-auto flex flex-col gap-2 grow bg-white dark:bg-slate-950 min-h-0">
                     {!searchTerm.trim() ? (
-                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 dark:text-slate-500 font-bold bg-gray-50 dark:bg-slate-900 rounded-lg border border-dashed border-gray-200 dark:border-slate-800">
                             검색어를 입력하시면 실시간으로 예약이 검색됩니다.
                         </div>
                     ) : filteredBookings.length === 0 ? (
-                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 dark:text-slate-500 font-bold bg-gray-50 dark:bg-slate-900 rounded-lg border border-dashed border-gray-200 dark:border-slate-800">
                             &apos;{searchTerm}&apos;에 해당하는 예약 검색 결과가 없습니다.
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">
-                            <div className="text-xs font-black text-blue-900 px-1 flex items-center justify-between">
+                            <div className="text-xs font-black text-blue-900 dark:text-blue-300 px-1 flex items-center justify-between">
                                 <span>검색 결과</span>
-                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-black text-[10.5px]">
+                                <span className="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-black text-[10.5px] border border-blue-200 dark:border-blue-800">
                                     총 {filteredBookings.length}건
                                 </span>
                             </div>
@@ -198,8 +198,8 @@ export default function SearchModal({
                                     <div
                                         key={b.id}
                                         onClick={onSelectBooking ? () => onSelectBooking(b) : undefined}
-                                        className={`p-2.5 md:p-3 bg-white rounded-lg border border-gray-300 shadow-sm transition flex flex-col gap-1.5 ${
-                                            onSelectBooking ? 'hover:border-blue-500 hover:shadow-md cursor-pointer' : 'cursor-default'
+                                        className={`p-2.5 md:p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-300 dark:border-slate-800 shadow-sm transition flex flex-col gap-1.5 ${
+                                            onSelectBooking ? 'hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md cursor-pointer' : 'cursor-default'
                                         }`}
                                     >
                                         {/* 상단: 숙소명 + 호실 + 예약자명 + 채널 뱃지 */}
@@ -214,16 +214,16 @@ export default function SearchModal({
                                                 </span>
 
                                                 {/* 호실명 뱃지 */}
-                                                <span className="font-black text-xs md:text-sm text-gray-950 bg-gray-200 border border-gray-300 px-2 py-0.5 rounded shrink-0">
+                                                <span className="font-black text-xs md:text-sm text-gray-950 dark:text-slate-100 bg-gray-200 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 px-2 py-0.5 rounded shrink-0">
                                                     {fullUnitName}
                                                 </span>
 
                                                 {/* 예약자명 */}
                                                 <div className="flex items-center gap-1 truncate">
-                                                    <span className="font-black text-xs md:text-sm text-gray-900 truncate">
+                                                    <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100 truncate">
                                                         {guestName}
                                                     </span>
-                                                    <span className="text-[10px] md:text-xs text-gray-600 font-extrabold shrink-0">
+                                                    <span className="text-[10px] md:text-xs text-gray-600 dark:text-slate-400 font-extrabold shrink-0">
                                                         ({b.numAdult || 1}명)
                                                     </span>
                                                 </div>
@@ -239,11 +239,11 @@ export default function SearchModal({
                                         </div>
 
                                         {/* 하단: 일정 정보 및 예약 번호 */}
-                                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] md:text-xs text-gray-600 font-bold bg-gray-50 p-2 rounded border border-gray-200">
+                                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] md:text-xs text-gray-600 dark:text-slate-300 font-bold bg-gray-50 dark:bg-slate-850 p-2 rounded border border-gray-200 dark:border-slate-800">
                                             <div>
-                                                📅 <strong className="text-blue-700">{b.arrival}</strong> ~ <strong className="text-orange-700">{b.departure}</strong>
+                                                📅 <strong className="text-blue-700 dark:text-blue-400">{b.arrival}</strong> ~ <strong className="text-orange-700 dark:text-amber-400">{b.departure}</strong>
                                             </div>
-                                            <div className="text-gray-400 font-medium text-[10px] md:text-[11px]">
+                                            <div className="text-gray-400 dark:text-slate-500 font-medium text-[10px] md:text-[11px]">
                                                 예약 #{b.id}
                                             </div>
                                         </div>
@@ -255,11 +255,11 @@ export default function SearchModal({
                 </div>
 
                 {/* 하단 닫기 바 */}
-                <div className="p-3 bg-gray-100 border-t border-gray-300 flex justify-end">
+                <div className="p-3 bg-gray-100 dark:bg-slate-900 border-t border-gray-300 dark:border-slate-800 flex justify-end shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-5 py-1.5 md:py-2 text-xs font-black text-gray-700 bg-white hover:bg-gray-200 rounded-lg border border-gray-300 shadow-sm transition"
+                        className="px-5 py-1.5 md:py-2 text-xs font-black text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-700 shadow-sm transition cursor-pointer"
                     >
                         닫기
                     </button>

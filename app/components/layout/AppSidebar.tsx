@@ -104,10 +104,10 @@ export default function AppSidebar({
     const currentStaffName = role ? getStaffNameById(role) : null;
 
     const getRoleBadge = () => {
-        if (isAdmin) return { label: '👑 최고관리자', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
-        if (isManager) return { label: `👔 ${currentStaffName || '소영매니저님'}`, color: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
-        if (isStaff) return { label: `🧹 ${currentStaffName || '청소 스태프'}`, color: 'bg-amber-100 text-amber-800 border-amber-200' };
-        return { label: '게스트', color: 'bg-gray-100 text-gray-600 border-gray-200' };
+        if (isAdmin) return { label: '👑 최고관리자', color: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' };
+        if (isManager) return { label: `👔 ${currentStaffName || '소영매니저님'}`, color: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' };
+        if (isStaff) return { label: `🧹 ${currentStaffName || '청소 스태프'}`, color: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800' };
+        return { label: '게스트', color: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700' };
     };
 
     const roleBadge = getRoleBadge();
@@ -169,7 +169,8 @@ export default function AppSidebar({
                     <button
                         type="button"
                         onClick={onCloseMobile}
-                        className="md:hidden flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 font-black text-sm"
+                        aria-label="메뉴 닫기"
+                        className="md:hidden flex items-center justify-center w-7 h-7 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 font-black text-sm"
                     >
                         ✕
                     </button>

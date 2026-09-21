@@ -142,9 +142,9 @@ export default function CleaningRoomCard({
                                 }}
                                 className="text-[10px] font-black px-1.5 py-0.5 bg-white/90 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:border-blue-400 rounded text-gray-700 dark:text-slate-200 cursor-pointer shadow-2xs focus:ring-1 focus:ring-blue-500"
                             >
-                                <option value="">배정 선택 ▾</option>
+                                <option value="" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">배정 선택 ▾</option>
                                 {staffList.map((s) => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <option key={s} value={s} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">{s}</option>
                                 ))}
                             </select>
                         )

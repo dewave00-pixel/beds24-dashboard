@@ -40,7 +40,7 @@ export default function TotalNotesModal({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-gray-300 dark:border-slate-800">
 
                 {/* 상단 헤더 */}
                 <div className="p-3.5 bg-amber-500 text-white flex items-center justify-between shadow">
@@ -63,7 +63,7 @@ export default function TotalNotesModal({
                 {/* 본문 리스트 영역 (모바일 최적화 스크롤) */}
                 <div className="p-3 md:p-5 overflow-y-auto flex flex-col gap-2.5">
                     {notedBookings.length === 0 ? (
-                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 font-bold bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        <div className="text-center py-12 text-xs md:text-sm text-gray-400 dark:text-slate-400 font-bold bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-gray-200 dark:border-slate-700">
                             현재 등록된 특이사항 메모나 상태 옵션 태그가 없습니다.
                         </div>
                     ) : (
@@ -82,17 +82,17 @@ export default function TotalNotesModal({
                                 <div
                                     key={b.id}
                                     onClick={onSelectBooking ? () => onSelectBooking(b) : undefined}
-                                    className={`p-3 bg-white rounded-lg border border-gray-300 shadow-sm transition flex flex-col gap-1.5 ${
+                                    className={`p-3 bg-white dark:bg-slate-800/90 rounded-lg border border-gray-300 dark:border-slate-700 shadow-sm transition flex flex-col gap-1.5 ${
                                         onSelectBooking ? 'hover:border-amber-500 hover:shadow-md cursor-pointer' : 'cursor-default'
                                     }`}
                                 >
                                     {/* 상단: 호실명 + 예약채널 + 일정 */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="font-black text-xs md:text-sm text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                                            <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">
                                                 {getUnitName(b)}
                                             </span>
-                                            <span className="font-extrabold text-sm text-gray-900">
+                                            <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
                                                 {guestName}
                                             </span>
                                         </div>
@@ -106,7 +106,7 @@ export default function TotalNotesModal({
                                     </div>
 
                                     {/* 중단: 체크인/아웃 날짜 및 태그들 */}
-                                    <div className="flex items-center justify-between text-xs text-gray-600 font-bold border-t border-gray-100 pt-2">
+                                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-slate-300 font-bold border-t border-gray-100 dark:border-slate-700/60 pt-2">
                                         <span>
                                             {b.arrival} ~ {b.departure}
                                         </span>
@@ -129,8 +129,8 @@ export default function TotalNotesModal({
 
                                     {/* 하단: 특이사항 메모 텍스트 */}
                                     {memoText && (
-                                        <div className="p-2 bg-yellow-50 border border-yellow-300 rounded text-xs font-bold text-gray-900 flex items-start gap-1.5">
-                                            <span className="shrink-0 font-black text-amber-700">메모:</span>
+                                        <div className="p-2 bg-yellow-50 dark:bg-amber-950/40 border border-yellow-300 dark:border-amber-800/60 rounded text-xs font-bold text-gray-900 dark:text-amber-200 flex items-start gap-1.5">
+                                            <span className="shrink-0 font-black text-amber-700 dark:text-amber-400">메모:</span>
                                             <span className="break-all">{memoText}</span>
                                         </div>
                                     )}
@@ -141,10 +141,10 @@ export default function TotalNotesModal({
                 </div>
 
                 {/* 하단 닫기 바 */}
-                <div className="p-3 bg-gray-100 border-t border-gray-300 flex justify-end">
+                <div className="p-3 bg-gray-100 dark:bg-slate-800/80 border-t border-gray-300 dark:border-slate-800 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="px-5 py-2 text-xs font-black text-gray-700 bg-white hover:bg-gray-200 rounded-lg border border-gray-300 shadow-sm transition"
+                        className="px-5 py-2 text-xs font-black text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg border border-gray-300 dark:border-slate-600 shadow-sm transition"
                     >
                         닫기
                     </button>

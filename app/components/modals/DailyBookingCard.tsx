@@ -63,17 +63,17 @@ export default function DailyBookingCard({
     return (
         <div
             onClick={onSelectBooking ? () => onSelectBooking(booking) : undefined}
-            className={`p-3 bg-white rounded-xl border border-gray-200 transition flex flex-col gap-2 ${
-                onSelectBooking ? 'hover:border-blue-400 hover:shadow-md cursor-pointer' : 'cursor-default'
+            className={`p-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 transition flex flex-col gap-2 ${
+                onSelectBooking ? 'hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md cursor-pointer' : 'cursor-default'
             }`}
         >
             {/* 1줄: 숙소명/호실명 + 도어락 비밀번호 뱃지 + 채널 뱃지 */}
             <div className="flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-900 text-white shrink-0">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-900 dark:bg-slate-950 text-white border border-slate-700/80 shrink-0">
                         {propertyName}
                     </span>
-                    <span className="font-black text-xs md:text-sm text-gray-900 truncate">
+                    <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100 truncate">
                         {unitDisplayName}
                     </span>
 
@@ -85,8 +85,8 @@ export default function DailyBookingCard({
                             title="클릭 시 비밀번호 복사"
                             className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-black transition flex items-center gap-1 cursor-pointer shrink-0 border ${
                                 copied
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs'
-                                    : 'bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-300'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 shadow-xs'
+                                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-blue-300 border-slate-300 dark:border-slate-700'
                             }`}
                         >
                             <span>🔑 {copied ? '복사됨!' : doorPassword}</span>
@@ -108,13 +108,13 @@ export default function DailyBookingCard({
             </div>
 
             {/* 2줄: 예약자명 + 박수 및 일정 */}
-            <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-1.5">
-                <div className="font-extrabold text-gray-900 flex items-center gap-1 truncate">
+            <div className="flex items-center justify-between text-xs border-t border-gray-100 dark:border-slate-800 pt-1.5">
+                <div className="font-extrabold text-gray-900 dark:text-slate-100 flex items-center gap-1 truncate">
                     <span className="truncate">{guestName}</span>
-                    <span className="text-[11px] text-gray-400 font-bold">({booking.numAdult || 1}명)</span>
+                    <span className="text-[11px] text-gray-400 dark:text-slate-500 font-bold">({booking.numAdult || 1}명)</span>
                 </div>
 
-                <span className="text-[11px] text-gray-600 font-black shrink-0">
+                <span className="text-[11px] text-gray-600 dark:text-slate-400 font-black shrink-0">
                     {booking.arrival.slice(5)} ~ {booking.departure.slice(5)} ({calculatedNights}박)
                 </span>
             </div>
@@ -139,8 +139,8 @@ export default function DailyBookingCard({
 
             {/* 4줄: 메모 노란 박스 (있을 경우만) */}
             {hasMemo && (
-                <div className="p-1.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 font-bold flex items-start gap-1">
-                    <span className="shrink-0 font-black text-amber-700">메모:</span>
+                <div className="p-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded text-[11px] text-amber-900 dark:text-amber-200 font-bold flex items-start gap-1">
+                    <span className="shrink-0 font-black text-amber-700 dark:text-amber-400">메모:</span>
                     <span className="truncate">{noteData?.note}</span>
                 </div>
             )}
