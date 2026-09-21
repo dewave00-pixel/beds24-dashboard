@@ -191,17 +191,17 @@ export default function DateStepperToolbar({
     const nextButtonLabel = mode === 'day' ? '다음날 ▶' : mode === 'week' ? '다음 주 ▶' : mode === 'month' ? '다음 달 ▶' : '다음 ▶';
 
     return (
-        <div className="bg-white p-3 md:p-3.5 rounded-2xl border border-gray-200 shadow-xs flex flex-col gap-2.5">
+        <div className="bg-white dark:bg-slate-900 p-3 md:p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col gap-2.5">
             {/* 상단 1열: 단위 선택 모드 탭 & 빠른 오늘 버튼 */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
-                <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-xs font-bold">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-slate-800 pb-2.5">
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold">
                     <button
                         type="button"
                         onClick={() => handleSwitchMode('day')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                             mode === 'day'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         일간 (오늘/하루)
@@ -211,8 +211,8 @@ export default function DateStepperToolbar({
                         onClick={() => handleSwitchMode('week')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                             mode === 'week'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         주간 (7일)
@@ -222,8 +222,8 @@ export default function DateStepperToolbar({
                         onClick={() => handleSwitchMode('month')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                             mode === 'month'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         월간 (한달)
@@ -233,8 +233,8 @@ export default function DateStepperToolbar({
                         onClick={() => handleSwitchMode('custom')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                             mode === 'custom'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         직접 설정 (달력)
@@ -247,11 +247,11 @@ export default function DateStepperToolbar({
                     onClick={handleGoToday}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${
                         isToday
-                            ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-2xs'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 shadow-2xs font-extrabold'
+                            : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'
                     }`}
                 >
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></span>
                     <span>오늘 기준</span>
                 </button>
             </div>
@@ -259,12 +259,12 @@ export default function DateStepperToolbar({
             {/* 하단 2열: ◀ / ▶ 초고속 스텝퍼 내비게이션 컨트롤러 */}
             <div className="flex flex-wrap items-center justify-between gap-2">
                 {mode !== 'custom' ? (
-                    <div className="flex items-center justify-between w-full sm:w-auto gap-2 bg-gray-50/80 p-1.5 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-2 bg-gray-50/80 dark:bg-slate-800/80 p-1.5 rounded-xl border border-gray-200 dark:border-slate-700">
                         {/* 이전 이동 버튼 */}
                         <button
                             type="button"
                             onClick={handlePrev}
-                            className="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs rounded-lg border border-gray-200 shadow-2xs transition cursor-pointer active:scale-95 flex items-center gap-1"
+                            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold text-xs rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer active:scale-95 flex items-center gap-1"
                             title={prevButtonLabel}
                         >
                             <span>{prevButtonLabel}</span>
@@ -272,14 +272,14 @@ export default function DateStepperToolbar({
 
                         {/* 현재 선택 날짜 디스플레이 */}
                         <div className="px-3 py-1 flex items-center gap-2 text-center min-w-[160px] justify-center">
-                            <span className="text-sm font-extrabold text-gray-900 font-mono tracking-tight">
+                            <span className="text-sm font-extrabold text-gray-900 dark:text-slate-100 font-mono tracking-tight">
                                 {centerDateLabel.title}
                             </span>
                             {centerDateLabel.badge && (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                                     centerDateLabel.badge === '오늘'
                                         ? 'bg-blue-600 text-white'
-                                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        : 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                                 }`}>
                                     {centerDateLabel.badge}
                                 </span>
@@ -290,7 +290,7 @@ export default function DateStepperToolbar({
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs rounded-lg border border-gray-200 shadow-2xs transition cursor-pointer active:scale-95 flex items-center gap-1"
+                            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold text-xs rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer active:scale-95 flex items-center gap-1"
                             title={nextButtonLabel}
                         >
                             <span>{nextButtonLabel}</span>
@@ -298,29 +298,29 @@ export default function DateStepperToolbar({
                     </div>
                 ) : (
                     /* 직접 날짜 설정 모드 (달력 Input) */
-                    <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-1.5 px-3 rounded-xl border border-gray-200 text-xs font-bold w-full sm:w-auto">
-                        <span className="text-gray-600 font-bold">시작일:</span>
+                    <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-slate-800 p-1.5 px-3 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold w-full sm:w-auto">
+                        <span className="text-gray-600 dark:text-slate-300 font-bold">시작일:</span>
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => onChangeRange(e.target.value, endDate, 'custom')}
-                            className="px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-900 cursor-pointer font-mono shadow-2xs"
+                            className="px-2 py-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-900 dark:text-slate-100 cursor-pointer font-mono shadow-2xs"
                         />
-                        <span className="text-gray-400 font-bold">~</span>
-                        <span className="text-gray-600 font-bold">종료일:</span>
+                        <span className="text-gray-400 dark:text-slate-500 font-bold">~</span>
+                        <span className="text-gray-600 dark:text-slate-300 font-bold">종료일:</span>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => onChangeRange(startDate, e.target.value, 'custom')}
-                            className="px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-900 cursor-pointer font-mono shadow-2xs"
+                            className="px-2 py-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-900 dark:text-slate-100 cursor-pointer font-mono shadow-2xs"
                         />
                     </div>
                 )}
 
                 {/* 현재 적용된 기간 안내 뱃지 */}
-                <div className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5 ml-auto">
+                <div className="text-[11px] text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1.5 ml-auto">
                     <span>조회 범위:</span>
-                    <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-md">
+                    <span className="font-mono font-bold text-gray-800 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-transparent dark:border-slate-700">
                         {startDate} ~ {endDate}
                     </span>
                 </div>
