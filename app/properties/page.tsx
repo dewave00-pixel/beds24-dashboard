@@ -113,7 +113,7 @@ export default function PropertiesPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-gray-100 dark:bg-slate-950 transition-colors duration-200">
             {/* 🧭 크롬 스타일 접이식 사이드바 */}
             <AppSidebar
                 isMobileOpen={isMobileSidebarOpen}
@@ -123,14 +123,14 @@ export default function PropertiesPage() {
             {/* 메인 본문 컨텐츠 */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* 상단 콤팩트 헤더 */}
-                <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
+                <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
                     <div className="flex items-center gap-2.5">
                         {/* 📱 모바일 햄버거 버튼 */}
                         <button
                             type="button"
                             onClick={() => setIsMobileSidebarOpen(true)}
                             title="메뉴 열기"
-                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-black transition cursor-pointer border border-gray-200"
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-base font-black transition cursor-pointer border border-gray-200 dark:border-slate-700"
                         >
                             ☰
                         </button>
@@ -138,10 +138,10 @@ export default function PropertiesPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-xl">🔑</span>
                             <div>
-                                <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
+                                <h1 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 leading-tight">
                                     숙소 비밀번호 & 호실 현황
                                 </h1>
-                                <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
+                                <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
                                     도어락 비밀번호 복사, 최대 인원 및 주요 수리사항 한눈에 관리
                                 </span>
                             </div>
@@ -152,7 +152,7 @@ export default function PropertiesPage() {
                         type="button"
                         onClick={fetchPropertiesInfo}
                         disabled={loading}
-                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs rounded-xl border border-gray-200 transition flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 font-black text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition flex items-center gap-1 cursor-pointer"
                     >
                         <span className={loading ? 'animate-spin' : ''}>🔄</span>
                         <span className="hidden sm:inline">새로고침</span>
@@ -163,7 +163,7 @@ export default function PropertiesPage() {
                 <div className="dashboard-panel p-2 md:p-3 flex flex-col gap-4">
 
                     {loading ? (
-                        <div className="text-center py-12 text-gray-400 font-bold text-xs">
+                        <div className="text-center py-12 text-gray-400 dark:text-slate-500 font-bold text-xs">
                             숙소 정보를 불러오는 중입니다...
                         </div>
                     ) : (
@@ -172,20 +172,20 @@ export default function PropertiesPage() {
 
                                 {/* 🎨 묵직하고 선명한 블랙(Black) 숙소 그룹 뱃지 */}
                                 <div className="flex items-center gap-1.5 pt-1">
-                                    <span className="text-[10.5px] md:text-xs font-black text-white bg-slate-900 px-2.5 py-0.5 rounded-md shadow-sm border border-black flex items-center gap-1">
+                                    <span className="text-[10.5px] md:text-xs font-black text-white bg-slate-900 dark:bg-slate-800 px-2.5 py-0.5 rounded-md shadow-sm border border-black dark:border-slate-700 flex items-center gap-1">
                                         <span>🏢</span>
                                         <span>{group.name}</span>
                                     </span>
-                                    <span className="text-[10.5px] text-gray-500 font-extrabold">
+                                    <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-extrabold">
                                         ({group.units.length}개 호실)
                                     </span>
                                 </div>
 
                                 {/* 🖥️ PC 뷰: 한눈에 쏙 들어오는 콤팩트 테이블 (표 형태) */}
-                                <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-300 shadow-sm bg-white">
+                                <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-300 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
                                     <table className="w-full text-left border-collapse text-xs">
                                         <thead>
-                                            <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 font-black text-[11px]">
+                                            <tr className="bg-gray-100 dark:bg-slate-800/90 border-b border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-black text-[11px]">
                                                 <th className="py-2 px-3 w-36">호실명</th>
                                                 <th className="py-2 px-3 w-48">🔑 도어락 비밀번호</th>
                                                 <th className="py-2 px-3 w-28">👥 최대 인원</th>
@@ -193,7 +193,7 @@ export default function PropertiesPage() {
                                                 <th className="py-2 px-3 w-24 text-center">관리</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200">
+                                        <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                                             {group.units.map((unit) => {
                                                 const info = propertiesInfo[unit.key] || {
                                                     doorPassword: '',
@@ -203,13 +203,13 @@ export default function PropertiesPage() {
                                                 const isEditing = editingId === unit.key;
 
                                                 return (
-                                                    <tr key={unit.key} className={`transition ${isEditing ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
+                                                    <tr key={unit.key} className={`transition ${isEditing ? 'bg-blue-50/50 dark:bg-blue-950/30' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
 
                                                         {/* 호실명 */}
-                                                        <td className="py-2 px-3 font-black text-gray-900">
+                                                        <td className="py-2 px-3 font-black text-gray-900 dark:text-slate-100">
                                                             <span>🏠 {unit.displayName}</span>
                                                             {unit.subName && (
-                                                                <span className="text-[10.5px] text-gray-400 font-bold ml-1">
+                                                                <span className="text-[10.5px] text-gray-400 dark:text-slate-400 font-bold ml-1">
                                                                     ({unit.subName})
                                                                 </span>
                                                             )}
@@ -219,14 +219,14 @@ export default function PropertiesPage() {
                                                         <td className="py-2 px-3 font-mono">
                                                             {!isEditing ? (
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <span className="font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-xs">
+                                                                    <span className="font-black text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-700 text-xs">
                                                                         {info.doorPassword || '미등록'}
                                                                     </span>
                                                                     {info.doorPassword && (
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleCopyPassword(unit.key, info.doorPassword)}
-                                                                            className="px-1.5 py-0.5 text-[9.5px] font-black text-white bg-slate-800 hover:bg-slate-900 rounded shadow-sm transition"
+                                                                            className="px-1.5 py-0.5 text-[9.5px] font-black text-white bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 rounded shadow-sm transition cursor-pointer"
                                                                         >
                                                                             {copiedId === unit.key ? '복사됨! ✅' : '복사'}
                                                                         </button>
@@ -238,15 +238,15 @@ export default function PropertiesPage() {
                                                                     value={editPassword}
                                                                     onChange={(e) => setEditPassword(e.target.value)}
                                                                     placeholder="비밀번호 입력"
-                                                                    className="w-full px-2 py-1 bg-white border border-blue-400 rounded text-xs font-bold text-gray-900 focus:outline-none"
+                                                                    className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-blue-400 rounded text-xs font-bold text-gray-900 dark:text-slate-100 focus:outline-none"
                                                                 />
                                                             )}
                                                         </td>
 
                                                         {/* 최대 투숙 인원 */}
-                                                        <td className="py-2 px-3 font-bold text-gray-800">
+                                                        <td className="py-2 px-3 font-bold text-gray-800 dark:text-slate-200">
                                                             {!isEditing ? (
-                                                                <span>최대 <strong className="text-blue-600 font-black">{info.maxGuests}</strong>명</span>
+                                                                <span>최대 <strong className="text-blue-600 dark:text-blue-400 font-black">{info.maxGuests}</strong>명</span>
                                                             ) : (
                                                                 <div className="flex items-center gap-1">
                                                                     <input
@@ -255,7 +255,7 @@ export default function PropertiesPage() {
                                                                         max={30}
                                                                         value={editMaxGuests}
                                                                         onChange={(e) => setEditMaxGuests(Number(e.target.value))}
-                                                                        className="w-14 px-1.5 py-1 bg-white border border-blue-400 rounded text-xs font-bold text-gray-900 focus:outline-none"
+                                                                        className="w-14 px-1.5 py-1 bg-white dark:bg-slate-800 border border-blue-400 rounded text-xs font-bold text-gray-900 dark:text-slate-100 focus:outline-none"
                                                                     />
                                                                     <span>명</span>
                                                                 </div>
@@ -266,11 +266,11 @@ export default function PropertiesPage() {
                                                         <td className="py-2 px-3">
                                                             {!isEditing ? (
                                                                 info.repairNotes ? (
-                                                                    <span className="text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold text-[11px] inline-block max-w-md truncate">
+                                                                    <span className="text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900 font-bold text-[11px] inline-block max-w-md truncate">
                                                                         🛠️ {info.repairNotes}
                                                                     </span>
                                                                 ) : (
-                                                                    <span className="text-gray-300 font-normal text-[11px]">-</span>
+                                                                    <span className="text-gray-300 dark:text-slate-600 font-normal text-[11px]">-</span>
                                                                 )
                                                             ) : (
                                                                 <input
@@ -278,7 +278,7 @@ export default function PropertiesPage() {
                                                                     value={editRepairNotes}
                                                                     onChange={(e) => setEditRepairNotes(e.target.value)}
                                                                     placeholder="수리/점검 메모 입력"
-                                                                    className="w-full px-2 py-1 bg-white border border-blue-400 rounded text-xs font-medium text-gray-900 focus:outline-none"
+                                                                    className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-blue-400 rounded text-xs font-medium text-gray-900 dark:text-slate-100 focus:outline-none"
                                                                 />
                                                             )}
                                                         </td>
@@ -289,7 +289,7 @@ export default function PropertiesPage() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleStartEdit(unit.key, info)}
-                                                                    className="px-2 py-1 text-[10.5px] font-black text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition"
+                                                                    className="px-2 py-1 text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded transition cursor-pointer"
                                                                 >
                                                                     수정
                                                                 </button>
@@ -299,7 +299,7 @@ export default function PropertiesPage() {
                                                                         type="button"
                                                                         onClick={() => handleSave(unit.key, unit.roomId, unit.unitId)}
                                                                         disabled={saving}
-                                                                        className="px-2 py-1 text-[10.5px] font-black text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+                                                                        className="px-2 py-1 text-[10.5px] font-black text-white bg-blue-600 hover:bg-blue-700 rounded transition cursor-pointer"
                                                                     >
                                                                         저장
                                                                     </button>
@@ -307,7 +307,7 @@ export default function PropertiesPage() {
                                                                         type="button"
                                                                         onClick={handleCancelEdit}
                                                                         disabled={saving}
-                                                                        className="px-1.5 py-1 text-[10.5px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition"
+                                                                        className="px-1.5 py-1 text-[10.5px] font-bold text-gray-600 dark:text-slate-300 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded border border-gray-300 dark:border-slate-700 transition cursor-pointer"
                                                                     >
                                                                         취소
                                                                     </button>
@@ -337,23 +337,23 @@ export default function PropertiesPage() {
                                                 key={unit.key}
                                                 className={`rounded-xl transition shadow-2xs flex flex-col gap-2 p-2.5 ${
                                                     isEditing
-                                                        ? 'bg-blue-50/80 border-2 border-blue-400'
-                                                        : 'bg-white border border-gray-300'
+                                                        ? 'bg-blue-50/80 dark:bg-blue-950/50 border-2 border-blue-400'
+                                                        : 'bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800'
                                                 }`}
                                             >
                                                 {/* 모바일 헤더줄: 호실명 + 액션 버튼 / 비번 복사 */}
                                                 <div className="flex items-center justify-between gap-1.5">
                                                     <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="font-black text-xs text-gray-900 shrink-0">
+                                                        <span className="font-black text-xs text-gray-900 dark:text-slate-100 shrink-0">
                                                             🏠 {unit.displayName}
                                                         </span>
                                                         {unit.subName && (
-                                                            <span className="text-[10px] text-gray-500 font-bold truncate">
+                                                            <span className="text-[10px] text-gray-500 dark:text-slate-400 font-bold truncate">
                                                                 ({unit.subName})
                                                             </span>
                                                         )}
                                                         {isEditing && (
-                                                            <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                                                            <span className="text-[10px] font-black text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950 px-1.5 py-0.2 rounded">
                                                                 수정 중
                                                             </span>
                                                         )}
@@ -361,14 +361,14 @@ export default function PropertiesPage() {
 
                                                     {!isEditing ? (
                                                         <div className="flex items-center gap-1 min-w-0 shrink-0">
-                                                            <span className="font-black text-xs font-mono text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                                            <span className="font-black text-xs font-mono text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-700">
                                                                 🔑 {info.doorPassword || '미등록'}
                                                             </span>
                                                             {info.doorPassword && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleCopyPassword(unit.key, info.doorPassword)}
-                                                                    className="px-2 py-0.5 text-[10px] font-black text-white bg-slate-800 hover:bg-slate-900 rounded shadow-xs cursor-pointer"
+                                                                    className="px-2 py-0.5 text-[10px] font-black text-white bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 rounded shadow-xs cursor-pointer"
                                                                 >
                                                                     {copiedId === unit.key ? '복사됨! ✅' : '복사'}
                                                                 </button>
@@ -376,7 +376,7 @@ export default function PropertiesPage() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleStartEdit(unit.key, info)}
-                                                                className="px-2 py-0.5 text-[11px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded cursor-pointer ml-1"
+                                                                className="px-2 py-0.5 text-[11px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded cursor-pointer ml-1"
                                                             >
                                                                 수정
                                                             </button>
@@ -395,7 +395,7 @@ export default function PropertiesPage() {
                                                                 type="button"
                                                                 onClick={handleCancelEdit}
                                                                 disabled={saving}
-                                                                className="px-2.5 py-1 text-xs font-bold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg cursor-pointer disabled:opacity-50"
+                                                                className="px-2.5 py-1 text-xs font-bold text-gray-700 dark:text-slate-300 bg-white hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-700 rounded-lg cursor-pointer disabled:opacity-50"
                                                             >
                                                                 취소
                                                             </button>
@@ -405,27 +405,27 @@ export default function PropertiesPage() {
 
                                                 {/* 모바일 일반 뷰: 최대 인원 & 수리 메모 */}
                                                 {!isEditing && (
-                                                    <div className="flex items-center justify-between gap-2 text-xs pt-0.5 border-t border-gray-100">
-                                                        <span className="text-[11px] text-gray-600 font-bold shrink-0">
-                                                            👥 최대 <strong className="text-blue-600 font-black">{info.maxGuests}</strong>명
+                                                    <div className="flex items-center justify-between gap-2 text-xs pt-0.5 border-t border-gray-100 dark:border-slate-800">
+                                                        <span className="text-[11px] text-gray-600 dark:text-slate-300 font-bold shrink-0">
+                                                            👥 최대 <strong className="text-blue-600 dark:text-blue-400 font-black">{info.maxGuests}</strong>명
                                                         </span>
                                                         {info.repairNotes ? (
-                                                            <span className="text-[11px] text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold truncate max-w-[200px]">
+                                                            <span className="text-[11px] text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900 font-bold truncate max-w-[200px]">
                                                                 🛠️ {info.repairNotes}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-[10.5px] text-gray-400">수리 메모 없음</span>
+                                                            <span className="text-[10.5px] text-gray-400 dark:text-slate-500">수리 메모 없음</span>
                                                         )}
                                                     </div>
                                                 )}
 
                                                 {/* 모바일 수정 모드: 큼직하고 선명한 고대비 입력 폼 */}
                                                 {isEditing && (
-                                                    <div className="flex flex-col gap-2 pt-1 border-t border-blue-200">
+                                                    <div className="flex flex-col gap-2 pt-1 border-t border-blue-200 dark:border-blue-800">
                                                         {/* 1행: 비밀번호 + 최대 인원 */}
                                                         <div className="flex items-end gap-2">
                                                             <div className="flex-1 flex flex-col gap-1">
-                                                                <label className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                                                                <label className="text-[11px] font-black text-blue-900 dark:text-blue-300 flex items-center gap-1">
                                                                     <span>🔑</span> 도어락 비밀번호
                                                                 </label>
                                                                 <input
@@ -433,12 +433,12 @@ export default function PropertiesPage() {
                                                                     value={editPassword}
                                                                     onChange={(e) => setEditPassword(e.target.value)}
                                                                     placeholder="비밀번호 입력"
-                                                                    className="w-full px-3 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-600 shadow-2xs font-mono"
+                                                                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 shadow-2xs font-mono"
                                                                 />
                                                             </div>
 
                                                             <div className="w-24 flex flex-col gap-1">
-                                                                <label className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                                                                <label className="text-[11px] font-black text-blue-900 dark:text-blue-300 flex items-center gap-1">
                                                                     <span>👥</span> 최대 인원
                                                                 </label>
                                                                 <div className="flex items-center gap-1">
@@ -448,16 +448,16 @@ export default function PropertiesPage() {
                                                                         max={30}
                                                                         value={editMaxGuests}
                                                                         onChange={(e) => setEditMaxGuests(Number(e.target.value))}
-                                                                        className="w-full px-2 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 text-center focus:outline-none focus:border-blue-600 shadow-2xs"
+                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border-2 border-blue-400 rounded-lg text-sm font-black text-gray-900 dark:text-slate-100 text-center focus:outline-none focus:border-blue-600 shadow-2xs"
                                                                     />
-                                                                    <span className="text-xs font-bold text-gray-700 shrink-0">명</span>
+                                                                    <span className="text-xs font-bold text-gray-700 dark:text-slate-300 shrink-0">명</span>
                                                                 </div>
                                                             </div>
                                                         </div>
 
                                                         {/* 2행: 수리/점검 메모 */}
                                                         <div className="flex flex-col gap-1">
-                                                            <label className="text-[11px] font-black text-amber-900 flex items-center gap-1">
+                                                            <label className="text-[11px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
                                                                 <span>🛠️</span> 주요 수리 / 점검 메모
                                                             </label>
                                                             <input
@@ -465,7 +465,7 @@ export default function PropertiesPage() {
                                                                 value={editRepairNotes}
                                                                 onChange={(e) => setEditRepairNotes(e.target.value)}
                                                                 placeholder="수리/점검 사항을 입력하세요 (없으면 공란)"
-                                                                className="w-full px-3 py-1.5 bg-white border-2 border-blue-400 rounded-lg text-xs font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-600 shadow-2xs"
+                                                                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border-2 border-blue-400 rounded-lg text-xs font-bold text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-600 shadow-2xs"
                                                             />
                                                         </div>
                                                     </div>

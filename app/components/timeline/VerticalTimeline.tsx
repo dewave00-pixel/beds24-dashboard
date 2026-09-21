@@ -89,15 +89,15 @@ export default function VerticalTimeline({
                         const dayNum = dateObj.getDate();
                         const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
 
-                        let cellStyleClass = 'bg-white text-gray-950 font-bold';
+                        let cellStyleClass = 'bg-white text-gray-950 font-bold dark:bg-slate-900 dark:text-slate-100';
                         if (isSelected) {
                             cellStyleClass = '!bg-amber-500 !text-white font-black shadow-inner';
                         } else if (isToday) {
                             cellStyleClass = '!bg-blue-600 !text-white font-black shadow-inner';
                         } else if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') {
-                            cellStyleClass = '!bg-red-50 !text-red-700 font-black';
+                            cellStyleClass = '!bg-red-50 !text-red-700 dark:!bg-[#450a0a] dark:!text-red-300 font-black';
                         } else if (dayInfo.type === 'saturday') {
-                            cellStyleClass = '!bg-blue-50 !text-blue-700 font-black';
+                            cellStyleClass = '!bg-blue-50 !text-blue-700 dark:!bg-[#172554] dark:!text-blue-300 font-black';
                         }
 
                         return (
@@ -105,16 +105,16 @@ export default function VerticalTimeline({
                                 key={`row-${dStr}`}
                                 onClick={() => onDateClick(dStr)}
                                 style={{ height: `${ROW_HEIGHT}px`, gridTemplateColumns: VERTICAL_GRID_COLUMNS }}
-                                className={`grid divide-x divide-gray-300 border-b border-gray-300 transition-all duration-150 cursor-pointer ${isSelected
-                                    ? 'bg-amber-50/80 font-black'
+                                className={`grid divide-x divide-gray-300 dark:divide-slate-800 border-b border-gray-300 dark:border-slate-800 transition-all duration-150 cursor-pointer ${isSelected
+                                    ? 'bg-amber-50/80 dark:bg-amber-950/40 font-black'
                                     : isOtherSelected
-                                        ? 'bg-gray-50/40 hover:bg-gray-100/60'
-                                        : 'bg-white hover:bg-gray-50/80'
+                                        ? 'bg-gray-50/40 hover:bg-gray-100/60 dark:bg-slate-950/60 dark:hover:bg-slate-900/80'
+                                        : 'bg-white hover:bg-gray-50/80 dark:bg-slate-900 dark:hover:bg-slate-800/80'
                                     }`}
                             >
                                 {/* 📌 좌측 날짜 2중 틀고정 열 */}
                                 <div
-                                    className={`sticky-left p-2 flex flex-col items-center justify-center text-xs transition-colors border-r border-gray-300 select-none shadow-xs ${cellStyleClass}`}
+                                    className={`sticky-left p-2 flex flex-col items-center justify-center text-xs transition-colors border-r border-gray-300 dark:border-slate-800 select-none shadow-xs ${cellStyleClass}`}
                                 >
                                     <div>{month}/{dayNum}</div>
                                     <div className="text-[10px] opacity-90 flex items-center gap-1 font-extrabold">
@@ -129,13 +129,13 @@ export default function VerticalTimeline({
                                             <div
                                                 key={`${dStr}-${col.key}`}
                                                 className={`h-full ${isSelected
-                                                    ? 'bg-amber-100/30'
+                                                    ? 'bg-amber-100/30 dark:bg-amber-950/20'
                                                     : isToday
-                                                        ? 'bg-blue-50/30'
+                                                        ? 'bg-blue-50/30 dark:bg-blue-950/20'
                                                         : dayInfo.type === 'saturday'
-                                                            ? 'bg-blue-50/10'
+                                                            ? 'bg-blue-50/10 dark:bg-blue-950/10'
                                                             : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                                ? 'bg-red-50/10'
+                                                                ? 'bg-red-50/10 dark:bg-red-950/10'
                                                                 : ''
                                                     }`}
                                             />

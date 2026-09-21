@@ -28,14 +28,14 @@ export default function DashboardToolbar({
     onOpenTotalNotes,
 }: DashboardToolbarProps) {
     return (
-        <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200">
+        <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200 dark:border-slate-800">
             {/* 좌측: 날짜 범위 + 강조 해제 + 🔍 검색 버튼 + 🔍 배율 조절 */}
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                <div className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
+                <div className="text-xs md:text-sm font-bold text-gray-700 dark:text-slate-300 flex items-center gap-1">
                     <span>📅 조회:</span>
-                    <span className="text-blue-600 font-extrabold">{timelineDates[0]}</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-extrabold">{timelineDates[0]}</span>
                     <span>~</span>
-                    <span className="text-blue-600 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
                 </div>
 
                 {selectedDate && (
@@ -52,12 +52,12 @@ export default function DashboardToolbar({
                 </button>
 
                 {/* 🔍 구글 시트형 배율 조절 컨트롤러 */}
-                <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-300 text-xs font-bold shadow-2xs">
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-gray-300 dark:border-slate-700 text-xs font-bold shadow-2xs">
                     <button
                         type="button"
                         onClick={() => onChangeZoom?.(-0.15)}
                         disabled={zoomLevel <= 0.45}
-                        className="px-1.5 py-0.5 rounded bg-white hover:bg-gray-200 text-gray-700 font-black disabled:opacity-30 cursor-pointer text-xs"
+                        className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 font-black disabled:opacity-30 cursor-pointer text-xs"
                         title="축소 (작게 보기)"
                     >
                         ➖
@@ -67,7 +67,7 @@ export default function DashboardToolbar({
                         type="button"
                         onClick={() => onUpdateZoomLevel?.(0.5)}
                         className={`px-1.5 py-0.5 rounded text-[10.5px] font-black transition cursor-pointer ${
-                            zoomLevel <= 0.6 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                            zoomLevel <= 0.6 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                         title="50% 축소 (전체 한눈에 보기)"
                     >
@@ -77,7 +77,7 @@ export default function DashboardToolbar({
                         type="button"
                         onClick={() => onUpdateZoomLevel?.(0.75)}
                         className={`px-1.5 py-0.5 rounded text-[10.5px] font-black transition cursor-pointer ${
-                            zoomLevel > 0.6 && zoomLevel <= 0.85 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                            zoomLevel > 0.6 && zoomLevel <= 0.85 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                         title="75% 축소"
                     >
@@ -87,7 +87,7 @@ export default function DashboardToolbar({
                         type="button"
                         onClick={() => onResetZoom?.()}
                         className={`px-1.5 py-0.5 rounded text-[10.5px] font-black transition cursor-pointer ${
-                            zoomLevel > 0.85 && zoomLevel < 1.15 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                            zoomLevel > 0.85 && zoomLevel < 1.15 ? 'bg-blue-600 text-white shadow-2xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                         title="100% 기본 크기"
                     >
@@ -98,7 +98,7 @@ export default function DashboardToolbar({
                         type="button"
                         onClick={() => onChangeZoom?.(0.15)}
                         disabled={zoomLevel >= 1.8}
-                        className="px-1.5 py-0.5 rounded bg-white hover:bg-gray-200 text-gray-700 font-black disabled:opacity-30 cursor-pointer text-xs"
+                        className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 font-black disabled:opacity-30 cursor-pointer text-xs"
                         title="확대 (크게 보기)"
                     >
                         ➕

@@ -39,19 +39,19 @@ export default function CleaningStaffPool({
     };
 
     return (
-        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-2">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col gap-2">
             <div className="flex items-center justify-between">
-                <span className="font-black text-xs md:text-sm text-gray-900 flex items-center gap-1">
+                <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100 flex items-center gap-1">
                     <span>👥</span> 청소 담당자 명단
                 </span>
                 <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-gray-500 font-bold hidden md:inline">
+                    <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold hidden md:inline">
                         💡 담당자를 마우스로 잡아 아래 숙소 카드로 끌어다 놓으세요 (Drag & Drop)
                     </span>
                     {!isEditing ? (
                         <button
                             onClick={startEditing}
-                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md font-bold transition flex items-center gap-1"
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-md font-bold transition flex items-center gap-1 cursor-pointer border border-transparent dark:border-slate-700"
                         >
                             <span>⚙️</span>
                             <span>설정</span>
@@ -60,13 +60,13 @@ export default function CleaningStaffPool({
                         <div className="flex gap-1">
                             <button
                                 onClick={handleCancel}
-                                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md font-bold transition"
+                                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-md font-bold transition cursor-pointer"
                             >
                                 취소
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="text-xs px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-bold transition"
+                                className="text-xs px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-bold transition cursor-pointer"
                             >
                                 저장
                             </button>
@@ -79,13 +79,13 @@ export default function CleaningStaffPool({
             <div className="flex flex-wrap gap-2 pt-1">
                 {isEditing ? (
                     Object.entries(tempMap).map(([id, name]) => (
-                        <div key={id} className="flex items-center gap-1 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                        <div key={id} className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
                             <span className="text-xs">👤</span>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setTempMap({ ...tempMap, [id]: e.target.value })}
-                                className="px-2 py-1 text-xs font-bold text-gray-800 border border-gray-300 rounded-md w-28 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                                className="px-2 py-1 text-xs font-bold text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-md w-28 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                             />
                         </div>
                     ))
@@ -99,8 +99,8 @@ export default function CleaningStaffPool({
                                 onDragStart={(e) => handleDragStart(e, staff)}
                                 onClick={() => onSelectStaffForMobile(staff)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-black cursor-grab active:cursor-grabbing transition shadow-sm border select-none flex items-center gap-1.5 ${isSelected
-                                        ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300'
-                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                                        ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 dark:ring-blue-800'
+                                        : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700'
                                     }`}
                             >
                                 <span>👤</span>

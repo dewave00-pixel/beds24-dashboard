@@ -107,39 +107,39 @@ export default function CleaningGroupGrid({
     return (
         <div className="flex flex-col gap-4">
             {/* 1. 상단 현황 요약 및 필터 토글 바 */}
-            <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                 {/* 통계 배지들 */}
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                    <span className="text-xs font-black text-gray-800 mr-1">
+                    <span className="text-xs font-black text-gray-800 dark:text-slate-100 mr-1">
                         📊 {dateStr} 현황:
                     </span>
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black">
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-black">
                         <span>🚨 당일 체크인 (우선):</span>
-                        <span className="text-rose-900 font-black">{totalUrgentCheckinCount}곳</span>
+                        <span className="text-rose-900 dark:text-rose-200 font-black">{totalUrgentCheckinCount}곳</span>
                     </div>
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-black">
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-black">
                         <span>⏳ 여유 청소:</span>
-                        <span className="text-amber-900 font-black">{totalStandbyCheckoutCount}곳</span>
+                        <span className="text-amber-900 dark:text-amber-200 font-black">{totalStandbyCheckoutCount}곳</span>
                     </div>
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-black">
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-black">
                         <span>👤 배정 완료:</span>
-                        <span className="text-blue-900 font-black">{totalAssignedCount} / {totalCleaningTargetCount}곳</span>
+                        <span className="text-blue-900 dark:text-blue-200 font-black">{totalAssignedCount} / {totalCleaningTargetCount}곳</span>
                     </div>
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black">
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-black">
                         <span>✅ 청소 완료:</span>
-                        <span className="text-emerald-900 font-black">{totalCompletedCount} / {totalCleaningTargetCount}곳</span>
+                        <span className="text-emerald-900 dark:text-emerald-200 font-black">{totalCompletedCount} / {totalCleaningTargetCount}곳</span>
                     </div>
                 </div>
 
                 {/* 보기 모드 필터 버튼 (스태프 뷰가 아닐 때만 제공) */}
                 {!staffIdFilter && (
-                    <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-bold shrink-0">
+                    <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700 text-xs font-bold shrink-0">
                         <button
                             type="button"
                             onClick={() => setViewFilter('targetOnly')}
-                            className={`px-3 py-1 rounded-md transition font-black ${viewFilter === 'targetOnly'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                            className={`px-3 py-1 rounded-md transition font-black cursor-pointer ${viewFilter === 'targetOnly'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                                 }`}
                         >
                             🧹 청소 대상만 ({totalCleaningTargetCount})
@@ -147,9 +147,9 @@ export default function CleaningGroupGrid({
                         <button
                             type="button"
                             onClick={() => setViewFilter('all')}
-                            className={`px-3 py-1 rounded-md transition font-black ${viewFilter === 'all'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                            className={`px-3 py-1 rounded-md transition font-black cursor-pointer ${viewFilter === 'all'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                                 }`}
                         >
                             🏢 전체 호실 보기
@@ -173,27 +173,27 @@ export default function CleaningGroupGrid({
                     return (
                         <div
                             key={group.name}
-                            className="bg-white rounded-xl border border-gray-200 shadow-2xs p-2.5 sm:p-3 flex flex-col gap-2 transition hover:border-gray-300 h-fit"
+                            className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-2xs p-2.5 sm:p-3 flex flex-col gap-2 transition hover:border-gray-300 dark:hover:border-slate-700 h-fit"
                         >
                             {/* 숙소 그룹 헤더 */}
-                            <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-gray-100 dark:border-slate-800">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="text-sm shrink-0">🏢</span>
-                                    <h3 className="font-black text-xs sm:text-sm text-gray-900 leading-tight truncate">
+                                    <h3 className="font-black text-xs sm:text-sm text-gray-900 dark:text-slate-100 leading-tight truncate">
                                         {group.name}
                                     </h3>
-                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
                                         {group.units.length}실
                                     </span>
                                 </div>
 
                                 <div className="flex items-center gap-1 text-[11px] font-black shrink-0">
                                     {group.targetUnits.length > 0 ? (
-                                        <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                        <span className="px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
                                             {group.completedTargetCount > 0 && `✅ ${group.completedTargetCount}/`}청소 {group.targetUnits.length}곳
                                         </span>
                                     ) : (
-                                        <span className="px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-200">
+                                        <span className="px-2 py-0.5 rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700">
                                             청소 없음
                                         </span>
                                     )}
@@ -235,7 +235,7 @@ export default function CleaningGroupGrid({
 
             {/* 청소 대상만 보기 모드에서 전체가 0곳일 때 */}
             {viewFilter === 'targetOnly' && totalCleaningTargetCount === 0 && (
-                <div className="p-12 text-center bg-white rounded-xl border border-dashed border-gray-300 text-gray-400 font-bold text-xs">
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-xl border border-dashed border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500 font-bold text-xs">
                     🎉 {dateStr}에는 청소 예정인 호실이 없습니다!
                 </div>
             )}

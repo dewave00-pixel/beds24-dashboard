@@ -26,7 +26,7 @@ export default function CleaningPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-gray-100 dark:bg-slate-950 transition-colors duration-200">
             {/* 🧭 크롬 스타일 접이식 사이드바 */}
             <AppSidebar
                 isMobileOpen={isMobileSidebarOpen}
@@ -36,14 +36,14 @@ export default function CleaningPage() {
             {/* 우측 메인 영역 */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* 1. 상단 헤더 */}
-                <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
+                <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-3 py-2 md:px-5 md:py-2.5 flex items-center justify-between shadow-xs shrink-0">
                     <div className="flex items-center gap-2.5">
                         {/* 📱 모바일 햄버거 버튼 */}
                         <button
                             type="button"
                             onClick={() => setIsMobileSidebarOpen(true)}
                             title="메뉴 열기"
-                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-black transition cursor-pointer border border-gray-200"
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-base font-black transition cursor-pointer border border-gray-200 dark:border-slate-700"
                         >
                             ☰
                         </button>
@@ -51,10 +51,10 @@ export default function CleaningPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-xl">🧹</span>
                             <div>
-                                <h1 className="text-sm md:text-base font-black text-gray-900 leading-tight">
+                                <h1 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 leading-tight">
                                     청소 배정 & 카톡 발송 보드
                                 </h1>
-                                <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
+                                <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
                                     숙소별 그리드 및 당일 체크인/체크아웃 우선순위 관리
                                 </span>
                             </div>
@@ -65,21 +65,21 @@ export default function CleaningPage() {
                 <div className="p-2 md:p-3 flex-1 flex flex-col gap-3">
 
                 {/* 2. 날짜 선택 툴바 */}
-                <div className="bg-white p-2.5 px-3 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+                <div className="bg-white dark:bg-slate-900 p-2.5 px-3 rounded-xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <button
                             type="button"
                             onClick={() => handleShiftDate(-1)}
-                            className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black transition"
+                            className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-black transition cursor-pointer"
                         >
                             ◀ 이전날
                         </button>
                         <button
                             type="button"
                             onClick={handleSetToday}
-                            className={`px-3 py-1 rounded-lg text-xs font-black transition ${c.selectedDate === c.todayStr
-                                ? 'bg-slate-900 text-white shadow-2xs'
-                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer ${c.selectedDate === c.todayStr
+                                ? 'bg-blue-600 text-white shadow-2xs'
+                                : 'bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300'
                                 }`}
                         >
                             오늘 ({c.todayStr})
@@ -87,21 +87,21 @@ export default function CleaningPage() {
                         <button
                             type="button"
                             onClick={() => handleShiftDate(1)}
-                            className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black transition"
+                            className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-black transition cursor-pointer"
                         >
                             다음날 ▶
                         </button>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-500">기준 날짜:</span>
+                        <span className="text-xs font-bold text-gray-500 dark:text-slate-400">기준 날짜:</span>
                         <input
                             type="date"
                             value={c.selectedDate}
                             onChange={(e) => {
                                 if (e.target.value) c.setSelectedDate(e.target.value);
                             }}
-                            className="px-2.5 py-1 text-xs font-black bg-gray-50 border border-gray-300 rounded-lg text-gray-800 cursor-pointer focus:ring-1 focus:ring-blue-500"
+                            className="px-2.5 py-1 text-xs font-black bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-100 cursor-pointer focus:ring-1 focus:ring-blue-500"
                         />
                     </div>
                 </div>
@@ -117,7 +117,7 @@ export default function CleaningPage() {
 
                 {/* 4. 숙소 그룹별 청소 보드 (그리드) */}
                 {c.loading ? (
-                    <div className="bg-white p-12 rounded-xl border border-gray-200 text-center text-gray-400 font-bold text-xs">
+                    <div className="bg-white dark:bg-slate-900 p-12 rounded-xl border border-gray-200 dark:border-slate-800 text-center text-gray-400 dark:text-slate-500 font-bold text-xs">
                         예약 데이터를 분석하는 중입니다...
                     </div>
                 ) : (

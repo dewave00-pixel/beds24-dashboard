@@ -68,11 +68,11 @@ export default function CleaningRoomCard({
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             className={`p-2 sm:p-2.5 rounded-lg border transition-all flex flex-col justify-between gap-1.5 relative ${isDragOver
-                ? 'bg-blue-100/90 border-blue-500 ring-2 ring-blue-400 scale-[1.02] shadow-md'
+                ? 'bg-blue-100/90 dark:bg-blue-950/60 border-blue-500 ring-2 ring-blue-400 scale-[1.02] shadow-md'
                 : isCompleted
-                    ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-200 shadow-2xs'
+                    ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-200 dark:ring-emerald-900/40 shadow-2xs'
                     : assignment
-                        ? 'bg-white border-blue-300 ring-1 ring-blue-200 shadow-2xs'
+                        ? 'bg-white dark:bg-slate-800 border-blue-300 dark:border-blue-700/60 ring-1 ring-blue-200 dark:ring-blue-900/40 shadow-2xs'
                         : `${statusInfo.cardBg} ${statusInfo.cardBorder}`
                 }`}
         >
@@ -80,11 +80,11 @@ export default function CleaningRoomCard({
             <div className="flex items-start justify-between gap-1">
                 <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap">
-                        <span className="font-black text-xs sm:text-sm text-gray-900 leading-none truncate">
+                        <span className="font-black text-xs sm:text-sm text-gray-900 dark:text-slate-100 leading-none truncate">
                             🏠 {unit.displayName}
                         </span>
                         {unit.subName && (
-                            <span className="text-[9.5px] font-bold text-gray-500">
+                            <span className="text-[9.5px] font-bold text-gray-500 dark:text-slate-400">
                                 ({unit.subName})
                             </span>
                         )}
@@ -123,7 +123,7 @@ export default function CleaningRoomCard({
                                         e.stopPropagation();
                                         onUnassign();
                                     }}
-                                    className="w-4 h-4 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 font-black text-[11px] transition"
+                                    className="w-4 h-4 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 font-black text-[11px] transition cursor-pointer"
                                     title="배정 취소"
                                 >
                                     ✕
@@ -140,7 +140,7 @@ export default function CleaningRoomCard({
                                     e.stopPropagation();
                                     if (e.target.value) onAssign(e.target.value);
                                 }}
-                                className="text-[10px] font-black px-1.5 py-0.5 bg-white/90 border border-gray-300 hover:border-blue-400 rounded text-gray-700 cursor-pointer shadow-2xs focus:ring-1 focus:ring-blue-500"
+                                className="text-[10px] font-black px-1.5 py-0.5 bg-white/90 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 hover:border-blue-400 rounded text-gray-700 dark:text-slate-200 cursor-pointer shadow-2xs focus:ring-1 focus:ring-blue-500"
                             >
                                 <option value="">배정 선택 ▾</option>
                                 {staffList.map((s) => (
@@ -154,33 +154,33 @@ export default function CleaningRoomCard({
 
             {/* 2. 입/퇴실/투숙 상세 정보 박스 */}
             {(checkoutBooking || checkinBooking || stayBooking) && (
-                <div className="text-[10px] flex flex-col gap-0.5 bg-white/80 p-1.5 rounded-md border border-gray-200/70 font-bold leading-tight">
+                <div className="text-[10px] flex flex-col gap-0.5 bg-white/80 dark:bg-slate-800/80 p-1.5 rounded-md border border-gray-200/70 dark:border-slate-700 font-bold leading-tight">
                     {checkoutBooking && (
-                        <div className="text-amber-800 flex items-center justify-between">
+                        <div className="text-amber-800 dark:text-amber-300 flex items-center justify-between">
                             <span className="flex items-center gap-0.5">
-                                <span className="text-amber-600">📤</span> 체크아웃
+                                <span className="text-amber-600 dark:text-amber-400">📤</span> 체크아웃
                             </span>
-                            <span className="text-[9.5px] text-gray-600 truncate max-w-[110px]">
+                            <span className="text-[9.5px] text-gray-600 dark:text-slate-300 truncate max-w-[110px]">
                                 {checkoutBooking.firstName || checkoutBooking.lastName || '게스트'}
                             </span>
                         </div>
                     )}
                     {checkinBooking && (
-                        <div className="text-rose-700 flex items-center justify-between">
+                        <div className="text-rose-700 dark:text-rose-300 flex items-center justify-between">
                             <span className="flex items-center gap-0.5">
-                                <span className="text-rose-600">📥</span> 체크인
+                                <span className="text-rose-600 dark:text-rose-400">📥</span> 체크인
                             </span>
-                            <span className="text-[9.5px] text-gray-600 truncate max-w-[110px]">
+                            <span className="text-[9.5px] text-gray-600 dark:text-slate-300 truncate max-w-[110px]">
                                 {checkinBooking.firstName || checkinBooking.lastName || '게스트'}
                             </span>
                         </div>
                     )}
                     {!checkoutBooking && !checkinBooking && stayBooking && (
-                        <div className="text-slate-600 flex items-center justify-between">
+                        <div className="text-slate-600 dark:text-slate-300 flex items-center justify-between">
                             <span className="flex items-center gap-0.5">
                                 <span>🛏️</span> 투숙
                             </span>
-                            <span className="text-[9.5px] text-gray-500 truncate max-w-[110px]">
+                            <span className="text-[9.5px] text-gray-500 dark:text-slate-400 truncate max-w-[110px]">
                                 {stayBooking.firstName || stayBooking.lastName || '게스트'}
                             </span>
                         </div>
@@ -190,7 +190,7 @@ export default function CleaningRoomCard({
 
             {/* 3. 특이사항 태그 & 메모 */}
             {(activeTags.length > 0 || noteData?.note) && (
-                <div className="flex flex-col gap-0.5 pt-0.5 border-t border-gray-200/50">
+                <div className="flex flex-col gap-0.5 pt-0.5 border-t border-gray-200/50 dark:border-slate-700/60">
                     {activeTags.length > 0 && (
                         <div className="flex flex-wrap gap-0.5">
                             {activeTags.map((tagKey) => {
@@ -205,7 +205,7 @@ export default function CleaningRoomCard({
                         </div>
                     )}
                     {noteData?.note && (
-                        <div className="text-[9.5px] text-amber-950 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-300/70 font-bold truncate">
+                        <div className="text-[9.5px] text-amber-950 dark:text-amber-200 bg-amber-100/90 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-300/70 dark:border-amber-800/60 font-bold truncate">
                             🔥 {noteData.note}
                         </div>
                     )}

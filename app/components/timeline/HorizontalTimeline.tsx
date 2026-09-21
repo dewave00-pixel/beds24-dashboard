@@ -39,10 +39,10 @@ export default function HorizontalTimeline({
 
                 {/* 상단 날짜 헤더 */}
                 <div
-                    className="grid divide-x divide-gray-300 border-b-2 border-gray-300 bg-gray-100 font-bold text-xs"
+                    className="grid divide-x divide-gray-300 dark:divide-slate-700 border-b-2 border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 font-bold text-xs"
                     style={{ gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px)` }}
                 >
-                    <div className="sticky-corner-1 p-2 flex items-center justify-center bg-gray-200 text-gray-700 font-extrabold border-r border-gray-300">
+                    <div className="sticky-corner-1 p-2 flex items-center justify-center bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-extrabold border-r border-gray-300 dark:border-slate-700">
                         숙소 / 날짜 ➔
                     </div>
                     {timelineDates.map((dStr) => {
@@ -54,7 +54,7 @@ export default function HorizontalTimeline({
                         const isSelected = selectedDate === dStr;
 
                         const dayInfo = getDayType(dStr);
-                        let dayColorClass = 'hover:bg-gray-200 text-gray-800 bg-gray-100';
+                        let dayColorClass = 'hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200 bg-gray-100 dark:bg-slate-900';
                         if (dayInfo.type === 'saturday') dayColorClass = 'day-saturday';
                         if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') dayColorClass = 'day-sunday-holiday';
 
@@ -85,28 +85,28 @@ export default function HorizontalTimeline({
                 <div className="relative w-full">
                     {PROPERTY_GROUPS.map((group) => {
                         return (
-                            <div key={`group-block-${group.name}`} className="border-b-8 border-slate-300">
+                            <div key={`group-block-${group.name}`} className="border-b-8 border-slate-300 dark:border-slate-800">
                                 {group.units.map((unit, uIdx) => {
                                     const isFirstInGroup = uIdx === 0;
 
                                     return (
                                         <div
                                             key={`h-row-${unit.key}`}
-                                            className="grid divide-x divide-gray-300 border-b border-gray-200 bg-white"
+                                            className="grid divide-x divide-gray-300 dark:divide-slate-800 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                                             style={{
                                                 gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px)`,
                                                 height: `${ROW_HEIGHT}px`,
                                             }}
                                         >
-                                            <div className="sticky-left flex h-full border-r border-gray-300 bg-gray-50 z-20">
+                                            <div className="sticky-left flex h-full border-r border-gray-300 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 z-20">
                                                 <div
-                                                    className={`w-24 shrink-0 flex items-center justify-center font-extrabold text-xs text-center p-1 border-r border-gray-300 ${group.themeClass
+                                                    className={`w-24 shrink-0 flex items-center justify-center font-extrabold text-xs text-center p-1 border-r border-gray-300 dark:border-slate-800 ${group.themeClass
                                                         } ${isFirstInGroup ? 'opacity-100' : 'opacity-90'}`}
                                                 >
                                                     {isFirstInGroup ? group.name : ''}
                                                 </div>
 
-                                                <div className="grow flex items-center justify-center px-1 font-bold text-xs text-gray-800 bg-white">
+                                                <div className="grow flex items-center justify-center px-1 font-bold text-xs text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-900">
                                                     {unit.displayName}
                                                 </div>
                                             </div>
@@ -121,14 +121,14 @@ export default function HorizontalTimeline({
                                                         key={`h-cell-${unit.key}-${dStr}`}
                                                         onClick={() => onDateClick(dStr)}
                                                         className={`h-full cursor-pointer ${isSelected
-                                                            ? 'bg-amber-100/60'
+                                                            ? 'bg-amber-100/60 dark:bg-amber-950/30'
                                                             : isToday
-                                                                ? 'bg-blue-50/40'
+                                                                ? 'bg-blue-50/40 dark:bg-blue-950/30'
                                                                 : dayInfo.type === 'saturday'
-                                                                    ? 'bg-blue-50/20'
+                                                                    ? 'bg-blue-50/20 dark:bg-blue-950/15'
                                                                     : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                                        ? 'bg-red-50/20'
-                                                                        : 'hover:bg-gray-50'
+                                                                        ? 'bg-red-50/20 dark:bg-red-950/15'
+                                                                        : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
                                                             }`}
                                                     />
                                                 );

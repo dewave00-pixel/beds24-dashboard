@@ -302,3 +302,117 @@ body {
         flex: 1 1 50% !important;
     }
 }
+
+/* ========================================================
+   🌙 다크 모드 전용 대시보드 테마 확장 모듈
+   ======================================================== */
+html.dark,
+html.dark body {
+    background-color: #090d16 !important;
+    color: #f1f5f9 !important;
+}
+
+html.dark .dashboard-container {
+    background-color: #090d16 !important;
+}
+
+html.dark .dashboard-header-card,
+html.dark .dashboard-panel {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+html.dark .grid-table-container {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+html.dark .sticky-header-group,
+html.dark .sticky-corner,
+html.dark .sticky-left {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+html.dark .btn-secondary {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+html.dark .btn-secondary:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+html.dark .btn-secondary-blue {
+    background-color: #1e3a8a44 !important;
+    color: #60a5fa !important;
+    border-color: #2563eb66 !important;
+}
+
+html.dark .btn-secondary-blue:hover {
+    background-color: #1e3a8a88 !important;
+}
+
+html.dark .btn-reset-highlight {
+    background-color: #78350f44 !important;
+    color: #fde68a !important;
+    border-color: #92400e !important;
+}
+
+html.dark .row-dimmed {
+    background-color: #090e1d !important;
+}
+
+html.dark .row-selected {
+    background-color: #78350f44 !important;
+}
+
+html.dark .day-saturday {
+    background-color: #172554 !important; /* 100% Solid Blue-950 */
+    color: #93c5fd !important;
+}
+
+html.dark .day-sunday-holiday {
+    background-color: #450a0a !important; /* 100% Solid Red-950 */
+    color: #fca5a5 !important;
+}
+
+/* 🎨 다크모드 숙소 그룹 테마 (차분하고 딥한 배경 + 또렷한 고대비 화이트/라이트 글씨) */
+html.dark .group-theme-green {
+    background-color: #064e3b !important; /* deep emerald */
+    color: #ecfdf5 !important;
+    border-color: #059669 !important;
+}
+
+html.dark .group-theme-wave {
+    background-color: #0c4a6e !important; /* deep ocean wave */
+    color: #f0f9ff !important;
+    border-color: #0284c7 !important;
+}
+
+html.dark .group-theme-yeonnam {
+    background-color: #4c1d95 !important; /* deep purple */
+    color: #f5f3ff !important;
+    border-color: #7c3aed !important;
+}
+
+html.dark .group-theme-namsan {
+    background-color: #78350f !important; /* deep amber */
+    color: #fffbeb !important;
+    border-color: #d97706 !important;
+}
+
+html.dark .group-theme-default {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+html.dark .property-divider-pillar,
+html.dark .property-divider-horizontal {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}

@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 dark:bg-slate-950 transition-colors duration-200">
       {/* 🧭 크롬 스타일 접이식 사이드바 */}
       <AppSidebar
         isMobileOpen={isMobileSidebarOpen}

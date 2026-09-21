@@ -232,7 +232,7 @@ export function getUnitDisplayInfo(booking: {
         'group-theme-green': { backgroundColor: '#047857', color: '#000000' }, // 진한 에메랄드 그린
         'group-theme-wave': { backgroundColor: '#0369a1', color: '#000000' },  // 진한 웨이브 블루
         'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#000000' }, // 진한 연남 퍼플
-        'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남산 앰버
+        'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남선 앰버
         'group-theme-default': { backgroundColor: '#78aaf1ff', color: '#000000' }, // 다크 슬레이트
     };
 
