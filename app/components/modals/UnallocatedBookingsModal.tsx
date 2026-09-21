@@ -80,7 +80,7 @@ export default function UnallocatedBookingsModal({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-800">
 
                 {/* 1. 모달 상단 헤더 */}
                 <div className="px-5 py-4 bg-amber-500 text-slate-900 flex items-center justify-between border-b border-amber-600 shrink-0">
@@ -114,22 +114,22 @@ export default function UnallocatedBookingsModal({
                 {feedbackMessage && (
                     <div
                         className={`px-4 py-2.5 text-xs font-black flex items-center justify-between ${feedbackMessage.type === 'success'
-                            ? 'bg-emerald-100 text-emerald-900 border-b border-emerald-300'
-                            : 'bg-rose-100 text-rose-900 border-b border-rose-300'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-b border-emerald-300 dark:border-emerald-800'
+                            : 'bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-b border-rose-300 dark:border-rose-800'
                             }`}
                     >
                         <span>{feedbackMessage.text}</span>
-                        <button onClick={() => setFeedbackMessage(null)} className="text-sm font-bold opacity-70 hover:opacity-100">✕</button>
+                        <button onClick={() => setFeedbackMessage(null)} className="text-sm font-bold opacity-70 hover:opacity-100 cursor-pointer">✕</button>
                     </div>
                 )}
 
                 {/* 3. 모달 본문 (미배정 목록) */}
-                <div className="flex-1 overflow-y-auto p-3.5 md:p-5 bg-gray-50 flex flex-col gap-3.5 min-h-0">
+                <div className="flex-1 overflow-y-auto p-3.5 md:p-5 bg-gray-50 dark:bg-slate-950 flex flex-col gap-3.5 min-h-0">
                     {bookings.length === 0 ? (
-                        <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300 p-6">
+                        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-gray-300 dark:border-slate-800 p-6">
                             <span className="text-4xl block mb-2">🎉</span>
-                            <h3 className="text-sm font-black text-gray-800">모든 예약의 호실 배정이 완료되었습니다!</h3>
-                            <p className="text-xs text-gray-500 font-semibold mt-1">현재 미배정 상태인 예약이 없습니다.</p>
+                            <h3 className="text-sm font-black text-gray-800 dark:text-slate-100">모든 예약의 호실 배정이 완료되었습니다!</h3>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">현재 미배정 상태인 예약이 없습니다.</p>
                         </div>
                     ) : (
                         bookings.map((b) => {
@@ -152,15 +152,15 @@ export default function UnallocatedBookingsModal({
                             return (
                                 <div
                                     key={`unallocated-${b.id}`}
-                                    className="bg-white rounded-xl border-2 border-amber-200 p-4 shadow-sm hover:border-amber-400 transition flex flex-col gap-3"
+                                    className="bg-white dark:bg-slate-900 rounded-xl border-2 border-amber-200 dark:border-amber-800/60 p-4 shadow-sm hover:border-amber-400 dark:hover:border-amber-600 transition flex flex-col gap-3"
                                 >
                                     {/* 상단 정보줄: 숙소명 + 채널 + 예약번호 */}
                                     <div className="flex items-center justify-between flex-wrap gap-1.5">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-900 text-amber-300">
+                                            <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-900 dark:bg-slate-950 text-amber-300 border border-slate-700">
                                                 {propName}
                                             </span>
-                                            <span className="text-xs font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                            <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">
                                                 🚨 호실 미배정 (Room {b.roomId})
                                             </span>
                                         </div>
@@ -172,19 +172,19 @@ export default function UnallocatedBookingsModal({
                                             >
                                                 {ch.name}
                                             </span>
-                                            <span className="text-[11px] font-bold text-gray-400">#{b.id}</span>
+                                            <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500">#{b.id}</span>
                                         </div>
                                     </div>
 
                                     {/* 중간 정보줄: 게스트명, 날짜, 인원, 금액 */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-slate-850/80 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
                                         <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-1.5 font-black text-gray-900">
+                                            <div className="flex items-center gap-1.5 font-black text-gray-900 dark:text-slate-100">
                                                 <span>👤</span>
                                                 <span className="truncate">{guestName}</span>
-                                                <span className="text-gray-500 font-bold">({b.numAdult || 1}명)</span>
+                                                <span className="text-gray-500 dark:text-slate-400 font-bold">({b.numAdult || 1}명)</span>
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-gray-600 font-bold">
+                                            <div className="flex items-center gap-1.5 text-gray-600 dark:text-slate-400 font-bold">
                                                 <span>📅</span>
                                                 <span>{b.arrival} ~ {b.departure} ({nights}박)</span>
                                             </div>
@@ -192,7 +192,7 @@ export default function UnallocatedBookingsModal({
 
                                         <div className="flex flex-col gap-1 sm:items-end justify-center">
                                             {b.price ? (
-                                                <div className="font-black text-slate-800 text-sm">
+                                                <div className="font-black text-slate-800 dark:text-slate-100 text-sm">
                                                     ₩{Number(b.price).toLocaleString()}
                                                 </div>
                                             ) : null}
@@ -200,7 +200,7 @@ export default function UnallocatedBookingsModal({
                                                 <button
                                                     type="button"
                                                     onClick={() => onSelectBooking(b)}
-                                                    className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-0.5"
+                                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-0.5"
                                                 >
                                                     <span>🔍</span> 예약 상세 확인
                                                 </button>
@@ -209,9 +209,9 @@ export default function UnallocatedBookingsModal({
                                     </div>
 
                                     {/* 하단: 배정할 호실 선택 및 Beds24 전송 버튼 */}
-                                    <div className="pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                                    <div className="pt-2 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                                         <div className="flex items-center gap-1.5 flex-1">
-                                            <span className="text-xs font-black text-gray-700 shrink-0">배정 호실 선택:</span>
+                                            <span className="text-xs font-black text-gray-700 dark:text-slate-300 shrink-0">배정 호실 선택:</span>
                                             <div className="flex items-center gap-1.5 flex-wrap flex-1">
                                                 {candidateUnits.map((unit) => {
                                                     const isSelected = selectedUnitId === unit.unitId;
@@ -226,10 +226,10 @@ export default function UnallocatedBookingsModal({
                                                             type="button"
                                                             onClick={() => unit.unitId && handleSelectUnit(b.id, unit.unitId)}
                                                             className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${isSelected
-                                                                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300'
+                                                                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300 dark:ring-blue-700'
                                                                 : hasConflict
-                                                                    ? 'bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100'
-                                                                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                                                                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-100'
+                                                                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-750'
                                                                 }`}
                                                         >
                                                             <span>🏠</span>
@@ -271,11 +271,11 @@ export default function UnallocatedBookingsModal({
                 </div>
 
                 {/* 4. 하단 닫기 풋터 */}
-                <div className="px-5 py-3 bg-white border-t border-gray-200 flex justify-end shrink-0">
+                <div className="px-5 py-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex justify-end shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-black text-xs rounded-xl transition cursor-pointer"
+                        className="px-4 py-2 bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 font-black text-xs rounded-xl transition cursor-pointer"
                     >
                         닫기
                     </button>

@@ -20,16 +20,16 @@ export default function OverlappingSelectionModal({
 }: OverlappingSelectionModalProps) {
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 dark:border-slate-800">
                 {/* 상단 헤더 */}
-                <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+                <div className="px-4 py-3 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
                     <div className="flex items-center gap-2">
                         <span className="text-lg">겹침</span>
                         <div>
                             <h3 className="text-sm font-black text-white leading-tight">
                                 예약 선택 ({bookings.length}건)
                             </h3>
-                            <p className="text-[11px] text-gray-300 font-bold">
+                            <p className="text-[11px] text-gray-300 dark:text-slate-400 font-bold">
                                 {dateStr} 날짜에 겹쳐있는 예약 목록
                             </p>
                         </div>
@@ -44,7 +44,7 @@ export default function OverlappingSelectionModal({
                 </div>
 
                 {/* 목록 선택 버튼들 */}
-                <div className="p-3.5 bg-gray-50 flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto">
+                <div className="p-3.5 bg-gray-50 dark:bg-slate-950 flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto">
                     {bookings.map((b) => {
                         const isUnalloc = isUnallocatedBooking(b);
                         const ch = getChannelStyle(b.apiSourceId);
@@ -63,8 +63,8 @@ export default function OverlappingSelectionModal({
                                 }}
                                 className={`w-full p-3 rounded-xl border-2 text-left transition cursor-pointer flex flex-col gap-1.5 shadow-2xs hover:scale-[1.02] ${
                                     isUnalloc
-                                        ? 'bg-amber-50/80 border-amber-400 hover:bg-amber-100/90 text-amber-950'
-                                        : 'bg-white border-blue-300 hover:bg-blue-50 text-slate-900'
+                                        ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 hover:bg-amber-100/90 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200'
+                                        : 'bg-white dark:bg-slate-850 border-blue-300 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100'
                                 }`}
                             >
                                 <div className="flex items-center justify-between">
@@ -90,14 +90,14 @@ export default function OverlappingSelectionModal({
                                     <span className="text-xs font-black truncate">
                                         {guestName}
                                     </span>
-                                    <span className="text-[10px] font-bold opacity-75">
+                                    <span className="text-[10px] font-bold opacity-75 dark:text-slate-400">
                                         #{b.id}
                                     </span>
                                 </div>
 
-                                <div className="text-[10px] font-bold text-gray-600 flex items-center justify-between">
+                                <div className="text-[10px] font-bold text-gray-600 dark:text-slate-400 flex items-center justify-between">
                                     <span>📅 {b.arrival} ~ {b.departure}</span>
-                                    <span className="text-blue-600 font-black">상세보기 ➔</span>
+                                    <span className="text-blue-600 dark:text-blue-400 font-black">상세보기 ➔</span>
                                 </div>
                             </button>
                         );
@@ -105,11 +105,11 @@ export default function OverlappingSelectionModal({
                 </div>
 
                 {/* 풋터 */}
-                <div className="px-4 py-2.5 bg-white border-t border-gray-200 flex justify-end">
+                <div className="px-4 py-2.5 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex justify-end">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-black rounded-lg transition cursor-pointer"
+                        className="px-3 py-1.5 bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-black rounded-lg transition cursor-pointer"
                     >
                         취소
                     </button>
