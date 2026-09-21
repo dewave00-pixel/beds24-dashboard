@@ -6,6 +6,7 @@ import { PROPERTY_GROUPS } from '../../config';
 import {
     calculateRoomStats,
     calculatePropertyStats,
+    formatLocalDate,
     RoomStats,
     PropertyStats,
 } from '../../utils/analyticsCalculations';
@@ -23,8 +24,8 @@ export default function RoomsPropertiesTab({ bookings }: RoomsPropertiesTabProps
         const now = new Date();
         const y = now.getFullYear();
         const m = now.getMonth();
-        const first = new Date(y, m, 1).toISOString().split('T')[0];
-        const last = new Date(y, m + 1, 0).toISOString().split('T')[0];
+        const first = formatLocalDate(new Date(y, m, 1));
+        const last = formatLocalDate(new Date(y, m + 1, 0));
         return { defaultStart: first, defaultEnd: last };
     }, []);
 

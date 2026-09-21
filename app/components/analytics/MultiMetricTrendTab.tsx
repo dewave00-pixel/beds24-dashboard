@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Booking, UnitConfig } from '../../types';
 import { ALL_UNITS, PROPERTY_GROUPS, getChannelStyle } from '../../config';
 import { getUnitForBooking, calculateNetPayout, isValidBooking } from '../../utils/bookingUtils';
+import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface MultiMetricTrendTabProps {
     bookings: Booking[];
@@ -38,13 +39,13 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
         const d = new Date(today);
         d.setMonth(d.getMonth() - 2);
         d.setDate(1);
-        return d.toISOString().split('T')[0];
+        return formatLocalDate(d);
     }, [today]);
     const defaultEnd = useMemo(() => {
         const d = new Date(today);
         d.setMonth(d.getMonth() + 1);
         d.setDate(0);
-        return d.toISOString().split('T')[0];
+        return formatLocalDate(d);
     }, [today]);
 
     const [startDate, setStartDate] = useState<string>(defaultStart);
@@ -101,32 +102,32 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
 
     const handlePreset = (preset: 'last30' | 'last3m' | 'thisYear' | 'next30') => {
         const now = new Date();
-        const endStr = now.toISOString().split('T')[0];
+        const endStr = formatLocalDate(now);
 
         if (preset === 'last30') {
             const s = new Date(now);
             s.setDate(s.getDate() - 29);
-            setStartDate(s.toISOString().split('T')[0]);
+            setStartDate(formatLocalDate(s));
             setEndDate(endStr);
             setTimeUnit('day');
         } else if (preset === 'last3m') {
             const s = new Date(now);
             s.setMonth(s.getMonth() - 2);
             s.setDate(1);
-            setStartDate(s.toISOString().split('T')[0]);
+            setStartDate(formatLocalDate(s));
             setEndDate(endStr);
             setTimeUnit('week');
         } else if (preset === 'thisYear') {
             const s = new Date(now.getFullYear(), 0, 1);
             const e = new Date(now.getFullYear(), 11, 31);
-            setStartDate(s.toISOString().split('T')[0]);
-            setEndDate(e.toISOString().split('T')[0]);
+            setStartDate(formatLocalDate(s));
+            setEndDate(formatLocalDate(e));
             setTimeUnit('month');
         } else if (preset === 'next30') {
             const future = new Date(now);
             future.setDate(future.getDate() + 30);
             setStartDate(endStr);
-            setEndDate(future.toISOString().split('T')[0]);
+            setEndDate(formatLocalDate(future));
             setTimeUnit('week');
         }
     };
@@ -143,8 +144,8 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
             while (cur <= end) {
                 const y = cur.getFullYear();
                 const m = cur.getMonth();
-                const firstDay = new Date(y, m, 1).toISOString().split('T')[0];
-                const lastDay = new Date(y, m + 1, 0).toISOString().split('T')[0];
+                const firstDay = formatLocalDate(new Date(y, m, 1));
+                const lastDay = formatLocalDate(new Date(y, m + 1, 0));
                 buckets.push({
                     key: firstDay,
                     label: `${y}년 ${m + 1}월`,
@@ -157,10 +158,10 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
         } else if (timeUnit === 'week') {
             const cur = new Date(start);
             while (cur <= end) {
-                const sStr = cur.toISOString().split('T')[0];
+                const sStr = formatLocalDate(cur);
                 const wEnd = new Date(cur);
                 wEnd.setDate(wEnd.getDate() + 6);
-                const eStr = wEnd.toISOString().split('T')[0];
+                const eStr = formatLocalDate(wEnd);
                 const m = cur.getMonth() + 1;
                 const d = cur.getDate();
                 buckets.push({
@@ -177,7 +178,7 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
             const cur = new Date(start);
             let count = 0;
             while (cur <= end && count < 62) {
-                const sStr = cur.toISOString().split('T')[0];
+                const sStr = formatLocalDate(cur);
                 const m = cur.getMonth() + 1;
                 const d = cur.getDate();
                 buckets.push({

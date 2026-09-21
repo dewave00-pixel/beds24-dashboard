@@ -7,6 +7,7 @@ import {
     calculateRoomStats,
     calculatePropertyStats,
     calculateOverallSummary,
+    formatLocalDate,
     RoomStats,
     PropertyStats,
     OverallSummary,
@@ -35,8 +36,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         const now = new Date();
         const y = now.getFullYear();
         const m = now.getMonth();
-        const first = new Date(y, m, 1).toISOString().split('T')[0];
-        const last = new Date(y, m + 1, 0).toISOString().split('T')[0];
+        const first = formatLocalDate(new Date(y, m, 1));
+        const last = formatLocalDate(new Date(y, m + 1, 0));
         return { defaultStart: first, defaultEnd: last };
     }, []);
 
@@ -90,8 +91,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 while (cur <= end) {
                     const y = cur.getFullYear();
                     const m = cur.getMonth();
-                    const firstDay = new Date(y, m, 1).toISOString().split('T')[0];
-                    const lastDay = new Date(y, m + 1, 0).toISOString().split('T')[0];
+                    const firstDay = formatLocalDate(new Date(y, m, 1));
+                    const lastDay = formatLocalDate(new Date(y, m + 1, 0));
                     buckets.push({
                         key: firstDay,
                         label: `${y}년 ${m + 1}월`,
@@ -103,8 +104,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 }
             } else {
                 for (let m = 0; m < 12; m++) {
-                    const firstDay = new Date(targetYear, m, 1).toISOString().split('T')[0];
-                    const lastDay = new Date(targetYear, m + 1, 0).toISOString().split('T')[0];
+                    const firstDay = formatLocalDate(new Date(targetYear, m, 1));
+                    const lastDay = formatLocalDate(new Date(targetYear, m + 1, 0));
                     buckets.push({
                         key: firstDay,
                         label: `${targetYear}년 ${m + 1}월`,
@@ -125,10 +126,10 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
 
             const cur = new Date(targetStart);
             while (cur <= targetEnd) {
-                const sStr = cur.toISOString().split('T')[0];
+                const sStr = formatLocalDate(cur);
                 const wEnd = new Date(cur);
                 wEnd.setDate(wEnd.getDate() + 6);
-                const eStr = wEnd.toISOString().split('T')[0];
+                const eStr = formatLocalDate(wEnd);
                 const m = cur.getMonth() + 1;
                 const d = cur.getDate();
                 buckets.push({
@@ -153,7 +154,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
             const cur = new Date(sDate);
             let count = 0;
             while (cur <= eDate && count < 62) {
-                const sStr = cur.toISOString().split('T')[0];
+                const sStr = formatLocalDate(cur);
                 const m = cur.getMonth() + 1;
                 const d = cur.getDate();
                 buckets.push({

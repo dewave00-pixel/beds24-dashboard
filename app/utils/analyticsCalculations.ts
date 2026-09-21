@@ -22,6 +22,17 @@ export interface OverallSummary {
 }
 
 /**
+ * 로컬 타임존(KST 등)을 안전하게 유지하며 YYYY-MM-DD 문자열로 변환하는 유틸
+ * (toISOString() 사용 시 발생하는 UTC 9시간 시차 왜곡 방지)
+ */
+export function formatLocalDate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+/**
  * 선택된 기간 옵션에 따라 시작일과 종료일(YYYY-MM-DD) 및 기간 일수 계산
  */
 export function getDateRangeByFilter(
@@ -31,7 +42,7 @@ export function getDateRangeByFilter(
     bookings?: Booking[]
 ): { start: string; end: string; days: number } {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today);
 
     if (filter === 'custom' && customStart && customEnd) {
         const s = new Date(customStart);
@@ -44,13 +55,13 @@ export function getDateRangeByFilter(
     if (filter === 'last7') {
         const past = new Date(today);
         past.setDate(today.getDate() - 6);
-        return { start: past.toISOString().split('T')[0], end: todayStr, days: 7 };
+        return { start: formatLocalDate(past), end: todayStr, days: 7 };
     }
 
     if (filter === 'last30') {
         const past = new Date(today);
         past.setDate(today.getDate() - 29);
-        return { start: past.toISOString().split('T')[0], end: todayStr, days: 30 };
+        return { start: formatLocalDate(past), end: todayStr, days: 30 };
     }
 
     if (filter === 'thisMonth') {
@@ -59,8 +70,8 @@ export function getDateRangeByFilter(
         const firstDay = new Date(y, m, 1);
         const lastDay = new Date(y, m + 1, 0);
         return {
-            start: firstDay.toISOString().split('T')[0],
-            end: lastDay.toISOString().split('T')[0],
+            start: formatLocalDate(firstDay),
+            end: formatLocalDate(lastDay),
             days: lastDay.getDate(),
         };
     }
@@ -68,7 +79,7 @@ export function getDateRangeByFilter(
     if (filter === 'next30') {
         const future = new Date(today);
         future.setDate(today.getDate() + 30);
-        return { start: todayStr, end: future.toISOString().split('T')[0], days: 31 };
+        return { start: todayStr, end: formatLocalDate(future), days: 31 };
     }
 
     // 'all' (전체 기간: 첫 예약 arrival ~ 마지막 예약 departure)
@@ -102,8 +113,8 @@ export function getDateRangeByFilter(
         futureAll.setDate(today.getDate() + 365);
         const diffMs = futureAll.getTime() - pastAll.getTime();
         return {
-            start: pastAll.toISOString().split('T')[0],
-            end: futureAll.toISOString().split('T')[0],
+            start: formatLocalDate(pastAll),
+            end: formatLocalDate(futureAll),
             days: Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1,
         };
     }
@@ -128,9 +139,10 @@ function isValidBooking(b: Booking): boolean {
  * 헬퍼: 특정 날짜 문자열(YYYY-MM-DD)을 'days' 만큼 더한 날짜 문자열 반환
  */
 function addDays(dateStr: string, days: number): string {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + days);
+    return formatLocalDate(date);
 }
 
 /**

@@ -9,6 +9,7 @@ import {
     RoomStats,
     OverallSummary,
     TimeFilterRange,
+    formatLocalDate,
 } from '../../utils/analyticsCalculations';
 import DateRangeToolbar from './DateRangeToolbar';
 
@@ -18,7 +19,7 @@ interface PricingStrategyTabProps {
 
 export default function PricingStrategyTab({ bookings }: PricingStrategyTabProps) {
     // 탭 내부 자체 날짜 상태 (기본값: 오늘 하루)
-    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const todayStr = useMemo(() => formatLocalDate(new Date()), []);
     const [startDate, setStartDate] = useState<string>(todayStr);
     const [endDate, setEndDate] = useState<string>(todayStr);
     const [selectedProperty, setSelectedProperty] = useState<string>('all');
