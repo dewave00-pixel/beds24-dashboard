@@ -64,7 +64,7 @@ export default function OverlappingSelectionModal({
                                 className={`w-full p-3 rounded-xl border-2 text-left transition cursor-pointer flex flex-col gap-1.5 shadow-2xs hover:scale-[1.02] ${
                                     isUnalloc
                                         ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 hover:bg-amber-100/90 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200'
-                                        : 'bg-white dark:bg-slate-850 border-blue-300 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100'
+                                        : 'bg-white dark:bg-slate-900 border-blue-300 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100'
                                 }`}
                             >
                                 <div className="flex items-center justify-between">
