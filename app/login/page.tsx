@@ -41,12 +41,12 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 dark:bg-slate-950 flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-white dark:bg-slate-850 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 border border-transparent dark:border-slate-700/80">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 dark:border-slate-800">
 
                 {/* 타이틀 */}
                 <div className="text-center flex flex-col items-center gap-2">
-                    <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-3xl shadow-xs border border-transparent dark:border-blue-900/50">
+                    <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-3xl shadow-xs border border-blue-100 dark:border-blue-900/50">
                         🏨
                     </div>
                     <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">숙소 통합 관리 시스템</h1>
@@ -57,7 +57,7 @@ export default function LoginPage() {
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     {/* 아이디 */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-black text-slate-700 dark:text-slate-300">아이디</label>
+                        <label className="text-xs font-black text-slate-700 dark:text-slate-200">아이디</label>
                         <input
                             type="text"
                             value={username}
@@ -69,13 +69,13 @@ export default function LoginPage() {
                             required
                             autoCapitalize="none"
                             placeholder="아이디 입력"
-                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-blue-600 dark:focus:border-blue-500 focus:outline-hidden text-sm font-bold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-blue-600 dark:focus:border-blue-500 focus:outline-hidden text-sm font-bold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition"
                         />
                     </div>
 
                     {/* 비밀번호 */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-black text-slate-700 dark:text-slate-300">비밀번호</label>
+                        <label className="text-xs font-black text-slate-700 dark:text-slate-200">비밀번호</label>
                         <input
                             type="password"
                             value={password}
@@ -85,7 +85,7 @@ export default function LoginPage() {
                             }}
                             placeholder="비밀번호 입력"
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-blue-600 dark:focus:border-blue-500 focus:outline-hidden text-sm font-bold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:border-blue-600 dark:focus:border-blue-500 focus:outline-hidden text-sm font-bold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition"
                         />
                     </div>
 

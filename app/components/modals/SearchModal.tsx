@@ -239,7 +239,7 @@ export default function SearchModal({
                                         </div>
 
                                         {/* 하단: 일정 정보 및 예약 번호 */}
-                                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] md:text-xs text-gray-600 dark:text-slate-300 font-bold bg-gray-50 dark:bg-slate-850 p-2 rounded border border-gray-200 dark:border-slate-800">
+                                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] md:text-xs text-gray-600 dark:text-slate-300 font-bold bg-gray-50 dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-800">
                                             <div>
                                                 📅 <strong className="text-blue-700 dark:text-blue-400">{b.arrival}</strong> ~ <strong className="text-orange-700 dark:text-amber-400">{b.departure}</strong>
                                             </div>

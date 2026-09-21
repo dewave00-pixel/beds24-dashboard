@@ -177,7 +177,7 @@ export default function UnallocatedBookingsModal({
                                     </div>
 
                                     {/* 중간 정보줄: 게스트명, 날짜, 인원, 금액 */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-slate-850/80 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-slate-900/80 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-1.5 font-black text-gray-900 dark:text-slate-100">
                                                 <span>👤</span>

@@ -435,7 +435,7 @@ export default function CountryRevenueSection({
                             {roomPreferences.map((room, idx) => (
                                 <div
                                     key={room.unitKey}
-                                    className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200/90 dark:border-slate-700/80 p-3 shadow-2xs hover:shadow-xs transition flex flex-col justify-between gap-2"
+                                    className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200/90 dark:border-slate-700/80 p-3 shadow-2xs hover:shadow-xs transition flex flex-col justify-between gap-2"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-2">
