@@ -3,7 +3,7 @@
 import { Booking } from '../types';
 import { ALL_UNITS, getChannelStyle } from '../config';
 import { getGuestCountryInfo } from './countryHelper';
-import { calculateNetPayout, getUnitForBooking } from './bookingUtils';
+import { calculateNetPayout, getUnitForBooking, getBookingDateKST } from './bookingUtils';
 
 export type TimeFilterRange = 'last7' | 'last30' | 'thisMonth' | 'next30' | 'all' | 'custom';
 export type DateFilterMode = 'booked' | 'stay'; // 🛒 예약 접수일 기준 (Beds24 공식) vs 🛏️ 체크아웃/정산 기준
@@ -560,6 +560,7 @@ export interface ChannelStats {
     revenueShare: number;     // 매출액 기준 점유율 (%)
     adr: number;              // 해당 채널 1박 평균 단가
     color: string;            // 브랜드 고유 색상
+    bookings: Booking[];      // 해당 채널의 예약 객체 목록
 }
 
 // 플랫폼 고유 브랜드 색상 매핑
@@ -591,7 +592,7 @@ export function calculateChannelStats(
     // 모드별 필터링
     const targetBookings = validBookings.filter((b) => {
         if (mode === 'booked') {
-            const bDateStr = (b.bookingTime || b.arrival).split('T')[0].split(' ')[0];
+            const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
             return bDateStr >= start && bDateStr <= end;
         } else {
             // 체크아웃 기준 정산
@@ -601,7 +602,7 @@ export function calculateChannelStats(
 
     let totalRevenue = 0;
     const totalBookings = targetBookings.length;
-    const channelMap: Record<string, { count: number; nights: number; revenue: number; color: string }> = {};
+    const channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; bookings: Booking[] }> = {};
 
     targetBookings.forEach((b) => {
         const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
@@ -616,11 +617,12 @@ export function calculateChannelStats(
         const chColor = CHANNEL_COLORS[chName] || ch.bg || '#64748B';
 
         if (!channelMap[chName]) {
-            channelMap[chName] = { count: 0, nights: 0, revenue: 0, color: chColor };
+            channelMap[chName] = { count: 0, nights: 0, revenue: 0, color: chColor, bookings: [] };
         }
         channelMap[chName].count += 1;
         channelMap[chName].nights += nights;
         channelMap[chName].revenue += price;
+        channelMap[chName].bookings.push(b);
     });
 
     const channelList: ChannelStats[] = Object.entries(channelMap).map(([name, data]) => {
@@ -640,6 +642,7 @@ export function calculateChannelStats(
             revenueShare: revShare,
             adr,
             color: data.color,
+            bookings: data.bookings,
         };
     });
 
@@ -688,7 +691,7 @@ export function calculateCountryStats(
         }
 
         if (mode === 'booked') {
-            const bDateStr = (b.bookingTime || b.arrival).split('T')[0].split(' ')[0];
+            const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
             return bDateStr >= start && bDateStr <= end;
         } else {
             return b.departure >= start && b.departure <= end;
@@ -788,8 +791,9 @@ export function calculateCountryRoomPreferences(
 
     // 1. 기간 및 국적 필터링
     const targetBookings = validBookings.filter((b) => {
+        const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
         const isDateMatch = mode === 'booked'
-            ? ((b.bookingTime || b.arrival).split('T')[0].split(' ')[0] >= start && (b.bookingTime || b.arrival).split('T')[0].split(' ')[0] <= end)
+            ? (bDateStr >= start && bDateStr <= end)
             : (b.departure >= start && b.departure <= end);
 
         if (!isDateMatch) return false;
