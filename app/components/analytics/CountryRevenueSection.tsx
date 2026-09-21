@@ -77,34 +77,34 @@ export default function CountryRevenueSection({
 
     if (!countryList || countryList.length === 0 || totalBookings === 0) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center flex flex-col items-center gap-3">
-                <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-xs font-black self-center">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-8 text-center flex flex-col items-center gap-3">
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-black self-center">
                     <button
                         type="button"
                         onClick={() => setCountryDateMode('booked')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
                             countryDateMode === 'booked'
-                                ? 'bg-white text-blue-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         <span>🛒 예약 접수일 기준</span>
-                        <span className="text-[10px] text-blue-600 font-bold hidden sm:inline">(신규 유입)</span>
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hidden sm:inline">(신규 유입)</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setCountryDateMode('stay')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
                             countryDateMode === 'stay'
-                                ? 'bg-white text-emerald-700 shadow-2xs'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                         }`}
                     >
                         <span>🛏️ 실제 투숙(체크아웃) 기준</span>
-                        <span className="text-[10px] text-emerald-600 font-bold hidden sm:inline">(정산)</span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hidden sm:inline">(정산)</span>
                     </button>
                 </div>
-                <p className="text-gray-400 font-bold text-xs mt-2">
+                <p className="text-gray-400 dark:text-slate-500 font-bold text-xs mt-2">
                     해당 조건에 집계된 게스트 국적 데이터가 없습니다.
                 </p>
             </div>
@@ -121,19 +121,19 @@ export default function CountryRevenueSection({
     const hoveredItem = hoveredIdx !== null ? countryList[hoveredIdx] : null;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 p-3.5 md:p-5 shadow-xs flex flex-col gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-3.5 md:p-5 shadow-xs flex flex-col gap-4">
             {/* 1. 상단 타이틀 & 🏢 호실 필터 & ⚙️ 기준 전환 스위치 */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-gray-100">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-gray-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                     <span className="text-lg">🌍</span>
                     <div>
-                        <h3 className="text-sm md:text-base font-black text-gray-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-1.5 flex-wrap">
                             <span>Guest Origin (게스트 국적 & 인기 호실 분석)</span>
-                            <span className="text-[10px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                            <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
                                 {countryDateMode === 'booked' ? '🛒 예약 접수일 기준' : '🛏️ 실제 투숙(체크아웃) 기준'}
                             </span>
                         </h3>
-                        <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
+                        <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
                             국가별 게스트 비중 및 어떤 호실을 가장 좋아하는지 한눈에 비교
                         </span>
                     </div>
@@ -142,19 +142,19 @@ export default function CountryRevenueSection({
                 {/* 우측 필터 컨트롤 영역 */}
                 <div className="flex flex-wrap items-center gap-2">
                     {/* 🏠 호실 선택 드롭다운 */}
-                    <div className="flex items-center gap-1 bg-gray-50 p-1 px-2 rounded-xl border border-gray-200 text-xs">
-                        <span className="text-gray-500 font-black hidden sm:inline">호실 필터:</span>
+                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-800 p-1 px-2 rounded-xl border border-gray-200 dark:border-slate-700 text-xs">
+                        <span className="text-gray-500 dark:text-slate-400 font-black hidden sm:inline">호실 필터:</span>
                         <select
                             value={selectedUnitKey}
                             onChange={(e) => setSelectedUnitKey(e.target.value)}
                             aria-label="국적별 비중을 확인할 호실 선택"
-                            className="bg-transparent font-black text-xs text-gray-900 border-none outline-none cursor-pointer"
+                            className="bg-transparent font-black text-xs text-gray-900 dark:text-slate-100 border-none outline-none cursor-pointer"
                         >
-                            <option value="all">전체 숙소 (14개 호실)</option>
+                            <option value="all" className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">전체 숙소 (14개 호실)</option>
                             {PROPERTY_GROUPS.map((group) => (
-                                <optgroup key={group.name} label={`🏢 ${group.name}`}>
+                                <optgroup key={group.name} label={`🏢 ${group.name}`} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
                                     {group.units.map((u) => (
-                                        <option key={u.key} value={u.key}>
+                                        <option key={u.key} value={u.key} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
                                             {group.name} - {u.displayName} {u.subName ? `(${u.subName})` : ''}
                                         </option>
                                     ))}
@@ -164,14 +164,14 @@ export default function CountryRevenueSection({
                     </div>
 
                     {/* ⚙️ 기준 전환 스위치 */}
-                    <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-xs font-black">
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-black">
                         <button
                             type="button"
                             onClick={() => setCountryDateMode('booked')}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
                                 countryDateMode === 'booked'
-                                    ? 'bg-white text-blue-700 shadow-2xs'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                             }`}
                         >
                             <span>🛒 접수일 기준</span>
@@ -181,8 +181,8 @@ export default function CountryRevenueSection({
                             onClick={() => setCountryDateMode('stay')}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
                                 countryDateMode === 'stay'
-                                    ? 'bg-white text-emerald-700 shadow-2xs'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
                             }`}
                         >
                             <span>🛏️ 체크아웃 기준</span>
@@ -194,7 +194,7 @@ export default function CountryRevenueSection({
             {/* 2. 도넛 차트 (좌측) + 국적별 상세 성과 테이블 (우측) 2열 그리드 */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                 {/* 좌측 도넛 차트 (5칸) */}
-                <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-gray-50/60 rounded-2xl border border-gray-100">
+                <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-gray-50/60 dark:bg-slate-800/60 rounded-2xl border border-gray-100 dark:border-slate-700">
                     {/* 상단 범례 태그 (클릭 시 하단 인기 호실 랭킹 국가 변경) */}
                     <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3 max-h-24 overflow-y-auto">
                         {countryList.map((item, idx) => {
@@ -208,13 +208,13 @@ export default function CountryRevenueSection({
                                     onMouseLeave={() => setHoveredIdx(null)}
                                     className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold transition cursor-pointer border ${
                                         isSelected
-                                            ? 'bg-purple-50 text-purple-900 border-purple-300 shadow-xs scale-105'
-                                            : 'bg-white/80 border-transparent hover:bg-white'
+                                            ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-800 shadow-xs scale-105'
+                                            : 'bg-white/80 dark:bg-slate-900/80 border-transparent text-gray-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900'
                                     }`}
                                 >
                                     <span>{item.flag}</span>
                                     <span>{item.countryName}</span>
-                                    <span className="text-gray-400 font-normal">({item.percentage}%)</span>
+                                    <span className="text-gray-400 dark:text-slate-500 font-normal">({item.percentage}%)</span>
                                 </button>
                             );
                         })}
@@ -260,52 +260,55 @@ export default function CountryRevenueSection({
                         </svg>
 
                         {/* 도넛 중앙 정보 텍스트 */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
+                        <div
+                            className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none"
+                            style={{ width: size, height: size }}
+                        >
                             {hoveredItem ? (
-                                <>
-                                    <span className="text-base">{hoveredItem.flag}</span>
-                                    <span className="text-xs font-black text-gray-700">{hoveredItem.countryName}</span>
-                                    <span className="text-xl font-black text-gray-900 leading-tight">
+                                <div className="animate-fadeIn flex flex-col items-center">
+                                    <span className="text-lg">{hoveredItem.flag}</span>
+                                    <span className="text-xs font-black text-gray-500 dark:text-slate-400">{hoveredItem.countryName}</span>
+                                    <span className="text-xl font-black text-gray-900 dark:text-slate-100 leading-tight">
                                         {hoveredItem.percentage}%
                                     </span>
-                                    <span className="text-[11px] font-bold text-gray-600">
+                                    <span className="text-[11px] font-bold text-gray-600 dark:text-slate-300">
                                         {hoveredItem.count}건 ({hoveredItem.nights}박)
                                     </span>
-                                    <span className="text-xs font-black text-purple-700 mt-0.5">
+                                    <span className="text-xs font-black text-purple-700 dark:text-purple-400 mt-0.5">
                                         ₩{hoveredItem.revenue.toLocaleString()}
                                     </span>
-                                </>
+                                </div>
                             ) : (
-                                <>
-                                    <span className="text-[11px] font-bold text-gray-400">
-                                        {countryDateMode === 'booked' ? '유입 국적 총합' : '투숙 국적 총합'}
+                                <div className="flex flex-col items-center">
+                                    <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500">
+                                        {countryDateMode === 'booked' ? '유입 예약' : '투숙 예약'}
                                     </span>
-                                    <span className="text-2xl font-black text-gray-900 leading-tight">
+                                    <span className="text-2xl font-black text-gray-900 dark:text-slate-100 leading-tight">
                                         {totalBookings}건
                                     </span>
-                                    <span className="text-[10.5px] text-gray-500 font-bold">
+                                    <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold">
                                         총 {countryList.length}개국 손님
                                     </span>
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* 우측 국적별 상세 성과 테이블 (7칸) */}
-                <div className="lg:col-span-7 flex flex-col gap-2 max-h-[360px] overflow-y-auto">
+                {/* 우측 국적별 상세 랭킹 테이블 (7칸) */}
+                <div className="lg:col-span-7 flex flex-col gap-2">
                     {/* PC 테이블 */}
-                    <div className="hidden md:block overflow-x-auto">
+                    <div className="hidden md:block overflow-x-auto max-h-[300px] overflow-y-auto">
                         <table className="w-full text-left text-xs border-collapse">
                             <thead>
-                                <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 sticky top-0 bg-white z-10">
+                                <tr className="bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-300 font-bold border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
                                     <th className="py-2 px-3">순위 & 국적 (클릭 시 인기호실 조회)</th>
                                     <th className="py-2 px-3 text-center">예약건수 (비중)</th>
                                     <th className="py-2 px-3 text-right">매출액</th>
                                     <th className="py-2 px-3 text-right">1박 단가 (ADR)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                                 {countryList.map((c, idx) => {
                                     const isSelected = selectedCountryCode === c.countryCode;
                                     return (
@@ -313,33 +316,33 @@ export default function CountryRevenueSection({
                                             key={c.countryCode}
                                             onClick={() => setSelectedCountryCode(c.countryCode)}
                                             className={`cursor-pointer transition ${
-                                                isSelected ? 'bg-purple-50/80 font-bold' : 'hover:bg-gray-50'
+                                                isSelected ? 'bg-purple-50/80 dark:bg-purple-950/40 font-bold' : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
                                             }`}
                                         >
-                                            <td className="py-2 px-3 font-black text-gray-900 flex items-center gap-2">
+                                            <td className="py-2 px-3 font-black text-gray-900 dark:text-slate-100 flex items-center gap-2">
                                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
                                                     idx === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                                                     idx === 1 ? 'bg-slate-200 text-slate-700' :
                                                     idx === 2 ? 'bg-amber-50 text-amber-700' :
-                                                    'bg-gray-100 text-gray-500'
+                                                    'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
                                                 }`}>
                                                     {idx + 1}
                                                 </span>
                                                 <span className="text-base">{c.flag}</span>
                                                 <span>{c.countryName}</span>
                                                 {isSelected && (
-                                                    <span className="text-[10px] text-purple-600 bg-purple-100 px-1.5 py-0.2 rounded-md">
+                                                    <span className="text-[10px] text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-1.5 py-0.2 rounded-md">
                                                         선택됨
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="py-2 px-3 text-center font-bold text-gray-700">
-                                                {c.count}건 <span className="text-purple-700 font-black">({c.percentage}%)</span>
+                                            <td className="py-2 px-3 text-center font-bold text-gray-700 dark:text-slate-300">
+                                                {c.count}건 <span className="text-purple-700 dark:text-purple-400 font-black">({c.percentage}%)</span>
                                             </td>
-                                            <td className="py-2 px-3 text-right font-black text-gray-900 font-mono text-sm">
+                                            <td className="py-2 px-3 text-right font-black text-gray-900 dark:text-slate-100 font-mono text-sm">
                                                 ₩{c.revenue.toLocaleString()}
                                             </td>
-                                            <td className="py-2 px-3 text-right font-black text-purple-700 font-mono">
+                                            <td className="py-2 px-3 text-right font-black text-purple-700 dark:text-purple-400 font-mono">
                                                 ₩{c.adr.toLocaleString()}
                                             </td>
                                         </tr>
@@ -360,20 +363,20 @@ export default function CountryRevenueSection({
                                     onClick={() => setSelectedCountryCode(c.countryCode)}
                                     className={`w-full text-left rounded-xl border p-2.5 flex flex-col gap-1.5 transition ${
                                         isSelected
-                                            ? 'bg-purple-50/90 border-purple-300 shadow-2xs'
-                                            : 'bg-gray-50/80 border-gray-200'
+                                            ? 'bg-purple-50/90 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-2xs'
+                                            : 'bg-gray-50/80 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700'
                                     }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 text-[10px] font-black flex items-center justify-center">
+                                            <span className="w-4 h-4 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-[10px] font-black flex items-center justify-center">
                                                 {idx + 1}
                                             </span>
                                             <span className="text-base">{c.flag}</span>
-                                            <span className="font-black text-xs text-gray-900">{c.countryName}</span>
-                                            <span className="text-xs font-black text-purple-700">({c.percentage}%)</span>
+                                            <span className="font-black text-xs text-gray-900 dark:text-slate-100">{c.countryName}</span>
+                                            <span className="text-xs font-black text-purple-700 dark:text-purple-400">({c.percentage}%)</span>
                                         </div>
-                                        <span className="font-black text-gray-900 text-xs font-mono">
+                                        <span className="font-black text-gray-900 dark:text-slate-100 text-xs font-mono">
                                             ₩{c.revenue.toLocaleString()}
                                         </span>
                                     </div>
@@ -386,18 +389,18 @@ export default function CountryRevenueSection({
 
             {/* 3. 🏆 [선택된 국가 게스트의 인기 호실 TOP 랭킹 상세 카드] */}
             {activeCountryObj && (
-                <div className="mt-2 p-3.5 md:p-4 bg-gradient-to-br from-purple-50/50 via-white to-blue-50/30 rounded-2xl border border-purple-200/80 shadow-xs flex flex-col gap-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-purple-100">
+                <div className="mt-2 p-3.5 md:p-4 bg-gradient-to-br from-purple-50/50 via-white to-blue-50/30 dark:from-purple-950/30 dark:via-slate-900 dark:to-blue-950/20 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 shadow-xs flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-purple-900/40">
                         <div className="flex items-center gap-2">
                             <span className="text-xl">{activeCountryObj.flag}</span>
                             <div>
-                                <h4 className="text-xs md:text-sm font-black text-gray-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+                                <h4 className="text-xs md:text-sm font-black text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-1.5 flex-wrap">
                                     <span>{activeCountryObj.countryName} 손님이 가장 많이 예약한 인기 호실 TOP 랭킹</span>
-                                    <span className="text-[10px] font-extrabold text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-200 shadow-2xs">
+                                    <span className="text-[10px] font-extrabold text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 shadow-2xs">
                                         총 {activeCountryObj.count}건 (₩{activeCountryObj.revenue.toLocaleString()})
                                     </span>
                                 </h4>
-                                <span className="text-[10.5px] text-gray-500 font-bold hidden sm:inline">
+                                <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
                                     {activeCountryObj.countryName} 게스트들이 어떤 방 타입(호실)을 주로 선호하는지 확인하세요.
                                 </span>
                             </div>
@@ -413,7 +416,7 @@ export default function CountryRevenueSection({
                                     className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold transition cursor-pointer border whitespace-nowrap ${
                                         selectedCountryCode === c.countryCode
                                             ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                                            : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700'
                                     }`}
                                 >
                                     <span>{c.flag}</span> <span>{c.countryName}</span>
@@ -424,7 +427,7 @@ export default function CountryRevenueSection({
 
                     {/* 호실별 선호도 랭킹 그리드 / 테이블 */}
                     {roomPreferences.length === 0 ? (
-                        <div className="p-6 text-center text-gray-400 text-xs font-bold">
+                        <div className="p-6 text-center text-gray-400 dark:text-slate-500 text-xs font-bold">
                             해당 국가 게스트의 호실 예약 데이터가 없습니다.
                         </div>
                     ) : (
@@ -432,7 +435,7 @@ export default function CountryRevenueSection({
                             {roomPreferences.map((room, idx) => (
                                 <div
                                     key={room.unitKey}
-                                    className="bg-white rounded-xl border border-gray-200/90 p-3 shadow-2xs hover:shadow-xs transition flex flex-col justify-between gap-2"
+                                    className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200/90 dark:border-slate-700/80 p-3 shadow-2xs hover:shadow-xs transition flex flex-col justify-between gap-2"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-2">
@@ -440,29 +443,29 @@ export default function CountryRevenueSection({
                                                 idx === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                                                 idx === 1 ? 'bg-slate-200 text-slate-700' :
                                                 idx === 2 ? 'bg-amber-50 text-amber-700' :
-                                                'bg-gray-100 text-gray-600'
+                                                'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
                                             }`}>
                                                 {idx + 1}
                                             </span>
                                             <div>
-                                                <span className="text-[10px] font-bold text-gray-500 block leading-tight">
+                                                <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 block leading-tight">
                                                     🏢 {room.propName}
                                                 </span>
-                                                <span className="font-black text-xs text-gray-900">
+                                                <span className="font-black text-xs text-gray-900 dark:text-slate-100">
                                                     {room.roomName}
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className="text-xs font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                                        <span className="text-xs font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
                                             {room.percentage}%
                                         </span>
                                     </div>
 
-                                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
-                                        <span className="text-gray-600 font-bold">
-                                            {room.count}건 <span className="text-gray-400 font-normal">({room.nights}박)</span>
+                                    <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100 dark:border-slate-800/80 mt-1">
+                                        <span className="font-bold text-gray-700 dark:text-slate-300">
+                                            {room.count}건 <span className="text-gray-400 dark:text-slate-500 font-normal">({room.nights}박)</span>
                                         </span>
-                                        <span className="font-black text-gray-900 font-mono text-xs">
+                                        <span className="font-black text-gray-900 dark:text-slate-100 font-mono text-xs">
                                             ₩{room.revenue.toLocaleString()}
                                         </span>
                                     </div>

@@ -51,6 +51,28 @@ export function isValidBooking(booking?: Booking | null): boolean {
 }
 
 /**
+ * 🕒 예약 접수 일시(Beds24 UTC)를 한국 시간(KST, Asia/Seoul) YYYY-MM-DD 날짜 문자열로 변환
+ */
+export function getBookingDateKST(bookingTime?: string, arrival?: string): string {
+    if (!bookingTime) return arrival || '';
+    if (bookingTime.length === 10 && bookingTime[4] === '-' && bookingTime[7] === '-') {
+        return bookingTime;
+    }
+    try {
+        const str = bookingTime.includes('Z') || bookingTime.includes('+') ? bookingTime : bookingTime + 'Z';
+        const time = Date.parse(str);
+        if (isNaN(time)) {
+            return bookingTime.split('T')[0].split(' ')[0];
+        }
+        // KST는 UTC + 9시간 (9 * 3600 * 1000 = 32,400,000ms)
+        const kstTime = new Date(time + 32400000);
+        return kstTime.toISOString().slice(0, 10);
+    } catch {
+        return bookingTime.split('T')[0].split(' ')[0];
+    }
+}
+
+/**
  * 🏠 예약 정보를 기반으로 일치하는 호실(UnitConfig) 안전 매칭
  * - 1차: roomId와 unitId가 모두 일치하는 호실
  * - 2차: unitId가 없는 경우 roomId가 일치하는 첫 번째 호실로 fallback 매칭
