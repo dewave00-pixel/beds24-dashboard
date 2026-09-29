@@ -3,6 +3,7 @@ import { getValidBeds24Token } from '@/app/utils/beds24Client';
 import { upsertBookingsToSupabase, deleteBookingFromSupabase } from '@/app/utils/bookingSync';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // ⚡ 서버리스 타임아웃 방지 (최대 60초)
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -17,15 +18,23 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         // 기본값: 최근 15분 전부터 변경된 내역 (분 단위 커스텀 지원: ?minutes=30)
-        const minutes = Math.max(1, Math.min(1440, Number(searchParams.get('minutes')) || 15));
+        const requestedMinutes = Math.max(1, Math.min(1440, Number(searchParams.get('minutes')) || 15));
+        
+        // 🛡️ 시간 경계 누락 방지 안전 버퍼: 요청 분에 5분을 더해 오버랩 조회 (Supabase upsert는 멱등 처리되므로 안전)
+        const effectiveMinutes = Math.min(1440, requestedMinutes + 5);
+
+        const isVercelCron = request.headers.get('x-vercel-cron') !== null;
+        if (isVercelCron) {
+            console.log(`⏰ [Vercel Cron] 백그라운드 증분 동기화 실행 (윈도우: ${effectiveMinutes}분)`);
+        }
 
         const now = new Date();
-        const sinceDate = new Date(now.getTime() - minutes * 60 * 1000);
+        const sinceDate = new Date(now.getTime() - effectiveMinutes * 60 * 1000);
         
         // Beds24 V2 공식 스펙: modifiedFrom=YYYY-MM-DDTHH:MM:SS (UTC 기준)
         const pad = (n: number) => String(n).padStart(2, '0');
         const modifiedFrom = `${sinceDate.getUTCFullYear()}-${pad(sinceDate.getUTCMonth() + 1)}-${pad(sinceDate.getUTCDate())}T${pad(sinceDate.getUTCHours())}:${pad(sinceDate.getUTCMinutes())}:${pad(sinceDate.getUTCSeconds())}`;
-        console.log(`🔍 [Incremental Sync] Beds24 modifiedFrom 쿼리: "${modifiedFrom}" (UTC)`);
+        console.log(`🔍 [Incremental Sync] Beds24 modifiedFrom 쿼리: "${modifiedFrom}" (UTC, ${effectiveMinutes}분 전)`);
 
         const accessToken = await getValidBeds24Token();
 
@@ -81,7 +90,7 @@ export async function GET(request: Request) {
             await sleep(150);
         }
 
-        console.log(`⚡ [Incremental Sync] 최근 ${minutes}분간 변경된 예약 감지: ${modifiedBookings.length}건`);
+        console.log(`⚡ [Incremental Sync] 최근 ${effectiveMinutes}분간 변경된 예약 감지: ${modifiedBookings.length}건`);
 
         // 변경된 예약 분류 (취소/삭제 건 vs 활성 예약 건)
         let upsertCount = 0;
@@ -115,7 +124,8 @@ export async function GET(request: Request) {
         return NextResponse.json({
             success: true,
             syncedAt: now.toISOString(),
-            windowMinutes: minutes,
+            windowMinutes: effectiveMinutes,
+            requestedMinutes,
             modifiedFromQuery: modifiedFrom,
             totalDetected: modifiedBookings.length,
             upsertCount,
