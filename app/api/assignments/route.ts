@@ -6,15 +6,23 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const targetDate = searchParams.get('targetDate');
+        const historyDatesStr = searchParams.get('historyDates');
 
         if (!targetDate) {
             return NextResponse.json({ success: false, error: 'targetDate 파라미터가 필요합니다.' }, { status: 400 });
         }
 
-        const { data, error } = await supabase
-            .from('cleaning_assignments')
-            .select('*')
-            .eq('target_date', targetDate);
+        const historyDates = historyDatesStr ? historyDatesStr.split(',').filter(Boolean) : [];
+        const allDatesToQuery = Array.from(new Set([targetDate, ...historyDates]));
+
+        let query = supabase.from('cleaning_assignments').select('*');
+        if (allDatesToQuery.length === 1) {
+            query = query.eq('target_date', targetDate);
+        } else {
+            query = query.in('target_date', allDatesToQuery);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('배정 조회 DB 오류:', error);
@@ -22,9 +30,12 @@ export async function GET(request: Request) {
         }
 
         const assignmentsMap: Record<string, any> = {};
+        // historyMap: { [dateStr]: { [unitKey]: { unitKey, staffName, staffId, isCompleted, completedAt } } }
+        const historyMap: Record<string, Record<string, any>> = {};
+
         if (data) {
             data.forEach((row) => {
-                assignmentsMap[row.unit_key] = {
+                const item = {
                     unitKey: row.unit_key,
                     staffName: row.staff_name,
                     staffId: row.staff_id,
@@ -32,10 +43,19 @@ export async function GET(request: Request) {
                     isCompleted: !!row.is_completed,
                     completedAt: row.completed_at || '',
                 };
+
+                if (row.target_date === targetDate) {
+                    assignmentsMap[row.unit_key] = item;
+                } else {
+                    if (!historyMap[row.target_date]) {
+                        historyMap[row.target_date] = {};
+                    }
+                    historyMap[row.target_date][row.unit_key] = item;
+                }
             });
         }
 
-        return NextResponse.json({ success: true, data: assignmentsMap });
+        return NextResponse.json({ success: true, data: assignmentsMap, history: historyMap });
     } catch (err: any) {
         console.error('배정 GET 처리 중 오류:', err);
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });

@@ -126,6 +126,7 @@ export default function CleaningPage() {
                         bookings={c.bookings}
                         bookingNotes={c.bookingNotes}
                         assignments={c.assignments}
+                        cleaningHistoryMap={c.cleaningHistoryMap}
                         staffList={c.staffList}
                         selectedStaffForMobile={selectedStaffForMobile}
                         onAssign={(unitKey, staffName) => c.assignStaff(unitKey, staffName)}
