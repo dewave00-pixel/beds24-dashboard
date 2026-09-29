@@ -89,17 +89,17 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                     <span className="text-lg">🚪</span>
                     <div>
                         <h3 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 tracking-tight">
-                            개별 객실(호실)별 매출 및 가동률 성과
+                            개별 객실(룸타입)별 매출 및 가동률 성과
                         </h3>
                         <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
-                            호실별 판매 박수, 가동률 바, 평균단가 및 주말/평일 세부 단가 한눈에 비교
+                            룸타입별 공급 박수 대비 판매 박수, 가동률, 평균단가 및 주말/평일 세부 단가 한눈에 비교
                         </span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2.5">
                     <span className="text-xs font-bold text-gray-500 dark:text-slate-400 hidden sm:inline">
-                        총 <strong className="text-gray-900 dark:text-slate-100">{processedRooms.length}</strong>개 객실
+                        총 <strong className="text-gray-900 dark:text-slate-100">{processedRooms.length}</strong>개 룸타입
                     </span>
 
                     {/* 숙소 선택 드롭다운 */}
@@ -112,7 +112,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                             className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-black text-gray-800 dark:text-slate-100 cursor-pointer focus:outline-none focus:border-blue-500 shadow-2xs"
                         >
                             <option value="all" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                전체 숙소 ({roomStats.length}개 호실)
+                                전체 숙소 ({roomStats.length}개 룸타입)
                             </option>
                             {PROPERTY_GROUPS.map((g) => (
                                 <option key={g.name} value={g.name} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
@@ -135,7 +135,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 onClick={() => handleSort('room')}
                             >
                                 <span className="inline-flex items-center">
-                                    순위 & 호실
+                                    순위 & 객실(룸타입)
                                     {renderSortArrow('room')}
                                 </span>
                             </th>
@@ -154,8 +154,8 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 </span>
                             </th>
 
-                            {/* 4. 공실 / 투숙 */}
-                            <th className="py-2.5 px-3 text-center">공실 / 투숙</th>
+                            {/* 4. 판매 / 공급 (공실) */}
+                            <th className="py-2.5 px-3 text-center">판매 / 공급 (공실)</th>
 
                             {/* 5. 평균 단가 (ADR) */}
                             <th
@@ -212,9 +212,16 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                         }`}>
                                             {idx + 1}
                                         </span>
-                                        <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
-                                            {room.roomName}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
+                                                {room.roomName}
+                                            </span>
+                                            {room.unitCount > 1 && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50">
+                                                    {room.unitCount}유닛
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* 소속 사업장 */}
@@ -246,13 +253,17 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                         </div>
                                     </td>
 
-                                    {/* 판매 박수 vs 공실 박수 */}
+                                    {/* 판매 박수 vs 공급 박수 (공실) */}
                                     <td className="py-2.5 px-3 text-center font-bold text-[11.5px]">
-                                        <span className={room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-gray-400 dark:text-slate-500'}>
-                                            {room.vacantNights}박 공실
-                                        </span>
-                                        <span className="text-gray-300 dark:text-slate-600 mx-1">/</span>
-                                        <span className="text-gray-900 dark:text-slate-100 font-bold">{room.totalNights}박 투숙</span>
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
+                                                <span className="text-gray-400 dark:text-slate-500 text-[10.5px]">/ {room.availableNights}박</span>
+                                            </div>
+                                            <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                                                {room.vacantNights > 0 ? `${room.vacantNights}박 공실` : '만실'}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* 1박 평균단가 (ADR) */}
@@ -336,9 +347,16 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                     }`}>
                                         {idx + 1}
                                     </span>
-                                    <span className="font-black text-sm text-gray-900 dark:text-slate-100 truncate">
-                                        {room.roomName}
-                                    </span>
+                                    <div className="flex items-center gap-1 min-w-0 truncate">
+                                        <span className="font-black text-sm text-gray-900 dark:text-slate-100 truncate">
+                                            {room.roomName}
+                                        </span>
+                                        {room.unitCount > 1 && (
+                                            <span className="px-1 py-0.2 rounded text-[9.5px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50 shrink-0">
+                                                {room.unitCount}유닛
+                                            </span>
+                                        )}
+                                    </div>
                                     <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded text-white shrink-0" style={{ backgroundColor: colorInfo.color }}>
                                         {propKOR}
                                     </span>
@@ -369,12 +387,12 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                     </span>
                                 </div>
 
-                                <div className="text-[11px] font-bold">
-                                    <span className={room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-gray-400'}>
-                                        {room.vacantNights}공실
+                                <div className="text-[11px] font-bold flex items-center gap-1">
+                                    <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
+                                    <span className="text-gray-400 dark:text-slate-500 text-[10px]">/{room.availableNights}박</span>
+                                    <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-emerald-600 font-bold'}`}>
+                                        ({room.vacantNights > 0 ? `${room.vacantNights}공실` : '만실'})
                                     </span>
-                                    <span className="text-gray-300 dark:text-slate-600 mx-1">/</span>
-                                    <span className="text-gray-800 dark:text-slate-200">{room.totalNights}박 투숙</span>
                                 </div>
                             </div>
 

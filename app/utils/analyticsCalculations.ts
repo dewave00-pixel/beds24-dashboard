@@ -1,7 +1,7 @@
 // 🧮 매출 & 가동률 계산 전담 엔진 모듈
 
 import { Booking } from '../types';
-import { ALL_UNITS, getChannelStyle } from '../config';
+import { ALL_UNITS, ROOM_TYPES, getChannelStyle } from '../config';
 import { getGuestCountryInfo } from './countryHelper';
 import { calculateNetPayout, getUnitForBooking, getBookingDateKST } from './bookingUtils';
 
@@ -401,22 +401,26 @@ export function calculatePropertyStats(
 export interface RoomStats {
     unitKey: string;
     roomName: string;
+    displayName?: string;
     propName: string;
     roomId: number;
     unitId?: number;
-    totalRevenue: number;     // 해당 호실 총 매출 (체크아웃 기준)
-    netRevenue: number;       // 해당 호실 순매출 (20% 수수료 제외)
-    totalBookings: number;    // 해당 호실 체크아웃 건수
-    totalNights: number;      // 해당 호실 실제 판매된 투숙 박수
-    vacantNights: number;     // 해당 호실 실제 공실 박수
-    occupancyRate: number;    // 해당 호실 가동률 (%)
+    unitCount: number;        // 해당 객실의 총 유닛(호실) 수 (WAVE C, D는 2)
+    unitNames: string[];      // 소속 호실명 배열 (예: ['403호', '503호'])
+    totalRevenue: number;     // 해당 객실 총 매출 (체크아웃 기준)
+    netRevenue: number;       // 해당 객실 순매출
+    totalBookings: number;    // 해당 객실 체크아웃 건수
+    totalNights: number;      // 해당 객실 실제 판매된 총 투숙 박수 (모든 유닛 합산)
+    availableNights: number;  // 총 공급 가능 박수 (days * unitCount)
+    vacantNights: number;     // 해당 객실 실제 공실 박수 (availableNights - totalNights)
+    occupancyRate: number;    // 해당 객실 가동률 (%) = (totalNights / availableNights) * 100
     adr: number;              // 1박 평균 객실 단가
     revenueShare: number;     // 전체 매출 중 점유율 (%)
     dayTypeAdr: DayTypeAdr;   // 요일별 3분류(월~목, 금~토, 일) 단가
 }
 
 /**
- * 3. 🚪 개별 객실(호실)별 매출(체크아웃 기준) 및 실투숙/공실 박수 계산
+ * 3. 🚪 개별 객실(룸타입)별 매출(체크아웃 기준) 및 실투숙/공실 박수 계산 (Unit 수 완벽 반영)
  */
 export function calculateRoomStats(
     bookings: Booking[],
@@ -428,12 +432,15 @@ export function calculateRoomStats(
     const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 14개 전체 호실 맵 초기화
-    const roomMap: Record<string, {
+    // 13개 표준 객실(룸타입) 맵 초기화
+    const roomMap: Record<number, {
+        unitKey: string;
         roomName: string;
+        displayName: string;
         propName: string;
         roomId: number;
-        unitId?: number;
+        unitCount: number;
+        unitNames: string[];
         revenue: number;
         checkoutNights: number;
         checkoutBookings: number;
@@ -446,13 +453,15 @@ export function calculateRoomStats(
         sundayNights: number;
     }> = {};
 
-    ALL_UNITS.forEach((u) => {
-        const fullRoomName = u.displayName + (u.subName ? ` (${u.subName})` : '');
-        roomMap[u.key] = {
-            roomName: fullRoomName,
-            propName: u.propName || '기타 숙소',
-            roomId: u.roomId,
-            unitId: u.unitId,
+    ROOM_TYPES.forEach((rt) => {
+        roomMap[rt.roomId] = {
+            unitKey: String(rt.roomId),
+            roomName: rt.displayName,
+            displayName: rt.displayName,
+            propName: rt.propName,
+            roomId: rt.roomId,
+            unitCount: rt.unitCount,
+            unitNames: rt.units.map((u) => u.displayName),
             revenue: 0,
             checkoutNights: 0,
             checkoutBookings: 0,
@@ -478,12 +487,11 @@ export function calculateRoomStats(
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
-        const matchedUnit = getUnitForBooking(b);
-
-        if (matchedUnit && roomMap[matchedUnit.key]) {
-            roomMap[matchedUnit.key].revenue += price;
-            roomMap[matchedUnit.key].checkoutNights += nights;
-            roomMap[matchedUnit.key].checkoutBookings += 1;
+        const rId = Number(b.roomId);
+        if (roomMap[rId]) {
+            roomMap[rId].revenue += price;
+            roomMap[rId].checkoutNights += nights;
+            roomMap[rId].checkoutBookings += 1;
         }
     });
 
@@ -497,9 +505,9 @@ export function calculateRoomStats(
 
         validBookings.forEach((b) => {
             if (b.arrival <= targetDate && b.departure > targetDate) {
-                const matchedUnit = getUnitForBooking(b);
-                if (matchedUnit && roomMap[matchedUnit.key]) {
-                    roomMap[matchedUnit.key].stayNights += 1;
+                const rId = Number(b.roomId);
+                if (roomMap[rId]) {
+                    roomMap[rId].stayNights += 1;
 
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
@@ -507,42 +515,47 @@ export function calculateRoomStats(
                     const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-                        roomMap[matchedUnit.key].weekdayRev += dailyRate;
-                        roomMap[matchedUnit.key].weekdayNights += 1;
+                        roomMap[rId].weekdayRev += dailyRate;
+                        roomMap[rId].weekdayNights += 1;
                     } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-                        roomMap[matchedUnit.key].weekendRev += dailyRate;
-                        roomMap[matchedUnit.key].weekendNights += 1;
+                        roomMap[rId].weekendRev += dailyRate;
+                        roomMap[rId].weekendNights += 1;
                     } else if (dayOfWeek === 0) {
-                        roomMap[matchedUnit.key].sundayRev += dailyRate;
-                        roomMap[matchedUnit.key].sundayNights += 1;
+                        roomMap[rId].sundayRev += dailyRate;
+                        roomMap[rId].sundayNights += 1;
                     }
                 }
             }
         });
     }
 
-    // 3. 결과 변환
-    const result: RoomStats[] = Object.entries(roomMap).map(([unitKey, data]) => {
-        const occ = days > 0 ? Math.min(100, Math.round((data.stayNights / days) * 1000) / 10) : 0;
+    // 3. 결과 변환 (유닛 수 unitCount를 반영한 공실 및 가동률 계산)
+    const result: RoomStats[] = Object.values(roomMap).map((data) => {
+        // 🌟 유닛 수를 곱한 총 공급 가능 박수 (예: WAVE C, D는 30일 × 2 = 60박)
+        const availableNights = (data.unitCount || 1) * days;
+        const occ = availableNights > 0 ? Math.min(100, Math.round((data.stayNights / availableNights) * 1000) / 10) : 0;
         const roomAdr = data.checkoutNights > 0 ? Math.round(data.revenue / data.checkoutNights) : 0;
         const share = overallTotalRevenue > 0 ? Math.round((data.revenue / overallTotalRevenue) * 1000) / 10 : 0;
         const net = data.revenue;
-        const vacant = Math.max(0, days - data.stayNights);
+        const vacant = Math.max(0, availableNights - data.stayNights);
 
         const weekdayAdr = data.weekdayNights > 0 ? Math.round(data.weekdayRev / data.weekdayNights) : 0;
         const weekendAdr = data.weekendNights > 0 ? Math.round(data.weekendRev / data.weekendNights) : 0;
         const sundayAdr = data.sundayNights > 0 ? Math.round(data.sundayRev / data.sundayNights) : 0;
 
         return {
-            unitKey,
+            unitKey: data.unitKey,
             roomName: data.roomName,
+            displayName: data.displayName,
             propName: data.propName,
             roomId: data.roomId,
-            unitId: data.unitId,
+            unitCount: data.unitCount,
+            unitNames: data.unitNames,
             totalRevenue: data.revenue,
             netRevenue: net,
             totalBookings: data.checkoutBookings,
             totalNights: data.stayNights,
+            availableNights,
             vacantNights: vacant,
             occupancyRate: occ,
             adr: roomAdr,
