@@ -12,6 +12,7 @@ interface CleaningGroupGridProps {
     bookings: Booking[];
     bookingNotes: { [bookingId: number]: { note: string; tags: string[] } };
     assignments: { [unitKey: string]: CleaningAssignment };
+    cleaningHistoryMap?: Record<string, Record<string, any>>;
     staffList?: string[];
     staffMap?: Record<string, string>;
     selectedStaffForMobile?: string;
@@ -27,6 +28,7 @@ export default function CleaningGroupGrid({
     bookings,
     bookingNotes,
     assignments,
+    cleaningHistoryMap,
     staffList = [],
     staffMap = DEFAULT_STAFF_MAP,
     selectedStaffForMobile,
@@ -41,6 +43,8 @@ export default function CleaningGroupGrid({
 
     // 전체/개인 숙소 호실들의 청소 상태 통계 계산
     let totalUrgentCheckinCount = 0;
+    let totalReadyCheckinCount = 0;
+    let totalUnconfirmedCount = 0;
     let totalStandbyCheckoutCount = 0;
     let totalAssignedCount = 0;
     let totalCompletedCount = 0;
@@ -51,7 +55,7 @@ export default function CleaningGroupGrid({
     // 각 숙소 그룹별 데이터 사전 가공
     const groupsWithStatus = PROPERTY_GROUPS.map((group) => {
         const unitsWithStatus = group.units.map((unit) => {
-            const statusInfo = getUnitCleaningStatus(unit, dateStr, bookings);
+            const statusInfo = getUnitCleaningStatus(unit, dateStr, bookings, cleaningHistoryMap);
             const assignment = assignments[unit.key];
             const isAssigned = !!assignment;
             const isCompleted = !!assignment?.isCompleted;
@@ -79,6 +83,8 @@ export default function CleaningGroupGrid({
         // 통계 집계 (스태프 뷰일 때는 내 배정 호실만 집계, 관리자 뷰일 때는 전체 집계)
         filteredUnits.forEach((u) => {
             if (u.statusInfo.statusCode === 'URGENT_CHECKIN') totalUrgentCheckinCount++;
+            if (u.statusInfo.statusCode === 'READY_CHECKIN') totalReadyCheckinCount++;
+            if (u.statusInfo.statusCode === 'UNCONFIRMED_CHECKIN') totalUnconfirmedCount++;
             if (u.statusInfo.statusCode === 'STANDBY_CHECKOUT_ONLY') totalStandbyCheckoutCount++;
             if (u.isAssigned) totalAssignedCount++;
             if (u.isCompleted) totalCompletedCount++;
@@ -102,7 +108,7 @@ export default function CleaningGroupGrid({
         };
     });
 
-    const totalCleaningTargetCount = totalUrgentCheckinCount + totalStandbyCheckoutCount;
+    const totalCleaningTargetCount = totalUrgentCheckinCount + totalStandbyCheckoutCount + totalUnconfirmedCount;
 
     return (
         <div className="flex flex-col gap-4">
@@ -114,11 +120,23 @@ export default function CleaningGroupGrid({
                         📊 {dateStr} 현황:
                     </span>
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-black">
-                        <span>🚨 당일 체크인 (우선):</span>
+                        <span>당일 교대:</span>
                         <span className="text-rose-900 dark:text-rose-200 font-black">{totalUrgentCheckinCount}곳</span>
                     </div>
+                    {totalReadyCheckinCount > 0 && (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-black">
+                            <span>준비완료:</span>
+                            <span className="text-emerald-900 dark:text-emerald-200 font-black">{totalReadyCheckinCount}곳</span>
+                        </div>
+                    )}
+                    {totalUnconfirmedCount > 0 && (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-black">
+                            <span>미확인:</span>
+                            <span className="text-amber-950 dark:text-amber-100 font-black">{totalUnconfirmedCount}곳</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-black">
-                        <span>⏳ 여유 청소:</span>
+                        <span>여유 청소:</span>
                         <span className="text-amber-900 dark:text-amber-200 font-black">{totalStandbyCheckoutCount}곳</span>
                     </div>
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-black">
@@ -206,7 +224,7 @@ export default function CleaningGroupGrid({
                                     <div
                                         key={unit.key}
                                         onClick={() => {
-                                            if (selectedStaffForMobile && onAssign) {
+                                             if (selectedStaffForMobile && onAssign) {
                                                 onAssign(unit.key, selectedStaffForMobile);
                                             }
                                         }}
@@ -219,6 +237,7 @@ export default function CleaningGroupGrid({
                                             staffList={staffList}
                                             bookings={bookings}
                                             bookingNotes={bookingNotes}
+                                            cleaningHistoryMap={cleaningHistoryMap}
                                             onAssign={onAssign ? (staff) => onAssign(unit.key, staff) : undefined}
                                             onUnassign={onUnassign ? () => onUnassign(unit.key) : undefined}
                                             onToggleComplete={onToggleComplete ? () => onToggleComplete(unit.key) : undefined}
@@ -236,7 +255,7 @@ export default function CleaningGroupGrid({
             {/* 청소 대상만 보기 모드에서 전체가 0곳일 때 */}
             {viewFilter === 'targetOnly' && totalCleaningTargetCount === 0 && (
                 <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-xl border border-dashed border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500 font-bold text-xs">
-                    🎉 {dateStr}에는 청소 예정인 호실이 없습니다!
+                    {dateStr}에는 청소 예정인 호실이 없습니다.
                 </div>
             )}
         </div>

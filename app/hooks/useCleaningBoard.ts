@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useDashboard } from './useDashboard';
 import { ALL_UNITS } from '../config';
 import { CleaningAssignment } from '../types';
+import { getUnitCleaningStatus, isBookingForUnit } from '../utils/cleaningStatus';
+import { isValidBooking } from '../utils/bookingUtils';
 
 export const DEFAULT_STAFF_MAP: Record<string, string> = {
     manager: '소영매니저님',
@@ -27,21 +29,38 @@ export function useCleaningBoard() {
     // 호실별 배정 객체: { 'yeonnam_101': { staffName: '이모님A', staffId: 'staff_1', assignedAt: '14:25' } }
     const [assignments, setAssignments] = useState<{ [unitKey: string]: CleaningAssignment }>({});
 
+    // 🕒 직전 체크아웃 날짜의 청소 이력 맵: { '2026-09-19': { 'yeonnam_101': { isCompleted, staffName, ... } } }
+    const [cleaningHistoryMap, setCleaningHistoryMap] = useState<Record<string, Record<string, any>>>({});
+
+    // 📅 오늘 입실하는 객실들의 직전 체크아웃 날짜 목록 추출 (DB 청소 완료 검증용)
+    const historyDates = useMemo(() => {
+        const datesSet = new Set<string>();
+        ALL_UNITS.forEach((unit) => {
+            const hasCheckin = dash.bookings.some((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.arrival === selectedDate);
+            const hasCheckout = dash.bookings.some((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.departure === selectedDate);
+
+            // 오늘 입실이 있지만 오늘 퇴실은 없는 공실 텀 객실의 직전 퇴실일 탐색
+            if (hasCheckin && !hasCheckout) {
+                const pastBookings = dash.bookings
+                    .filter((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.departure < selectedDate)
+                    .sort((a, b) => b.departure.localeCompare(a.departure));
+                if (pastBookings[0]?.departure) {
+                    datesSet.add(pastBookings[0].departure);
+                }
+            }
+        });
+        return Array.from(datesSet);
+    }, [dash.bookings, selectedDate]);
+
+    // 🧹 청소 대상 호실 선정 (청소 필요 판별 or 수동 배정된 호실)
     const cleaningTargetUnits = useMemo(() => {
         return ALL_UNITS.filter((unit) => {
-            const hasCheckout = dash.bookings.some((b) => {
-                const isRoomMatch = Number(b.roomId) === Number(unit.roomId);
-                const isUnitMatch = unit.unitId ? Number(b.unitId) === Number(unit.unitId) : true;
-                return isRoomMatch && isUnitMatch && b.departure === selectedDate;
-            });
-            const hasCheckin = dash.bookings.some((b) => {
-                const isRoomMatch = Number(b.roomId) === Number(unit.roomId);
-                const isUnitMatch = unit.unitId ? Number(b.unitId) === Number(unit.unitId) : true;
-                return isRoomMatch && isUnitMatch && b.arrival === selectedDate;
-            });
-            return hasCheckout || hasCheckin;
+            const statusInfo = getUnitCleaningStatus(unit, selectedDate, dash.bookings, cleaningHistoryMap);
+            const isAssigned = !!assignments[unit.key];
+            // 🚨 즉시 청소 / ⏳ 여유 청소 / ⚠️ 직전 청소 미확인인 경우 or 이미 수동 배정된 경우 포함
+            return statusInfo.needsCleaning || isAssigned;
         });
-    }, [dash.bookings, selectedDate]);
+    }, [dash.bookings, selectedDate, cleaningHistoryMap, assignments]);
 
     // 스태프 이름 맵 DB 불러오기
     useEffect(() => {
@@ -106,16 +125,19 @@ export function useCleaningBoard() {
         return 'manager';
     };
 
-    // 배정 내역 불러오기
+    // 배정 내역 및 직전 체크아웃 청소 이력 불러오기
     useEffect(() => {
         const fetchAssignments = async () => {
             try {
-                const res = await fetch(`/api/assignments?targetDate=${selectedDate}`);
+                const historyParam = historyDates.length > 0 ? `&historyDates=${historyDates.join(',')}` : '';
+                const res = await fetch(`/api/assignments?targetDate=${selectedDate}${historyParam}`);
                 const result = await res.json();
-                if (result.success && result.data) {
-                    setAssignments(result.data);
+                if (result.success) {
+                    setAssignments(result.data || {});
+                    setCleaningHistoryMap(result.history || {});
                 } else {
                     setAssignments({});
+                    setCleaningHistoryMap({});
                 }
             } catch (error) {
                 console.error('배정 내역 불러오기 실패:', error);
@@ -123,7 +145,7 @@ export function useCleaningBoard() {
         };
 
         fetchAssignments();
-    }, [selectedDate]);
+    }, [selectedDate, historyDates]);
 
     // 배정 함수 (unitKey, staffName, assignedAt 3가지를 완벽히 주입 및 DB 저장)
     const assignStaff = async (unitKey: string, staffName: string) => {
@@ -234,6 +256,7 @@ export function useCleaningBoard() {
         staffMap,
         updateStaffMap,
         assignments,
+        cleaningHistoryMap,
         cleaningTargetUnits,
         assignStaff,
         unassignStaff,

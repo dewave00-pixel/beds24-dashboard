@@ -176,6 +176,7 @@ export default function MyCleaningPage() {
                         bookings={c.bookings}
                         bookingNotes={c.bookingNotes}
                         assignments={c.assignments}
+                        cleaningHistoryMap={c.cleaningHistoryMap}
                         staffList={c.staffList}
                         staffMap={c.staffMap}
                         onToggleComplete={(unitKey) => c.toggleComplete(unitKey)}

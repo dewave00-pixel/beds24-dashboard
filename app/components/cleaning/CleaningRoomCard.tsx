@@ -12,6 +12,7 @@ interface CleaningRoomCardProps {
     staffList: string[];
     bookings: Booking[];
     bookingNotes: { [bookingId: number]: { note: string; tags: string[] } };
+    cleaningHistoryMap?: Record<string, Record<string, any>>;
     onAssign?: (staff: string) => void;
     onUnassign?: () => void;
     onToggleComplete?: () => void;
@@ -26,6 +27,7 @@ export default function CleaningRoomCard({
     staffList,
     bookings,
     bookingNotes,
+    cleaningHistoryMap,
     onAssign,
     onUnassign,
     onToggleComplete,
@@ -34,8 +36,8 @@ export default function CleaningRoomCard({
 }: CleaningRoomCardProps) {
     const [isDragOver, setIsDragOver] = useState(false);
 
-    // 공통 유틸리티로 호실 청소 상태 판별
-    const statusInfo = getUnitCleaningStatus(unit, dateStr, bookings);
+    // 공통 유틸리티로 호실 청소 상태 판별 (직전 체크아웃 DB 이력 반영)
+    const statusInfo = getUnitCleaningStatus(unit, dateStr, bookings, cleaningHistoryMap);
     const { checkoutBooking, checkinBooking, stayBooking, statusCode } = statusInfo;
 
     const noteData = checkinBooking
@@ -89,10 +91,10 @@ export default function CleaningRoomCard({
                             </span>
                         )}
                     </div>
-                    {/* 상태 라벨 배지 */}
+                    {/* 상태 라벨 배지 (상태 이모지 제외) */}
                     <div className="flex items-center gap-1 mt-0.5">
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${isCompleted ? 'bg-emerald-600 text-white' : statusInfo.badgeBg} leading-none`}>
-                            {isCompleted ? '✅ 청소 완료' : statusInfo.label}
+                            {isCompleted ? '청소 완료' : statusInfo.label}
                         </span>
                     </div>
                 </div>
@@ -166,13 +168,32 @@ export default function CleaningRoomCard({
                         </div>
                     )}
                     {checkinBooking && (
-                        <div className="text-rose-700 dark:text-rose-300 flex items-center justify-between">
-                            <span className="flex items-center gap-0.5">
-                                <span className="text-rose-600 dark:text-rose-400">📥</span> 체크인
-                            </span>
-                            <span className="text-[9.5px] text-gray-600 dark:text-slate-300 truncate max-w-[110px]">
-                                {checkinBooking.firstName || checkinBooking.lastName || '게스트'}
-                            </span>
+                        <div className={`flex flex-col gap-0.5 ${
+                            statusCode === 'READY_CHECKIN'
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : statusCode === 'UNCONFIRMED_CHECKIN'
+                                    ? 'text-amber-800 dark:text-amber-300'
+                                    : 'text-rose-700 dark:text-rose-300'
+                        }`}>
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-0.5">
+                                    <span className={statusCode === 'READY_CHECKIN' ? 'text-emerald-600 dark:text-emerald-400' : statusCode === 'UNCONFIRMED_CHECKIN' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}>📥</span>
+                                    <span>{statusCode === 'READY_CHECKIN' ? '체크인 (준비완료)' : statusCode === 'UNCONFIRMED_CHECKIN' ? '체크인 (청소미확인)' : '체크인'}</span>
+                                </span>
+                                <span className="text-[9.5px] text-gray-600 dark:text-slate-300 truncate max-w-[110px]">
+                                    {checkinBooking.firstName || checkinBooking.lastName || '게스트'}
+                                </span>
+                            </div>
+                            {statusCode === 'READY_CHECKIN' && statusInfo.prevDepartureDate && (
+                                <span className="text-[8.5px] text-emerald-600 dark:text-emerald-400 font-normal">
+                                    ↳ {statusInfo.subLabel}
+                                </span>
+                            )}
+                            {statusCode === 'UNCONFIRMED_CHECKIN' && (
+                                <span className="text-[8.5px] text-amber-600 dark:text-amber-400 font-normal">
+                                    ↳ {statusInfo.prevDepartureDate ? `${statusInfo.prevDepartureDate} 퇴실 후 청소완료 미확인` : '직전 청소 이력 없음'}
+                                </span>
+                            )}
                         </div>
                     )}
                     {!checkoutBooking && !checkinBooking && stayBooking && (

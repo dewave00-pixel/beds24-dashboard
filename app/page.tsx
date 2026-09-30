@@ -64,7 +64,7 @@ export default function DashboardPage() {
           )}
 
           {/* 2. 대시보드 본문 패널 */}
-          <div className="dashboard-panel">
+          <div className="dashboard-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800">
           {/* 툴바 모듈 */}
           <DashboardToolbar
             timelineDates={d.timelineDates}

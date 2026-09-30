@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 /* 📱 모바일 두 손가락 자유 축소(Zoom-out) 및 제스처 허용 */
 html,
 body {
@@ -306,41 +304,52 @@ body {
 /* ========================================================
    🌙 다크 모드 전용 대시보드 테마 확장 모듈
    ======================================================== */
+.dark,
 html.dark,
+.dark body,
 html.dark body {
     background-color: #090d16 !important;
     color: #f1f5f9 !important;
 }
 
+.dark .dashboard-container,
 html.dark .dashboard-container {
     background-color: #090d16 !important;
 }
 
+.dark .dashboard-header-card,
 html.dark .dashboard-header-card,
+.dark .dashboard-panel,
 html.dark .dashboard-panel {
     background-color: #0f172a !important;
     border-color: #1e293b !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
+.dark .grid-table-container,
 html.dark .grid-table-container {
     background-color: #0f172a !important;
     border-color: #334155 !important;
 }
 
+.dark .sticky-header-group,
 html.dark .sticky-header-group,
+.dark .sticky-corner,
 html.dark .sticky-corner,
+.dark .sticky-left,
 html.dark .sticky-left {
     background-color: #0f172a !important;
     color: #f1f5f9 !important;
 }
 
+.dark .btn-secondary,
 html.dark .btn-secondary {
     background-color: #1e293b !important;
     color: #e2e8f0 !important;
     border-color: #334155 !important;
 }
 
+.dark .btn-secondary:hover,
 html.dark .btn-secondary:hover {
     background-color: #334155 !important;
     color: #ffffff !important;

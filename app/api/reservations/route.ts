@@ -23,6 +23,8 @@ async function syncFromBeds24(): Promise<any[]> {
     const arrivalTo = toDate.toISOString().split('T')[0];
 
     let allBookings: any[] = [];
+    let hasFetchError = false;
+    let failedPropertyCount = 0;
 
     for (const propId of propertyIds) {
         let page = 1;
@@ -67,6 +69,8 @@ async function syncFromBeds24(): Promise<any[]> {
                 }
             } else {
                 console.error(`❌ [Beds24 API Error] 숙소 ${propId} 조회 실패: ${res.status}`);
+                hasFetchError = true;
+                failedPropertyCount++;
                 hasNextPage = false;
             }
 
@@ -75,8 +79,9 @@ async function syncFromBeds24(): Promise<any[]> {
     }
 
     // Supabase에 완전 동기화 및 삭제된 유령 예약 자동 청소 (Reconciliation)
+    // 🛡️ API 호출 중 일부 실패가 있었을 경우 정상 예약 오삭제를 방지하도록 Safety Guard 옵션 전달
     if (allBookings.length > 0) {
-        await syncAllBookingsWithSupabase(allBookings, arrivalFrom, arrivalTo);
+        await syncAllBookingsWithSupabase(allBookings, arrivalFrom, arrivalTo, { hasFetchError, failedPropertyCount });
     }
 
     return allBookings;

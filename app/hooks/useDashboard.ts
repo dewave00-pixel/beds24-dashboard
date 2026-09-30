@@ -132,12 +132,40 @@ export function useDashboard() {
         },
     });
 
+    // 🛡️ 백그라운드 증분 동기화 동시 호출 방지 락(Ref)
+    const isIncrementalSyncingRef = useRef<boolean>(false);
+
+    // ⚡ 간섭 없는 안전한 백그라운드 증분 동기화 헬퍼 (수동 동기화 중이거나 중복 실행 시 자동 차단)
+    const triggerIncrementalSync = async (minutes: number = 30) => {
+        if (isSyncing || isIncrementalSyncingRef.current) return;
+        isIncrementalSyncingRef.current = true;
+        try {
+            const res = await fetch(`/api/sync/incremental?minutes=${minutes}`, { cache: 'no-store' });
+            if (res.ok) {
+                const result = await res.json();
+                // 실제로 밤새 변경/신규 건이 감지되어 DB에 들어간 경우, UI 최신 데이터 반영
+                if (result.success && (result.upsertCount > 0 || result.deleteCount > 0)) {
+                    console.log(`⚡ [Incremental Sync] 변경 감지됨 (Upsert: ${result.upsertCount}, Delete: ${result.deleteCount}) -> 대시보드 갱신`);
+                    fetchReservations(false);
+                }
+            }
+        } catch {
+            // 백그라운드 조용한 실패 (사용자 인터페이스 방해 금지)
+        } finally {
+            isIncrementalSyncingRef.current = false;
+        }
+    };
+
     useEffect(() => {
+        // 1. 기존 Supabase 캐시로 0.1초 만에 화면 즉시 렌더링
         reloadAll();
 
-        // 15분마다 가벼운 증분 동기화 자동 호출 (웹훅 누락 완벽 방어)
+        // 2. 🚀 첫 대시보드 진입 시: 밤새(최근 24시간) 들어온 예약이 누락되지 않도록 백그라운드 증분 동기화 1회 자동 실행
+        triggerIncrementalSync(1440);
+
+        // 3. 15분마다 가벼운 증분 동기화 자동 호출 (웹훅 누락 완벽 방어)
         const syncInterval = setInterval(() => {
-            fetch('/api/sync/incremental?minutes=30', { cache: 'no-store' }).catch(() => {});
+            triggerIncrementalSync(30);
         }, 15 * 60 * 1000);
 
         // 📱 모바일/PC 탭 화면 복귀 시(비활성 -> 활성) 최신 데이터 자동 확인

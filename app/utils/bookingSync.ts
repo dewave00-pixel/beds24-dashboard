@@ -108,10 +108,11 @@ export async function deleteBookingFromSupabase(bookingId: number): Promise<{ su
 export async function syncAllBookingsWithSupabase(
     beds24Bookings: any[],
     arrivalFrom?: string,
-    arrivalTo?: string
+    arrivalTo?: string,
+    options?: { hasFetchError?: boolean; failedPropertyCount?: number }
 ): Promise<{ success: boolean; savedCount: number; deletedGhostCount: number; error?: string }> {
     try {
-        // 1. 유효한 예약 upsert 저장
+        // 1. 유효한 예약 upsert 저장 (신규/수정 반영)
         const upsertResult = await upsertBookingsToSupabase(beds24Bookings);
         if (!upsertResult.success) {
             return {
@@ -142,6 +143,16 @@ export async function syncAllBookingsWithSupabase(
             console.log(`🧹 [Reconciliation] DB 내 문의/취소/삭제 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
         }
 
+        // 🛡️ Safety Guard 1: Beds24 API 조회 중 1개 숙소라도 통신 에러가 발생한 경우, 삭제 프로세스를 중단하고 Upsert만 보존
+        if (options?.hasFetchError) {
+            console.warn(`🛡️ [Reconciliation Safety Guard] Beds24 숙소 API 조회 실패(${options.failedPropertyCount ?? 1}건) 감지 -> 정상 예약 오삭제 방지를 위해 유령 예약 삭제를 안전하게 건너뜁니다.`);
+            return {
+                success: true,
+                savedCount: upsertResult.count,
+                deletedGhostCount,
+            };
+        }
+
         if (arrivalFrom && arrivalTo) {
             // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 취소 건 제외
             const beds24ValidIds = new Set(
@@ -169,6 +180,18 @@ export async function syncAllBookingsWithSupabase(
                     .filter((id) => !beds24ValidIds.has(id));
 
                 if (ghostIds.length > 0) {
+                    // 🛡️ Safety Guard 2: 비정상적인 대량 삭제 감지 방어
+                    // 유령 예약 비율이 전체의 50%를 넘고 15건 이상일 경우 Beds24 API 응답 누락으로 판단하여 삭제 보류
+                    const ghostRatio = ghostIds.length / dbRows.length;
+                    if (ghostRatio > 0.5 && ghostIds.length > 15) {
+                        console.warn(`🛡️ [Reconciliation Safety Guard] 비정상적인 대량 삭제 감지 (${ghostIds.length}/${dbRows.length}건, ${(ghostRatio * 100).toFixed(1)}%) -> 데이터 보호를 위해 일괄 삭제를 보류합니다.`);
+                        return {
+                            success: true,
+                            savedCount: upsertResult.count,
+                            deletedGhostCount,
+                        };
+                    }
+
                     console.log(`🧹 [Reconciliation] Beds24에서 삭제/문의/취소된 예약 ${ghostIds.length}건 감지 -> DB 삭제 진행:`, ghostIds);
 
                     // 500개씩 청크 분할 삭제
