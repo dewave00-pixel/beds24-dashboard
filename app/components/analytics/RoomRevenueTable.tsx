@@ -747,15 +747,6 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                                     <span className="text-xs font-black text-blue-600 dark:text-blue-400 font-mono">
                                                         ₩{netPrice.toLocaleString()}
                                                     </span>
-                                                    {b.status && (
-                                                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                                                            b.status === 'confirmed' || b.status === 'new'
-                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                                                : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300'
-                                                        }`}>
-                                                            {b.status}
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </div>
 
