@@ -40,7 +40,6 @@ export default function StayExtensionSection({
     // 기본값: +1박
     const [newDeparture, setNewDeparture] = useState<string>(() => getNextDays(currentDep, 1));
     const [addPriceInput, setAddPriceInput] = useState<string>('');
-    const [noteInput, setNoteInput] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [resultMsg, setResultMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -93,7 +92,7 @@ export default function StayExtensionSection({
         setIsSubmitting(true);
         setResultMsg(null);
 
-        const res = await onExtendStay(Number(booking.id), newDeparture, additionalPrice, noteInput.trim());
+        const res = await onExtendStay(Number(booking.id), newDeparture, additionalPrice);
         setIsSubmitting(false);
 
         if (res.success) {
@@ -196,32 +195,18 @@ export default function StayExtensionSection({
                 </div>
             )}
 
-            {/* 추가 요금 입력 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-800/50">
-                <div>
-                    <label className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block mb-0.5">
-                        연장 추가 금액 (원):
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="예: 80000"
-                        value={addPriceInput}
-                        onChange={(e) => setAddPriceInput(e.target.value)}
-                        className="w-full px-2 py-1 text-xs font-mono font-bold bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md text-gray-800 dark:text-slate-100 focus:outline-none"
-                    />
-                </div>
-                <div>
-                    <label className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block mb-0.5">
-                        연장 메모 (선택):
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="예: 현장 계좌이체 완료"
-                        value={noteInput}
-                        onChange={(e) => setNoteInput(e.target.value)}
-                        className="w-full px-2 py-1 text-xs bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md text-gray-800 dark:text-slate-100 focus:outline-none"
-                    />
-                </div>
+            {/* 추가 요금 입력 (수수료 0% 직거래) */}
+            <div className="pt-1 border-t border-emerald-200 dark:border-emerald-800/50">
+                <label className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block mb-0.5">
+                    연장 추가 수령액 (원): <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px]">(※ 계좌/직접 수령은 플랫폼 수수료 0% 전액 정산)</span>
+                </label>
+                <input
+                    type="text"
+                    placeholder="예: 80000"
+                    value={addPriceInput}
+                    onChange={(e) => setAddPriceInput(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono font-bold bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md text-gray-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                />
             </div>
 
             {/* 정산 미리보기 및 실행 버튼 */}

@@ -16,25 +16,57 @@ const FALLBACK_COMMISSION_RATES: Record<number, number> = {
  * - Booking.com(19): 17.5% 공제
  * - Trip.com(53), Agoda(17), Expedia(14): 0% 공제 (이미 정산금)
  */
-export function calculateNetPayout(price: number, apiSourceId?: number): number {
+/**
+ * 🏷️ 예약의 notes 필드에서 호스트가 직접 수령한 연박 추가 요금 합산액 추출
+ * 포맷: [연박직접수령:180000]
+ */
+export function getDirectExtensionPrice(notes?: string | null): number {
+    if (!notes) return 0;
+    const matches = notes.matchAll(/\[연박직접수령:(\d+)\]/g);
+    let total = 0;
+    for (const m of matches) {
+        total += parseInt(m[1], 10) || 0;
+    }
+    return total;
+}
+
+/**
+ * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
+ * - Airbnb(46): 15.5% 공제
+ * - Booking.com(19): 17.5% 공제
+ * - Trip.com(53), Agoda(17), Expedia(14): 0% 공제 (이미 정산금)
+ * ⚠️ 호스트가 계좌 등으로 직접 수령한 연박 추가 요금(directAdditionalPrice)은 플랫폼 수수료 0%로 100% 실수령 합산
+ */
+export function calculateNetPayout(
+    price: number,
+    apiSourceId?: number,
+    directAdditionalPrice: number = 0
+): number {
     const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
+    const directPrice = Math.max(0, directAdditionalPrice);
+    const otaBasePrice = Math.max(0, price - directPrice);
+
     if (rate <= 0) return Math.round(price);
-    return Math.round(price * (1 - rate));
+    const otaNet = Math.round(otaBasePrice * (1 - rate));
+    return otaNet + directPrice;
 }
 
 /**
  * ℹ️ 예약의 수수료 공제율 및 정산 요약 정보 반환
  */
-export function getCommissionInfo(price: number, apiSourceId?: number) {
+export function getCommissionInfo(price: number, apiSourceId?: number, directAdditionalPrice: number = 0) {
     const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
-    const netPayout = calculateNetPayout(price, apiSourceId);
+    const directPrice = Math.max(0, directAdditionalPrice);
+    const otaBasePrice = Math.max(0, price - directPrice);
+    const netPayout = calculateNetPayout(price, apiSourceId, directPrice);
     const hasDeduction = rate > 0;
     return {
         grossPrice: price,
         netPayout,
         feeRate: rate,
-        feeAmount: Math.round(price * rate),
+        feeAmount: Math.round(otaBasePrice * rate),
         hasDeduction,
+        directPrice,
     };
 }
 

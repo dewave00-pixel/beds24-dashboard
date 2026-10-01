@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         // 1. 현재 예약 정보 조회
         const { data: currentBooking, error: fetchErr } = await supabase
             .from('bookings')
-            .select('id, arrival, departure, price, room_id, unit_id, first_name, last_name, status')
+            .select('id, arrival, departure, price, room_id, unit_id, first_name, last_name, status, notes')
             .eq('id', bId)
             .single();
 
@@ -81,51 +81,34 @@ export async function POST(request: Request) {
         // 4. 총 금액 계산
         const newTotalPrice = Math.max(0, currentPrice + addPrice);
 
-        // 5. Beds24 본사 API로 퇴실일 및 총금액 전송 (Beds24가 연동된 OTA 캘린더 자동 블록)
+        // 5. 연박 직접 수령 추가 금액 태그 생성 (Beds24 notes 및 DB bookings.notes에 영구 보존)
+        const existingNotes = currentBooking.notes || '';
+        const updatedNotes = addPrice > 0
+            ? (existingNotes ? `${existingNotes} [연박직접수령:${addPrice}]` : `[연박직접수령:${addPrice}]`)
+            : existingNotes;
+
+        // 6. Beds24 본사 API로 퇴실일, 총금액, notes 전송 (Beds24가 연동된 OTA 캘린더 자동 블록)
         const beds24Result = await updateBeds24Booking(bId, {
             departure: newDeparture,
             price: newTotalPrice,
+            notes: updatedNotes,
         });
 
         console.log(`✅ [Extend Stay] Beds24 API 연장 완료:`, JSON.stringify(beds24Result).slice(0, 200));
 
-        // 6. Supabase DB bookings 테이블 업데이트
+        // 7. Supabase DB bookings 테이블 업데이트 (notes 포함)
         const { error: dbError } = await supabase
             .from('bookings')
             .update({
                 departure: newDeparture,
                 price: newTotalPrice,
+                notes: updatedNotes,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', bId);
 
         if (dbError) {
             console.error('⚠️ [Extend Stay] Supabase DB 업데이트 실패 (Beds24는 성공):', dbError);
-        }
-
-        // 7. 연장 이력 메모 남기기 (booking_notes)
-        const extensionLog = `[연박 연장] ${currentDeparture} ➔ ${newDeparture} (+${addPrice.toLocaleString()}원)${note ? ` (${note})` : ''}`;
-        try {
-            const { data: existingNote } = await supabase
-                .from('booking_notes')
-                .select('note, tags')
-                .eq('booking_id', bId)
-                .maybeSingle();
-
-            const updatedNoteText = existingNote?.note
-                ? `${existingNote.note}\n${extensionLog}`
-                : extensionLog;
-
-            await supabase
-                .from('booking_notes')
-                .upsert({
-                    booking_id: bId,
-                    note: updatedNoteText,
-                    tags: existingNote?.tags || [],
-                    updated_at: new Date().toISOString(),
-                });
-        } catch (noteErr) {
-            console.warn('⚠️ [Extend Stay] 연박 연장 메모 자동 기록 실패 (예약 자체는 정상 연장됨):', noteErr);
         }
 
         return NextResponse.json({
@@ -138,6 +121,7 @@ export async function POST(request: Request) {
                 previousPrice: currentPrice,
                 additionalPrice: addPrice,
                 newTotalPrice,
+                notes: updatedNotes,
                 beds24Result,
             },
         });

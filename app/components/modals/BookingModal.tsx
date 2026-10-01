@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Booking } from '../../types';
 import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS, PROPERTY_GROUPS } from '../../config';
-import { getUnitForBooking, findConflictingBookings, getCommissionInfo } from '../../utils/bookingUtils';
+import { getUnitForBooking, findConflictingBookings, getCommissionInfo, getDirectExtensionPrice } from '../../utils/bookingUtils';
 import { formatKSTDateTime } from '../../utils/dateUtils';
 import StayExtensionSection from './StayExtensionSection';
 
@@ -43,7 +43,8 @@ export default function BookingModal({
             : '이름 없음';
 
     const currentUnit = getUnitForBooking(booking);
-    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId);
+    const directPrice = getDirectExtensionPrice(booking.notes);
+    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId, directPrice);
 
     // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
     const currentKey = Number(booking.unitId) > 0 && booking.roomId
@@ -188,7 +189,11 @@ export default function BookingModal({
                                 <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm md:text-base font-mono">
                                     {commInfo.netPayout.toLocaleString()}원
                                 </span>
-                                {commInfo.hasDeduction && (
+                                {commInfo.directPrice > 0 ? (
+                                    <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
+                                        (연박계좌 {commInfo.directPrice.toLocaleString()}원 수수료0% 포함)
+                                    </span>
+                                ) : commInfo.hasDeduction && (
                                     <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">
                                         (결제: {commInfo.grossPrice.toLocaleString()}원)
                                     </span>

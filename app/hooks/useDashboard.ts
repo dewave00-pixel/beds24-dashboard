@@ -411,11 +411,17 @@ export function useDashboard() {
 
             if (result.success) {
                 const newPrice = result.data?.newTotalPrice;
+                const newNotes = result.data?.notes;
                 // 로컬 예약 목록 상태 즉시 업데이트
                 setBookings((prev) =>
                     prev.map((b) =>
                         b.id === bookingId
-                            ? { ...b, departure: newDeparture, price: newPrice !== undefined ? newPrice : b.price }
+                            ? {
+                                ...b,
+                                departure: newDeparture,
+                                price: newPrice !== undefined ? newPrice : b.price,
+                                notes: newNotes !== undefined ? newNotes : b.notes,
+                            }
                             : b
                     )
                 );
@@ -423,7 +429,12 @@ export function useDashboard() {
                 if (activeBooking && activeBooking.id === bookingId) {
                     setActiveBooking((prev) =>
                         prev
-                            ? { ...prev, departure: newDeparture, price: newPrice !== undefined ? newPrice : prev.price }
+                            ? {
+                                ...prev,
+                                departure: newDeparture,
+                                price: newPrice !== undefined ? newPrice : prev.price,
+                                notes: newNotes !== undefined ? newNotes : prev.notes,
+                            }
                             : null
                     );
                 }
