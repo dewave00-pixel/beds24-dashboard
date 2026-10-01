@@ -398,6 +398,16 @@ export function calculatePropertyStats(
     return result.sort((a, b) => b.totalRevenue - a.totalRevenue);
 }
 
+export interface RoomChannelStat {
+    channelName: string;
+    displayName: string;
+    color: string;
+    count: number;        // 해당 객실 예약 건수
+    nights: number;       // 해당 객실 투숙 박수
+    revenue: number;      // 해당 객실 정산 매출
+    share: number;        // 해당 객실 내 점유율 (%)
+}
+
 export interface RoomStats {
     unitKey: string;
     roomName: string;
@@ -417,6 +427,8 @@ export interface RoomStats {
     adr: number;              // 1박 평균 객실 단가
     revenueShare: number;     // 전체 매출 중 점유율 (%)
     dayTypeAdr: DayTypeAdr;   // 요일별 3분류(월~목, 금~토, 일) 단가
+    channels: RoomChannelStat[];  // 플랫폼(채널)별 예약 현황 목록 (건수/매출 내림차순)
+    topChannel?: RoomChannelStat; // 1위 플랫폼
 }
 
 /**
@@ -451,6 +463,7 @@ export function calculateRoomStats(
         weekendNights: number;
         sundayRev: number;
         sundayNights: number;
+        channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; displayName: string }>;
     }> = {};
 
     ROOM_TYPES.forEach((rt) => {
@@ -472,6 +485,7 @@ export function calculateRoomStats(
             weekendNights: 0,
             sundayRev: 0,
             sundayNights: 0,
+            channelMap: {},
         };
     });
 
@@ -492,6 +506,53 @@ export function calculateRoomStats(
             roomMap[rId].revenue += price;
             roomMap[rId].checkoutNights += nights;
             roomMap[rId].checkoutBookings += 1;
+
+            // 플랫폼(채널)별 통계 누적
+            const ch = getChannelStyle(b.apiSourceId);
+            const rawName = ch.name || '기타';
+            let channelName = rawName;
+            let displayName = rawName;
+            let color = '#64748B';
+
+            const apiSourceNum = Number(b.apiSourceId);
+            if (rawName.includes('Airbnb') || apiSourceNum === 46) {
+                channelName = 'Airbnb';
+                displayName = '에어비앤비';
+                color = '#FF385C';
+            } else if (rawName.includes('Trip') || apiSourceNum === 53) {
+                channelName = 'Trip.com';
+                displayName = '트립닷컴';
+                color = '#2681FF';
+            } else if (rawName.includes('Booking') || apiSourceNum === 19) {
+                channelName = 'Booking.com';
+                displayName = '부킹닷컴';
+                color = '#003580';
+            } else if (rawName.includes('Agoda') || apiSourceNum === 17) {
+                channelName = 'Agoda';
+                displayName = '아고다';
+                color = '#8B5CF6';
+            } else if (rawName.includes('Expedia') || apiSourceNum === 14) {
+                channelName = 'Expedia';
+                displayName = '익스피디아';
+                color = '#EAA812';
+            } else {
+                channelName = '기타';
+                displayName = '기타/직거래';
+                color = '#64748B';
+            }
+
+            if (!roomMap[rId].channelMap[channelName]) {
+                roomMap[rId].channelMap[channelName] = {
+                    count: 0,
+                    nights: 0,
+                    revenue: 0,
+                    color,
+                    displayName,
+                };
+            }
+            roomMap[rId].channelMap[channelName].count += 1;
+            roomMap[rId].channelMap[channelName].nights += nights;
+            roomMap[rId].channelMap[channelName].revenue += price;
         }
     });
 
@@ -543,6 +604,23 @@ export function calculateRoomStats(
         const weekendAdr = data.weekendNights > 0 ? Math.round(data.weekendRev / data.weekendNights) : 0;
         const sundayAdr = data.sundayNights > 0 ? Math.round(data.sundayRev / data.sundayNights) : 0;
 
+        // 플랫폼별 정렬 및 비중 계산
+        const totalRoomBookings = data.checkoutBookings;
+        const channels: RoomChannelStat[] = Object.entries(data.channelMap).map(([chKey, chData]) => {
+            const chShare = totalRoomBookings > 0 ? Math.round((chData.count / totalRoomBookings) * 1000) / 10 : 0;
+            return {
+                channelName: chKey,
+                displayName: chData.displayName,
+                color: chData.color,
+                count: chData.count,
+                nights: chData.nights,
+                revenue: chData.revenue,
+                share: chShare,
+            };
+        }).sort((a, b) => b.count - a.count || b.revenue - a.revenue);
+
+        const topChannel = channels.length > 0 ? channels[0] : undefined;
+
         return {
             unitKey: data.unitKey,
             roomName: data.roomName,
@@ -568,6 +646,8 @@ export function calculateRoomStats(
                 sundayAdr,
                 sundayNights: data.sundayNights,
             },
+            channels,
+            topChannel,
         };
     });
 

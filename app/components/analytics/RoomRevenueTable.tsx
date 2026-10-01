@@ -23,6 +23,20 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
     const [selectedProperty, setSelectedProperty] = useState<string>('all');
     const [sortField, setSortField] = useState<SortField>('revenue');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+
+    // 호실별 플랫폼 아코디언 토글 핸들러
+    const toggleExpand = (unitKey: string) => {
+        setExpandedRooms((prev) => {
+            const next = new Set(prev);
+            if (next.has(unitKey)) {
+                next.delete(unitKey);
+            } else {
+                next.add(unitKey);
+            }
+            return next;
+        });
+    };
 
     // 정렬 토글 핸들러
     const handleSort = (field: SortField) => {
@@ -92,7 +106,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                             개별 객실(룸타입)별 매출 및 가동률 성과
                         </h3>
                         <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
-                            룸타입별 공급 박수 대비 판매 박수, 가동률, 평균단가 및 주말/평일 세부 단가 한눈에 비교
+                            룸타입별 주요 예약 플랫폼, 가동률, 평균단가 및 주말/평일 세부 단가 한눈에 비교 (호실 클릭 시 플랫폼 상세 분석)
                         </span>
                     </div>
                 </div>
@@ -143,7 +157,12 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                             {/* 2. 사업장 */}
                             <th className="py-2.5 px-3">사업장</th>
 
-                            {/* 3. 가동률 (Occ) */}
+                            {/* 3. 주요 플랫폼 (예약 유입) */}
+                            <th className="py-2.5 px-3 min-w-[130px]">
+                                주요 플랫폼 (유입)
+                            </th>
+
+                            {/* 4. 가동률 (Occ) */}
                             <th
                                 className="py-2.5 px-3 text-center cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('occupancy')}
@@ -154,10 +173,10 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 </span>
                             </th>
 
-                            {/* 4. 판매 / 공급 (공실) */}
+                            {/* 5. 판매 / 공급 (공실) */}
                             <th className="py-2.5 px-3 text-center">판매 / 공급 (공실)</th>
 
-                            {/* 5. 평균 단가 (ADR) */}
+                            {/* 6. 평균 단가 (ADR) */}
                             <th
                                 className="py-2.5 px-3 text-right cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('adr')}
@@ -168,17 +187,17 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 </span>
                             </th>
 
-                            {/* 6. 주말 단가 */}
+                            {/* 7. 주말 단가 */}
                             <th className="py-2.5 px-3 text-right text-purple-700 dark:text-purple-400">
                                 주말 단가 (금~토)
                             </th>
 
-                            {/* 7. 평일 단가 */}
+                            {/* 8. 평일 단가 */}
                             <th className="py-2.5 px-3 text-right text-blue-700 dark:text-blue-400">
                                 평일 단가 (월~목)
                             </th>
 
-                            {/* 8. 총매출액 */}
+                            {/* 9. 총매출액 */}
                             <th
                                 className="py-2.5 px-3 text-right cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('revenue')}
@@ -196,96 +215,226 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                             const weekdayAdr = room.dayTypeAdr?.weekdayAdr || 0;
                             const propKOR = room.propName === 'Namsun' ? '남선' : room.propName === 'YEONNAM' ? '연남' : room.propName === 'WAVE' ? '웨이브' : room.propName;
                             const colorInfo = PROPERTY_COLORS[room.propName] || { color: '#64748B' };
+                            const isExpanded = expandedRooms.has(room.unitKey);
 
                             return (
-                                <tr key={room.unitKey} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition">
-                                    {/* 순위 & 호실명 */}
-                                    <td className="py-2.5 px-3 font-black text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                                            idx === 0
-                                                ? 'bg-amber-400 text-slate-900 shadow-2xs font-extrabold'
-                                                : idx === 1
-                                                ? 'bg-slate-300 text-slate-900 font-extrabold'
-                                                : idx === 2
-                                                ? 'bg-amber-700 text-white font-extrabold'
-                                                : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300'
-                                        }`}>
-                                            {idx + 1}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
-                                                {room.roomName}
-                                            </span>
-                                            {room.unitCount > 1 && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50">
-                                                    {room.unitCount}유닛
+                                <React.Fragment key={room.unitKey}>
+                                    <tr
+                                        onClick={() => toggleExpand(room.unitKey)}
+                                        className={`hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition cursor-pointer ${
+                                            isExpanded ? 'bg-blue-50/30 dark:bg-slate-800/40' : ''
+                                        }`}
+                                    >
+                                        {/* 순위 & 호실명 */}
+                                        <td className="py-2.5 px-3 font-black text-gray-900 dark:text-slate-100">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                                    idx === 0
+                                                        ? 'bg-amber-400 text-slate-900 shadow-2xs font-extrabold'
+                                                        : idx === 1
+                                                        ? 'bg-slate-300 text-slate-900 font-extrabold'
+                                                        : idx === 2
+                                                        ? 'bg-amber-700 text-white font-extrabold'
+                                                        : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300'
+                                                }`}>
+                                                    {idx + 1}
                                                 </span>
+                                                <span className="text-gray-400 dark:text-slate-500 text-[10px] transition-transform duration-200">
+                                                    {isExpanded ? '▼' : '▶'}
+                                                </span>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
+                                                        {room.roomName}
+                                                    </span>
+                                                    {room.unitCount > 1 && (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50">
+                                                            {room.unitCount}유닛
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 소속 사업장 */}
+                                        <td className="py-2.5 px-3 font-bold text-gray-700 dark:text-slate-300">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colorInfo.color }} />
+                                                <span>{propKOR}</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 주요 플랫폼 (유입) */}
+                                        <td className="py-2.5 px-3">
+                                            {room.topChannel ? (
+                                                <div className="flex flex-col gap-1 min-w-[125px]">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span
+                                                            className="px-1.5 py-0.5 rounded text-[10.5px] font-black text-white shrink-0"
+                                                            style={{ backgroundColor: room.topChannel.color }}
+                                                        >
+                                                            {room.topChannel.displayName}
+                                                        </span>
+                                                        <span className="font-extrabold text-[11px] text-gray-800 dark:text-slate-200">
+                                                            {room.topChannel.share}%
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 dark:text-slate-500">
+                                                            ({room.topChannel.count}건)
+                                                        </span>
+                                                    </div>
+                                                    {/* 미니 채널 분포 스택 바 */}
+                                                    {room.channels && room.channels.length > 1 && (
+                                                        <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
+                                                            {room.channels.map((ch) => (
+                                                                <div
+                                                                    key={ch.channelName}
+                                                                    className="h-full"
+                                                                    style={{
+                                                                        width: `${ch.share}%`,
+                                                                        backgroundColor: ch.color,
+                                                                    }}
+                                                                    title={`${ch.displayName}: ${ch.count}건 (${ch.share}%)`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-300 dark:text-slate-600">-</span>
                                             )}
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {/* 소속 사업장 */}
-                                    <td className="py-2.5 px-3 font-bold text-gray-700 dark:text-slate-300">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colorInfo.color }} />
-                                            <span>{propKOR}</span>
-                                        </div>
-                                    </td>
-
-                                    {/* 가동률 (Occ) - 프로그레스 바 + 수치% */}
-                                    <td className="py-2.5 px-3 text-center">
-                                        <div className="flex items-center justify-center gap-1.5 min-w-[120px]">
-                                            <div className="w-16 bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden shrink-0 border border-gray-200/60 dark:border-slate-700">
-                                                <div
-                                                    className={`h-2 rounded-full transition-all duration-300 ${
-                                                        room.occupancyRate >= 80
-                                                            ? 'bg-emerald-500'
-                                                            : room.occupancyRate >= 50
-                                                            ? 'bg-blue-500'
-                                                            : 'bg-amber-500'
-                                                    }`}
-                                                    style={{ width: `${Math.min(100, Math.max(0, room.occupancyRate))}%` }}
-                                                />
+                                        {/* 가동률 (Occ) - 프로그레스 바 + 수치% */}
+                                        <td className="py-2.5 px-3 text-center">
+                                            <div className="flex items-center justify-center gap-1.5 min-w-[120px]">
+                                                <div className="w-16 bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden shrink-0 border border-gray-200/60 dark:border-slate-700">
+                                                    <div
+                                                        className={`h-2 rounded-full transition-all duration-300 ${
+                                                            room.occupancyRate >= 80
+                                                                ? 'bg-emerald-500'
+                                                                : room.occupancyRate >= 50
+                                                                ? 'bg-blue-500'
+                                                                : 'bg-amber-500'
+                                                        }`}
+                                                        style={{ width: `${Math.min(100, Math.max(0, room.occupancyRate))}%` }}
+                                                    />
+                                                </div>
+                                                <span className="font-black text-gray-800 dark:text-slate-100 text-[11.5px] w-10 text-right font-mono">
+                                                    {room.occupancyRate}%
+                                                </span>
                                             </div>
-                                            <span className="font-black text-gray-800 dark:text-slate-100 text-[11.5px] w-10 text-right font-mono">
-                                                {room.occupancyRate}%
-                                            </span>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {/* 판매 박수 vs 공급 박수 (공실) */}
-                                    <td className="py-2.5 px-3 text-center font-bold text-[11.5px]">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
-                                                <span className="text-gray-400 dark:text-slate-500 text-[10.5px]">/ {room.availableNights}박</span>
+                                        {/* 판매 박수 vs 공급 박수 (공실) */}
+                                        <td className="py-2.5 px-3 text-center font-bold text-[11.5px]">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
+                                                    <span className="text-gray-400 dark:text-slate-500 text-[10.5px]">/ {room.availableNights}박</span>
+                                                </div>
+                                                <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                                                    {room.vacantNights > 0 ? `${room.vacantNights}박 공실` : '만실'}
+                                                </span>
                                             </div>
-                                            <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                                                {room.vacantNights > 0 ? `${room.vacantNights}박 공실` : '만실'}
-                                            </span>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {/* 1박 평균단가 (ADR) */}
-                                    <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                        ₩{room.adr.toLocaleString()}
-                                    </td>
+                                        {/* 1박 평균단가 (ADR) */}
+                                        <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
+                                            ₩{room.adr.toLocaleString()}
+                                        </td>
 
-                                    {/* 주말 단가 (풀어서 표시) */}
-                                    <td className="py-2.5 px-3 text-right font-bold text-purple-700 dark:text-purple-300 font-mono">
-                                        {weekendAdr > 0 ? `₩${weekendAdr.toLocaleString()}` : '-'}
-                                    </td>
+                                        {/* 주말 단가 (풀어서 표시) */}
+                                        <td className="py-2.5 px-3 text-right font-bold text-purple-700 dark:text-purple-300 font-mono">
+                                            {weekendAdr > 0 ? `₩${weekendAdr.toLocaleString()}` : '-'}
+                                        </td>
 
-                                    {/* 평일 단가 (풀어서 표시) */}
-                                    <td className="py-2.5 px-3 text-right font-bold text-blue-700 dark:text-blue-300 font-mono">
-                                        {weekdayAdr > 0 ? `₩${weekdayAdr.toLocaleString()}` : '-'}
-                                    </td>
+                                        {/* 평일 단가 (풀어서 표시) */}
+                                        <td className="py-2.5 px-3 text-right font-bold text-blue-700 dark:text-blue-300 font-mono">
+                                            {weekdayAdr > 0 ? `₩${weekdayAdr.toLocaleString()}` : '-'}
+                                        </td>
 
-                                    {/* 총매출액 */}
-                                    <td className="py-2.5 px-3 text-right font-black text-gray-900 dark:text-slate-100 font-mono text-sm">
-                                        ₩{room.totalRevenue.toLocaleString()}
-                                    </td>
-                                </tr>
+                                        {/* 총매출액 */}
+                                        <td className="py-2.5 px-3 text-right font-black text-gray-900 dark:text-slate-100 font-mono text-sm">
+                                            ₩{room.totalRevenue.toLocaleString()}
+                                        </td>
+                                    </tr>
+
+                                    {/* 🌟 아코디언 서브 패널: 플랫폼별 상세 분석 */}
+                                    {isExpanded && (
+                                        <tr className="bg-blue-50/25 dark:bg-slate-800/40 border-b border-gray-100 dark:border-slate-800">
+                                            <td colSpan={9} className="p-3 md:p-4">
+                                                <div className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-blue-200/80 dark:border-slate-700/80 space-y-3 shadow-2xs">
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-slate-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm">📊</span>
+                                                            <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100">
+                                                                {room.roomName} 플랫폼별 예약 비중 분석
+                                                            </span>
+                                                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold">
+                                                                (총 {room.totalBookings}건 예약 / {room.totalNights}박 투숙)
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[10.5px] text-gray-400 dark:text-slate-500 font-medium">
+                                                            예약 건수 점유율 기준 정렬
+                                                        </span>
+                                                    </div>
+
+                                                    {!room.channels || room.channels.length === 0 ? (
+                                                        <div className="text-xs text-gray-400 dark:text-slate-500 text-center py-3">
+                                                            해당 기간에 완료된 예약 데이터가 없습니다.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                                            {room.channels.map((ch, chIdx) => (
+                                                                <div
+                                                                    key={ch.channelName}
+                                                                    className="bg-gray-50/90 dark:bg-slate-800/90 rounded-xl p-2.5 border border-gray-200/70 dark:border-slate-700/80 flex flex-col gap-1.5 shadow-2xs"
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                                            <span
+                                                                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                                                style={{ backgroundColor: ch.color }}
+                                                                            />
+                                                                            <span className="font-black text-xs text-gray-900 dark:text-slate-100 truncate">
+                                                                                {ch.displayName}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded ${
+                                                                            chIdx === 0
+                                                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                                                                                : 'bg-gray-200/80 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
+                                                                        }`}>
+                                                                            {chIdx === 0 ? '1위' : `${ch.share}%`}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-gray-200/50 dark:border-slate-700/50">
+                                                                        <span className="text-gray-500 dark:text-slate-400 font-medium">예약 건수</span>
+                                                                        <span className="font-black text-gray-900 dark:text-slate-100 font-mono">
+                                                                            {ch.count}건 ({ch.share}%)
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between text-[11px]">
+                                                                        <span className="text-gray-500 dark:text-slate-400 font-medium">투숙 박수</span>
+                                                                        <span className="font-black text-gray-900 dark:text-slate-100 font-mono">
+                                                                            {ch.nights}박
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between text-[11px]">
+                                                                        <span className="text-gray-500 dark:text-slate-400 font-medium">정산 매출</span>
+                                                                        <span className="font-black text-blue-700 dark:text-blue-300 font-mono text-[10.5px]">
+                                                                            ₩{ch.revenue.toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
@@ -327,6 +476,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                     const weekdayAdr = room.dayTypeAdr?.weekdayAdr || 0;
                     const propKOR = room.propName === 'Namsun' ? '남선' : room.propName === 'YEONNAM' ? '연남' : room.propName === 'WAVE' ? '웨이브' : room.propName;
                     const colorInfo = PROPERTY_COLORS[room.propName] || { color: '#64748B' };
+                    const isExpanded = expandedRooms.has(room.unitKey);
 
                     return (
                         <div
@@ -365,6 +515,85 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                     ₩{room.totalRevenue.toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* 주요 플랫폼 요약 및 아코디언 토글 */}
+                            <div className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-gray-200/60 dark:border-slate-700/60 text-xs">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-gray-400 dark:text-slate-500 font-bold text-[10.5px] shrink-0">주요 채널:</span>
+                                    {room.topChannel ? (
+                                        <div className="flex items-center gap-1 min-w-0">
+                                            <span
+                                                className="px-1.5 py-0.2 rounded text-[10px] font-black text-white shrink-0"
+                                                style={{ backgroundColor: room.topChannel.color }}
+                                            >
+                                                {room.topChannel.displayName}
+                                            </span>
+                                            <span className="font-extrabold text-gray-900 dark:text-slate-100 text-[11px]">
+                                                {room.topChannel.share}% ({room.topChannel.count}건)
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400 text-[11px]">-</span>
+                                    )}
+                                </div>
+
+                                {room.channels && room.channels.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleExpand(room.unitKey)}
+                                        className="text-blue-600 dark:text-blue-400 text-[11px] font-bold shrink-0 hover:underline cursor-pointer flex items-center gap-0.5 ml-2"
+                                    >
+                                        <span>{isExpanded ? '접기' : '플랫폼별 보기'}</span>
+                                        <span>{isExpanded ? '▲' : '▼'}</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* 모바일 플랫폼 상세 아코디언 */}
+                            {isExpanded && room.channels && room.channels.length > 0 && (
+                                <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-900/50 space-y-2">
+                                    <div className="flex items-center justify-between text-[11px] font-black text-gray-700 dark:text-slate-300 pb-1 border-b border-gray-100 dark:border-slate-800">
+                                        <span>플랫폼별 예약 비중 분석</span>
+                                        <span className="text-gray-400 dark:text-slate-500 font-medium">총 {room.totalBookings}건</span>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        {room.channels.map((ch, chIdx) => (
+                                            <div
+                                                key={ch.channelName}
+                                                className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-slate-800/60"
+                                            >
+                                                <div className="flex items-center gap-1.5">
+                                                    <span
+                                                        className="w-2 h-2 rounded-full shrink-0"
+                                                        style={{ backgroundColor: ch.color }}
+                                                    />
+                                                    <span className="font-black text-gray-900 dark:text-slate-100">
+                                                        {ch.displayName}
+                                                    </span>
+                                                    {chIdx === 0 && (
+                                                        <span className="text-[9px] font-black px-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                                                            1위
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                                                    <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                                                        {ch.count}건 ({ch.share}%)
+                                                    </span>
+                                                    <span className="text-gray-300 dark:text-slate-600">·</span>
+                                                    <span className="text-gray-600 dark:text-slate-300">
+                                                        {ch.nights}박
+                                                    </span>
+                                                    <span className="text-gray-300 dark:text-slate-600">·</span>
+                                                    <span className="font-black text-gray-900 dark:text-slate-100">
+                                                        ₩{ch.revenue.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* 중단: 가동률 바 & 공실/투숙 */}
                             <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-gray-200/60 dark:border-slate-700/60 text-xs">
