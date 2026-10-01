@@ -406,6 +406,7 @@ export interface RoomChannelStat {
     nights: number;       // 해당 객실 투숙 박수
     revenue: number;      // 해당 객실 정산 매출
     share: number;        // 해당 객실 내 점유율 (%)
+    bookings?: Booking[]; // 해당 플랫폼으로 예약된 실제 예약 목록
 }
 
 export interface RoomStats {
@@ -463,7 +464,7 @@ export function calculateRoomStats(
         weekendNights: number;
         sundayRev: number;
         sundayNights: number;
-        channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; displayName: string }>;
+        channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; displayName: string; bookings: Booking[] }>;
     }> = {};
 
     ROOM_TYPES.forEach((rt) => {
@@ -548,11 +549,13 @@ export function calculateRoomStats(
                     revenue: 0,
                     color,
                     displayName,
+                    bookings: [],
                 };
             }
             roomMap[rId].channelMap[channelName].count += 1;
             roomMap[rId].channelMap[channelName].nights += nights;
             roomMap[rId].channelMap[channelName].revenue += price;
+            roomMap[rId].channelMap[channelName].bookings.push(b);
         }
     });
 
@@ -616,6 +619,7 @@ export function calculateRoomStats(
                 nights: chData.nights,
                 revenue: chData.revenue,
                 share: chShare,
+                bookings: [...chData.bookings].sort((a, b) => b.arrival.localeCompare(a.arrival)),
             };
         }).sort((a, b) => b.count - a.count || b.revenue - a.revenue);
 
