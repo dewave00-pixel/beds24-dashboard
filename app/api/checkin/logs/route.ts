@@ -21,7 +21,9 @@ export async function GET(request: Request) {
         const eventType = searchParams.get('eventType');
         const property = searchParams.get('property');
         const search = searchParams.get('search');
-        const limit = parseInt(searchParams.get('limit') || '100', 10);
+        const date = searchParams.get('date'); // 'YYYY-MM-DD' 또는 null
+        const defaultLimit = (date && date !== 'ALL') ? '500' : '150';
+        const limit = parseInt(searchParams.get('limit') || defaultLimit, 10);
 
         const todayKst = getKstDateString();
         const todayStartIso = new Date(`${todayKst}T00:00:00+09:00`).toISOString();
@@ -158,6 +160,12 @@ export async function GET(request: Request) {
 
         if (property && property !== 'ALL') {
             query = query.ilike('property_name', `%${property}%`);
+        }
+
+        if (date && date !== 'ALL') {
+            const dayStartIso = new Date(`${date}T00:00:00+09:00`).toISOString();
+            const dayEndIso = new Date(`${date}T23:59:59.999+09:00`).toISOString();
+            query = query.gte('created_at', dayStartIso).lte('created_at', dayEndIso);
         }
 
         if (search && search.trim()) {

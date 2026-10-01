@@ -51,12 +51,24 @@ export default function CheckinManagementPage() {
     const [propertyFilter, setPropertyFilter] = useState<string>('ALL');
     const [statusFilter, setStatusFilter] = useState<string>('ALL'); // 오늘 현황 필터
     const [eventFilter, setEventFilter] = useState<string>('ALL'); // 전체 로그 필터
+    const [logDateFilter, setLogDateFilter] = useState<string>('ALL'); // 로그 날짜 필터 ('ALL' | 'YYYY-MM-DD')
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [autoRefreshSec, setAutoRefreshSec] = useState<number>(15); // 15s 기본
+    const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
     // 상세 모달 및 피드백 상태
     const [selectedLog, setSelectedLog] = useState<CheckinLogItem | null>(null);
     const [copiedText, setCopiedText] = useState<string | null>(null);
+
+    // 날짜 아코디언 토글 핸들러
+    const toggleDateCollapse = (dateKey: string) => {
+        setCollapsedDates((prev) => {
+            const next = new Set(prev);
+            if (next.has(dateKey)) next.delete(dateKey);
+            else next.add(dateKey);
+            return next;
+        });
+    };
 
     // 1. API 데이터 페칭
     const fetchData = useCallback(async () => {
@@ -65,6 +77,7 @@ export default function CheckinManagementPage() {
             const params = new URLSearchParams();
             if (propertyFilter !== 'ALL') params.set('property', propertyFilter);
             if (activeTab === 'logs' && eventFilter !== 'ALL') params.set('eventType', eventFilter);
+            if (activeTab === 'logs' && logDateFilter !== 'ALL') params.set('date', logDateFilter);
             if (searchQuery.trim()) params.set('search', searchQuery.trim());
 
             const res = await fetch(`/api/checkin/logs?${params.toString()}`, { cache: 'no-store' });
@@ -80,7 +93,7 @@ export default function CheckinManagementPage() {
         } finally {
             setLoading(false);
         }
-    }, [propertyFilter, activeTab, eventFilter, searchQuery]);
+    }, [propertyFilter, activeTab, eventFilter, logDateFilter, searchQuery]);
 
     useEffect(() => {
         fetchData();
@@ -134,6 +147,101 @@ export default function CheckinManagementPage() {
             return isoStr;
         }
     };
+
+    // KST 날짜 키 추출 (YYYY-MM-DD)
+    const getKstDateKey = (isoStr: string): string => {
+        try {
+            const d = new Date(isoStr);
+            const parts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).formatToParts(d);
+            const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+            return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+        } catch {
+            return (isoStr || '').slice(0, 10);
+        }
+    };
+
+    // KST 요일 포함 전체 날짜 레이블 (예: 2026년 10월 1일 (목))
+    const getKstFullDateLabel = (dateKey: string): string => {
+        try {
+            const d = new Date(`${dateKey}T12:00:00+09:00`);
+            return new Intl.DateTimeFormat('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'short',
+            }).format(d);
+        } catch {
+            return dateKey;
+        }
+    };
+
+    // 오늘 및 어제 KST 기준 날짜 문자열
+    const todayKst = useMemo(() => {
+        if (todayDate) return todayDate;
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(new Date());
+        const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+        return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+    }, [todayDate]);
+
+    const yesterdayKst = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(d);
+        const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+        return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+    }, []);
+
+    // 5. 실시간 로그 날짜별 그룹핑
+    const groupedLogs = useMemo(() => {
+        const map = new Map<string, CheckinLogItem[]>();
+        logs.forEach((log) => {
+            const dKey = getKstDateKey(log.created_at);
+            if (!map.has(dKey)) {
+                map.set(dKey, []);
+            }
+            map.get(dKey)!.push(log);
+        });
+
+        const sections = Array.from(map.entries()).map(([dateKey, items]) => {
+            items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const failureCount = items.filter((l) => l.event_type === 'LOOKUP_FAILED').length;
+            const successCount = items.filter((l) => l.event_type === 'LOOKUP_SUCCESS').length;
+            const rulesAgreedCount = items.filter((l) => l.event_type === 'HOUSE_RULES_AGREED').length;
+            const passwordViewedCount = items.filter((l) => l.event_type === 'DOORLOCK_ACCESSED').length;
+
+            return {
+                dateKey,
+                dateLabel: getKstFullDateLabel(dateKey),
+                isToday: dateKey === todayKst,
+                isYesterday: dateKey === yesterdayKst,
+                totalCount: items.length,
+                failureCount,
+                successCount,
+                rulesAgreedCount,
+                passwordViewedCount,
+                logs: items,
+            };
+        });
+
+        sections.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+        return sections;
+    }, [logs, todayKst, yesterdayKst]);
 
     // 4. 오늘 체크인 게스트 필터링
     const filteredTodayArrivals = useMemo(() => {
@@ -396,7 +504,7 @@ export default function CheckinManagementPage() {
                                 <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto">
                                     {[
                                         { id: 'ALL', label: '전체 이벤트' },
-                                        { id: 'LOOKUP_FAILED', label: '실패' },
+                                        { id: 'LOOKUP_FAILED', label: '실패만' },
                                         { id: 'LOOKUP_SUCCESS', label: '성공' },
                                         { id: 'HOUSE_RULES_AGREED', label: '규칙동의' },
                                         { id: 'DOORLOCK_ACCESSED', label: '비번열람' },
@@ -437,6 +545,76 @@ export default function CheckinManagementPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* 실시간 로그 전용 날짜 선택 툴바 */}
+                        {activeTab === 'logs' && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-slate-800 text-xs">
+                                <span className="text-gray-500 dark:text-slate-400 font-extrabold text-[11px] shrink-0">📅 날짜:</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setLogDateFilter('ALL')}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                        logDateFilter === 'ALL'
+                                            ? 'bg-gray-900 dark:bg-blue-600 text-white shadow-2xs'
+                                            : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                    }`}
+                                >
+                                    전체 날짜
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLogDateFilter(todayKst)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                        logDateFilter === todayKst
+                                            ? 'bg-blue-600 text-white shadow-2xs'
+                                            : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                    }`}
+                                >
+                                    오늘
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLogDateFilter(yesterdayKst)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                        logDateFilter === yesterdayKst
+                                            ? 'bg-blue-600 text-white shadow-2xs'
+                                            : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                    }`}
+                                >
+                                    어제
+                                </button>
+
+                                <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-800 p-0.5 px-2 rounded-lg border border-gray-200 dark:border-slate-700">
+                                    <span className="text-[11px] text-gray-400 font-medium">직접선택:</span>
+                                    <input
+                                        type="date"
+                                        value={logDateFilter === 'ALL' || logDateFilter === todayKst || logDateFilter === yesterdayKst ? '' : logDateFilter}
+                                        onChange={(e) => {
+                                            if (e.target.value) setLogDateFilter(e.target.value);
+                                        }}
+                                        className="bg-transparent text-xs font-bold text-gray-800 dark:text-slate-200 outline-none cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="ml-auto hidden sm:flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-slate-400">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCollapsedDates(new Set())}
+                                        className="hover:text-blue-600 dark:hover:text-blue-400 font-bold transition cursor-pointer"
+                                    >
+                                        모두 펼치기
+                                    </button>
+                                    <span>·</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCollapsedDates(new Set(groupedLogs.map((g) => g.dateKey)))}
+                                        className="hover:text-blue-600 dark:hover:text-blue-400 font-bold transition cursor-pointer"
+                                    >
+                                        모두 접기
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 탭 1: 오늘 체크인 게스트 현황판 */}
@@ -650,178 +828,235 @@ export default function CheckinManagementPage() {
                         </div>
                     )}
 
-                    {/* 탭 2: 실시간 전체 로그 타임라인 */}
+                    {/* 탭 2: 실시간 전체 로그 타임라인 (날짜별 그룹화 뷰) */}
                     {activeTab === 'logs' && (
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden">
-                            <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                                <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
-                                    <span>체크인 이벤트 감사 로그</span>
-                                    <span className="text-gray-400 dark:text-slate-500 text-xs font-bold">
-                                        ({logs.length}건)
-                                    </span>
-                                </h3>
-                                <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium">
-                                    최신순 실시간 기록
+                        <div className="space-y-4">
+                            {/* 상단 로그 건수 & 안내 바 */}
+                            <div className="flex items-center justify-between px-1">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
+                                        <span>체크인 이벤트 감사 로그</span>
+                                        <span className="text-gray-400 dark:text-slate-500 text-xs font-bold">
+                                            (총 {logs.length}건 / {groupedLogs.length}개 일자)
+                                        </span>
+                                    </h3>
+                                </div>
+                                <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium hidden sm:inline">
+                                    날짜별 그룹핑 및 최신순 정렬
                                 </span>
                             </div>
 
                             {logs.length === 0 ? (
-                                <div className="py-12 text-center">
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-12 text-center shadow-xs">
                                     <p className="text-sm font-black text-gray-700 dark:text-slate-300">
                                         기록된 체크인 로그가 없습니다.
                                     </p>
                                     <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                                        체크인 포털에서 조회가 발생하면 여기에 실시간으로 기록됩니다.
+                                        필터 조건을 변경하거나 새로고침을 실행해 보세요.
                                     </p>
                                 </div>
                             ) : (
-                                <>
-                                    {/* 데스크톱 로그 테이블 */}
-                                    <div className="hidden md:block overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-gray-50/75 dark:bg-slate-800/80 border-b border-gray-100 dark:border-slate-800 text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                                                    <th className="py-3 px-4">시각 (KST)</th>
-                                                    <th className="py-3 px-4">이벤트</th>
-                                                    <th className="py-3 px-4">게스트 / 입력 성함</th>
-                                                    <th className="py-3 px-4">숙소 / 호실</th>
-                                                    <th className="py-3 px-4">결과 및 사유</th>
-                                                    <th className="py-3 px-4">기기 및 IP</th>
-                                                    <th className="py-3 px-4 text-right">상세</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300">
-                                                {logs.map((log) => (
-                                                    <tr
-                                                        key={log.id}
-                                                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/50 transition ${
-                                                            log.event_type === 'LOOKUP_FAILED' ? 'bg-rose-50/25 dark:bg-rose-950/25' : ''
-                                                        }`}
-                                                    >
-                                                        {/* 시각 */}
-                                                        <td className="py-3 px-4 text-gray-500 dark:text-slate-400 whitespace-nowrap">
-                                                            <div className="font-black text-gray-900 dark:text-slate-100">
-                                                                {formatTimeKst(log.created_at)}
-                                                            </div>
-                                                            <div className="text-[10px] text-gray-400 dark:text-slate-500">
-                                                                {formatDateKst(log.created_at)}
-                                                            </div>
-                                                        </td>
+                                groupedLogs.map((section) => {
+                                    const isCollapsed = collapsedDates.has(section.dateKey);
 
-                                                        {/* 이벤트 뱃지 */}
-                                                        <td className="py-3 px-4">
-                                                            {renderEventBadge(log.event_type)}
-                                                        </td>
-
-                                                        {/* 게스트 / 입력 성함 */}
-                                                        <td className="py-3 px-4">
-                                                            <div className="font-black text-gray-900 dark:text-slate-100">
-                                                                {log.input_guest_name || '미입력'}
-                                                            </div>
-                                                            {log.booking_id && (
-                                                                <div className="text-[11px] text-gray-400 dark:text-slate-500 font-medium">
-                                                                    #{log.booking_id}
-                                                                </div>
-                                                            )}
-                                                        </td>
-
-                                                        {/* 숙소 / 호실 */}
-                                                        <td className="py-3 px-4">
-                                                            <div className="text-gray-900 dark:text-slate-100 font-bold">
-                                                                {log.property_name || '-'}
-                                                            </div>
-                                                            {log.unit_key && (
-                                                                <div className="text-[11px] text-gray-400 dark:text-slate-500">
-                                                                    {log.unit_key}
-                                                                </div>
-                                                            )}
-                                                        </td>
-
-                                                        {/* 결과 및 사유 (오타 디버깅 핵심) */}
-                                                        <td className="py-3 px-4">
-                                                            {log.failure_reason ? (
-                                                                <span className="text-rose-700 dark:text-rose-300 font-black bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900">
-                                                                    {log.failure_reason}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-emerald-700 dark:text-emerald-300 font-bold">
-                                                                    정상 처리 ({log.status_code})
-                                                                </span>
-                                                            )}
-                                                            {log.input_checkin && (
-                                                                <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
-                                                                    일정: {log.input_checkin} ~ {log.input_checkout || ''}
-                                                                </div>
-                                                            )}
-                                                        </td>
-
-                                                        {/* 기기 및 IP */}
-                                                        <td className="py-3 px-4 text-gray-500 dark:text-slate-400 text-[11px]">
-                                                            <div>{log.ip_address || 'unknown'}</div>
-                                                            <div className="text-gray-400 dark:text-slate-500 truncate max-w-[120px]" title={log.user_agent || ''}>
-                                                                {log.user_agent ? (log.user_agent.includes('Mobile') ? '모바일' : 'PC/웹') : '-'}
-                                                            </div>
-                                                        </td>
-
-                                                        {/* 상세 보기 */}
-                                                        <td className="py-3 px-4 text-right">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setSelectedLog(log)}
-                                                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition cursor-pointer"
-                                                            >
-                                                                상세보기
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* 모바일 로그 카드 뷰 */}
-                                    <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-800">
-                                        {logs.map((log) => (
+                                    return (
+                                        <div
+                                            key={section.dateKey}
+                                            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden transition-all duration-200"
+                                        >
+                                            {/* 일자별 섹션 헤더 (클릭 시 아코디언 토글) */}
                                             <div
-                                                key={log.id}
-                                                onClick={() => setSelectedLog(log)}
-                                                className={`p-3.5 space-y-2 cursor-pointer transition active:bg-gray-100 dark:active:bg-slate-800 ${
-                                                    log.event_type === 'LOOKUP_FAILED' ? 'bg-rose-50/30 dark:bg-rose-950/30' : ''
-                                                }`}
+                                                onClick={() => toggleDateCollapse(section.dateKey)}
+                                                className="px-4 py-3 bg-gray-50/80 dark:bg-slate-800/80 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:bg-gray-100/70 dark:hover:bg-slate-800 transition select-none"
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {renderEventBadge(log.event_type)}
-                                                        <span className="text-xs font-black text-gray-900 dark:text-slate-100">
-                                                            {log.input_guest_name || '미입력'}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-[11px] text-gray-400 dark:text-slate-500 font-bold">
-                                                        {formatTimeKst(log.created_at)}
+                                                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                    <span className="text-gray-400 dark:text-slate-500 text-xs font-bold transition-transform">
+                                                        {isCollapsed ? '▶' : '▼'}
+                                                    </span>
+                                                    <span className="text-sm font-black text-gray-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                                                        <span>📅 {section.dateLabel}</span>
+                                                        {section.isToday && (
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                                                                오늘
+                                                            </span>
+                                                        )}
+                                                        {section.isYesterday && (
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
+                                                                어제
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                                                        총 {section.totalCount}건
                                                     </span>
                                                 </div>
 
-                                                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-slate-300">
-                                                    <span>
-                                                        {log.property_name || '지점 미지정'}{' '}
-                                                        {log.unit_key ? `(${log.unit_key})` : ''}
-                                                    </span>
-                                                    {log.booking_id && (
-                                                        <span className="text-blue-600 dark:text-blue-400 font-bold">
-                                                            #{log.booking_id}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {section.failureCount > 0 ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                                                            조회 실패 {section.failureCount}건
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hidden sm:inline-flex">
+                                                            실패 없음
                                                         </span>
                                                     )}
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-bold hidden sm:inline">
+                                                        {isCollapsed ? '펼치기' : '접기'}
+                                                    </span>
                                                 </div>
-
-                                                {log.failure_reason && (
-                                                    <div className="text-xs text-rose-700 dark:text-rose-300 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded border border-rose-200 dark:border-rose-900">
-                                                        사유: {log.failure_reason}
-                                                    </div>
-                                                )}
                                             </div>
-                                        ))}
-                                    </div>
-                                </>
+
+                                            {/* 해당 일자의 로그 테이블 및 카드 목록 */}
+                                            {!isCollapsed && (
+                                                <>
+                                                    {/* 데스크톱 로그 테이블 */}
+                                                    <div className="hidden md:block overflow-x-auto">
+                                                        <table className="w-full text-left border-collapse">
+                                                            <thead>
+                                                                <tr className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800 text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                                                    <th className="py-2.5 px-4 w-28">시각 (KST)</th>
+                                                                    <th className="py-2.5 px-4 w-28">이벤트</th>
+                                                                    <th className="py-2.5 px-4">게스트 / 입력 성함</th>
+                                                                    <th className="py-2.5 px-4">숙소 / 호실</th>
+                                                                    <th className="py-2.5 px-4">결과 및 사유</th>
+                                                                    <th className="py-2.5 px-4">기기 및 IP</th>
+                                                                    <th className="py-2.5 px-4 text-right w-20">상세</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300">
+                                                                {section.logs.map((log) => (
+                                                                    <tr
+                                                                        key={log.id}
+                                                                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/50 transition ${
+                                                                            log.event_type === 'LOOKUP_FAILED' ? 'bg-rose-50/25 dark:bg-rose-950/25' : ''
+                                                                        }`}
+                                                                    >
+                                                                        {/* 시각 (헤더에 날짜가 있으므로 시:분:초만 깔끔하게) */}
+                                                                        <td className="py-2.5 px-4 text-gray-500 dark:text-slate-400 whitespace-nowrap">
+                                                                            <span className="font-mono font-black text-gray-900 dark:text-slate-100 text-xs">
+                                                                                {formatTimeKst(log.created_at)}
+                                                                            </span>
+                                                                        </td>
+
+                                                                        {/* 이벤트 뱃지 */}
+                                                                        <td className="py-2.5 px-4">
+                                                                            {renderEventBadge(log.event_type)}
+                                                                        </td>
+
+                                                                        {/* 게스트 / 입력 성함 */}
+                                                                        <td className="py-2.5 px-4">
+                                                                            <div className="font-black text-gray-900 dark:text-slate-100">
+                                                                                {log.input_guest_name || '미입력'}
+                                                                            </div>
+                                                                            {log.booking_id && (
+                                                                                <div className="text-[11px] text-gray-400 dark:text-slate-500 font-medium">
+                                                                                    #{log.booking_id}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+
+                                                                        {/* 숙소 / 호실 */}
+                                                                        <td className="py-2.5 px-4">
+                                                                            <div className="text-gray-900 dark:text-slate-100 font-bold">
+                                                                                {log.property_name || '-'}
+                                                                            </div>
+                                                                            {log.unit_key && (
+                                                                                <div className="text-[11px] text-gray-400 dark:text-slate-500">
+                                                                                    {log.unit_key}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+
+                                                                        {/* 결과 및 사유 */}
+                                                                        <td className="py-2.5 px-4">
+                                                                            {log.failure_reason ? (
+                                                                                <span className="text-rose-700 dark:text-rose-300 font-black bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900">
+                                                                                    {log.failure_reason}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                                                                                    정상 처리 ({log.status_code})
+                                                                                </span>
+                                                                            )}
+                                                                            {log.input_checkin && (
+                                                                                <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
+                                                                                    일정: {log.input_checkin} ~ {log.input_checkout || ''}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+
+                                                                        {/* 기기 및 IP */}
+                                                                        <td className="py-2.5 px-4 text-gray-500 dark:text-slate-400 text-[11px]">
+                                                                            <div>{log.ip_address || 'unknown'}</div>
+                                                                            <div className="text-gray-400 dark:text-slate-500 truncate max-w-[120px]" title={log.user_agent || ''}>
+                                                                                {log.user_agent ? (log.user_agent.includes('Mobile') ? '모바일' : 'PC/웹') : '-'}
+                                                                            </div>
+                                                                        </td>
+
+                                                                        {/* 상세 보기 */}
+                                                                        <td className="py-2.5 px-4 text-right">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setSelectedLog(log)}
+                                                                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                                                                            >
+                                                                                상세보기
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    {/* 모바일 로그 카드 뷰 */}
+                                                    <div className="md:hidden divide-y divide-gray-100 dark:divide-slate-800">
+                                                        {section.logs.map((log) => (
+                                                            <div
+                                                                key={log.id}
+                                                                onClick={() => setSelectedLog(log)}
+                                                                className={`p-3.5 space-y-2 cursor-pointer transition active:bg-gray-100 dark:active:bg-slate-800 ${
+                                                                    log.event_type === 'LOOKUP_FAILED' ? 'bg-rose-50/30 dark:bg-rose-950/30' : ''
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        {renderEventBadge(log.event_type)}
+                                                                        <span className="text-xs font-black text-gray-900 dark:text-slate-100">
+                                                                            {log.input_guest_name || '미입력'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-[11px] text-gray-400 dark:text-slate-500 font-bold font-mono">
+                                                                        {formatTimeKst(log.created_at)}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-slate-300">
+                                                                    <span>
+                                                                        {log.property_name || '지점 미지정'}{' '}
+                                                                        {log.unit_key ? `(${log.unit_key})` : ''}
+                                                                    </span>
+                                                                    {log.booking_id && (
+                                                                        <span className="text-blue-600 dark:text-blue-400 font-bold">
+                                                                            #{log.booking_id}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {log.failure_reason && (
+                                                                    <div className="text-xs text-rose-700 dark:text-rose-300 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded border border-rose-200 dark:border-rose-900">
+                                                                        사유: {log.failure_reason}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     )}
