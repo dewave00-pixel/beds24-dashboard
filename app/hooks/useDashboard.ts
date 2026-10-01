@@ -394,6 +394,51 @@ export function useDashboard() {
         }
     };
 
+    // 📅 연박 연장 처리 (Beds24 API + Supabase DB + 로컬 상태 즉시 동기화)
+    const handleExtendStay = async (
+        bookingId: number,
+        newDeparture: string,
+        additionalPrice: number,
+        note?: string
+    ): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const res = await fetch('/api/bookings/extend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, newDeparture, additionalPrice, note }),
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                const newPrice = result.data?.newTotalPrice;
+                // 로컬 예약 목록 상태 즉시 업데이트
+                setBookings((prev) =>
+                    prev.map((b) =>
+                        b.id === bookingId
+                            ? { ...b, departure: newDeparture, price: newPrice !== undefined ? newPrice : b.price }
+                            : b
+                    )
+                );
+                // 모달 내 activeBooking도 업데이트
+                if (activeBooking && activeBooking.id === bookingId) {
+                    setActiveBooking((prev) =>
+                        prev
+                            ? { ...prev, departure: newDeparture, price: newPrice !== undefined ? newPrice : prev.price }
+                            : null
+                    );
+                }
+                // 메모/태그도 갱신
+                await fetchNotes();
+                return { success: true };
+            } else {
+                return { success: false, error: result.error || '연박 연장 실패' };
+            }
+        } catch (err: any) {
+            console.error('연박 연장 API 호출 에러:', err);
+            return { success: false, error: err.message || '네트워크 오류가 발생했습니다.' };
+        }
+    };
+
     return {
         bookings,
         loading,
@@ -442,6 +487,7 @@ export function useDashboard() {
         handleSaveMemo,
         handleDeleteMemo,
         handleAssignUnit,
+        handleExtendStay,
         isRealtimeConnected,
     };
 }

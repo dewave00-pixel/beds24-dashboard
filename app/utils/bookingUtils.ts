@@ -145,12 +145,52 @@ export function findConflictingBookings(
 
         // 호실 매칭
         const bRoomId = Number(b.roomId);
-        const bUnitId = Number(b.unitId) || 0;
-        if (bRoomId !== targetRoomId || bUnitId !== targetUnitId) return false;
+        // 단독 유닛 호실(유닛ID가 0/null이지만 해당 룸에 배정된 경우)은 unitId=1로 간주
+        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : 1;
+        const tUnitId = targetUnitId > 0 ? targetUnitId : 1;
+
+        if (bRoomId !== targetRoomId || bUnitId !== tUnitId) return false;
 
         // 날짜 겹침 판별 (체크인 당일과 체크아웃 당일이 같은 것은 정상 턴어라운드이므로 겹치지 않음)
         // 겹침 공식: arrival1 < departure2 && departure1 > arrival2
         const isOverlap = arrival < b.departure && departure > b.arrival;
+        return isOverlap;
+    });
+}
+
+/**
+ * 🚨 연박 연장 시 호실 중복(더블 부킹) 충돌 검사
+ * - 예약의 기존 체크아웃일(currentDeparture)부터 새 체크아웃일(newDeparture)까지의 기간에
+ * - 현재 배정된 호실(roomId, unitId)에 다른 활성 예약이 이미 존재하는지 검사
+ */
+export function findExtensionConflicts(
+    targetBooking: Booking,
+    newDeparture: string,
+    allBookings: Booking[]
+): Booking[] {
+    const bId = Number(targetBooking.id);
+    const currentDeparture = targetBooking.departure;
+    const roomId = targetBooking.roomId ? Number(targetBooking.roomId) : null;
+    const unitId = targetBooking.unitId !== undefined && targetBooking.unitId !== null ? Number(targetBooking.unitId) : 0;
+
+    // 미배정이거나 호실 정보가 없거나 날짜가 올바르지 않으면 충돌 없음
+    if (!roomId || unitId === 0 || !currentDeparture || !newDeparture || newDeparture <= currentDeparture) {
+        return [];
+    }
+
+    const tUnitId = unitId > 0 ? unitId : 1;
+
+    return allBookings.filter((b) => {
+        if (Number(b.id) === bId || !isValidBooking(b)) return false;
+
+        const bRoomId = Number(b.roomId);
+        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : 1;
+
+        if (bRoomId !== roomId || bUnitId !== tUnitId) return false;
+
+        // 연장된 구간(currentDeparture ~ newDeparture)에 겹치는지 검사
+        // 겹침 조건: currentDeparture < b.departure && newDeparture > b.arrival
+        const isOverlap = currentDeparture < b.departure && newDeparture > b.arrival;
         return isOverlap;
     });
 }

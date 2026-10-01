@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { Booking } from '../../types';
-import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS } from '../../config';
-import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings, getCommissionInfo } from '../../utils/bookingUtils';
+import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS, PROPERTY_GROUPS } from '../../config';
+import { getUnitForBooking, findConflictingBookings, getCommissionInfo } from '../../utils/bookingUtils';
 import { formatKSTDateTime } from '../../utils/dateUtils';
+import StayExtensionSection from './StayExtensionSection';
 
 interface BookingModalProps {
     booking: Booking;
@@ -17,6 +18,7 @@ interface BookingModalProps {
     onDelete: () => void;
     onClose: () => void;
     onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
+    onExtendStay?: (bookingId: number, newDeparture: string, additionalPrice: number, note?: string) => Promise<{ success: boolean; error?: string }>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
 }
 
@@ -31,6 +33,7 @@ export default function BookingModal({
     onDelete,
     onClose,
     onAssignUnit,
+    onExtendStay,
     propertiesInfo,
 }: BookingModalProps) {
     const ch = getChannelStyle(booking.apiSourceId);
@@ -39,17 +42,26 @@ export default function BookingModal({
             ? `${booking.firstName || ''} ${booking.lastName || ''}`.trim()
             : '이름 없음';
 
-    const candidateUnits = getUnitsForRoomId(booking.roomId);
     const currentUnit = getUnitForBooking(booking);
     const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId);
 
-    const [selectedUnitId, setSelectedUnitId] = useState<number>(Number(booking.unitId) || (candidateUnits[0]?.unitId ?? 1));
+    // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
+    const currentKey = Number(booking.unitId) > 0 && booking.roomId
+        ? `${Number(booking.roomId)}-${Number(booking.unitId)}`
+        : '0-0';
+
+    const [selectedUnitKey, setSelectedUnitKey] = useState<string>(currentKey);
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+    // 파싱된 선택 호실 정보
+    const [targetRoomId, targetUnitId] = selectedUnitKey === '0-0'
+        ? [Number(booking.roomId) || 0, 0]
+        : selectedUnitKey.split('-').map(Number);
+
     // 🛡️ 선택된 호실에 더블 부킹 충돌이 있는지 실시간 계산 (0은 미배정 해제이므로 충돌 없음)
-    const currentConflicts = selectedUnitId > 0
-        ? findConflictingBookings(booking, Number(booking.roomId), selectedUnitId, allBookings)
+    const currentConflicts = targetUnitId > 0 && targetRoomId > 0
+        ? findConflictingBookings(booking, targetRoomId, targetUnitId, allBookings)
         : [];
     const hasConflictOnSelectedUnit = currentConflicts.length > 0;
 
@@ -95,7 +107,7 @@ export default function BookingModal({
     };
 
     const handleAssignUnitClick = async () => {
-        if (!onAssignUnit || !booking.roomId) return;
+        if (!onAssignUnit) return;
 
         // 🛡️ 더블 부킹 사전 경고
         if (hasConflictOnSelectedUnit) {
@@ -107,7 +119,9 @@ export default function BookingModal({
 
         setIsAssigning(true);
         setAssignMsg(null);
-        const result = await onAssignUnit(booking.id, Number(booking.roomId), selectedUnitId);
+        // targetUnitId === 0 이면 미배정 해제 (기존 roomId 유지하면서 unitId: 0 전달)
+        const finalRoomId = targetUnitId === 0 ? Number(booking.roomId) || 0 : targetRoomId;
+        const result = await onAssignUnit(booking.id, finalRoomId, targetUnitId);
         setIsAssigning(false);
         if (result.success) {
             setAssignMsg({ text: '✅ Beds24 호실 배정 완료!', type: 'success' });
@@ -183,84 +197,99 @@ export default function BookingModal({
                         </div>
                     </div>
 
-                    {/* 🏠 호실 배정 관리 섹션 */}
-                    {candidateUnits.length > 0 && (
-                        <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-300 dark:border-amber-800/80 flex flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1">
-                                    <span>🏠</span> 호실 배정 상태:
-                                </span>
-                                <span className={`text-xs font-black px-2 py-0.5 rounded ${Number(booking.unitId) > 0 ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200' : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200'}`}>
-                                    {Number(booking.unitId) > 0
-                                        ? `${currentUnit?.displayName || `Unit ${booking.unitId}`} (배정됨)`
-                                        : '⚠️ 미배정 상태'}
-                                </span>
-                            </div>
+                    {/* 🏠 호실 배정 관리 섹션 (전체 건물 및 모든 호실 이동 가능) */}
+                    <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-300 dark:border-amber-800/80 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1">
+                                <span>🏠</span> 호실 배정 상태:
+                            </span>
+                            <span className={`text-xs font-black px-2 py-0.5 rounded ${Number(booking.unitId) > 0 ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200' : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200'}`}>
+                                {Number(booking.unitId) > 0
+                                    ? `${currentUnit?.propName ? `[${currentUnit.propName}] ` : ''}${currentUnit?.displayName || `Unit ${booking.unitId}`} (배정됨)`
+                                    : '⚠️ 미배정 상태'}
+                            </span>
+                        </div>
 
-                            {onAssignUnit && (
-                                <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200 dark:border-amber-800/50">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1 flex-1">
-                                            <span className="text-[11px] font-bold text-gray-700 dark:text-slate-300 shrink-0">변경 호실:</span>
-                                            <select
-                                                value={selectedUnitId}
-                                                onChange={(e) => setSelectedUnitId(Number(e.target.value))}
-                                                className={`px-2 py-1 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200' : 'border-gray-300 dark:border-slate-600'}`}
-                                            >
-                                                {/* ⚠️ 미배정 상태로 되돌리기 옵션 */}
-                                                <option value={0} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">⚠️ [미배정 상태로 변경 (호실 해제)]</option>
-
-                                                {candidateUnits.map((u) => {
-                                                    const conf = u.unitId ? findConflictingBookings(booking, Number(booking.roomId), u.unitId, allBookings) : [];
-                                                    return (
-                                                        <option key={`opt-${u.key}`} value={u.unitId} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                            🏠 {u.displayName} {u.subName ? `(${u.subName})` : ''} {conf.length > 0 ? '(⚠️ 중복)' : ''}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            disabled={isAssigning || selectedUnitId === (Number(booking.unitId) || 0)}
-                                            onClick={handleAssignUnitClick}
-                                            className={`px-3 py-1 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1 ${
-                                                selectedUnitId === 0
-                                                    ? 'bg-amber-600 hover:bg-amber-700'
-                                                    : hasConflictOnSelectedUnit
-                                                        ? 'bg-rose-600 hover:bg-rose-700'
-                                                        : 'bg-blue-600 hover:bg-blue-700'
-                                            }`}
+                        {onAssignUnit && (
+                            <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200 dark:border-amber-800/50">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1 flex-1">
+                                        <span className="text-[11px] font-bold text-gray-700 dark:text-slate-300 shrink-0">변경 호실:</span>
+                                        <select
+                                            value={selectedUnitKey}
+                                            onChange={(e) => setSelectedUnitKey(e.target.value)}
+                                            className={`px-2 py-1 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200' : 'border-gray-300 dark:border-slate-600'}`}
                                         >
-                                            {isAssigning
-                                                ? '처리 중...'
-                                                : selectedUnitId === 0
-                                                    ? '⚠️ 미배정으로 해제'
-                                                    : hasConflictOnSelectedUnit
-                                                        ? '⚠️ 중복 배정'
-                                                        : 'Beds24 배정'}
-                                        </button>
+                                            {/* ⚠️ 미배정 상태로 되돌리기 옵션 */}
+                                            <option value="0-0" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">⚠️ [미배정 상태로 변경 (호실 해제)]</option>
+
+                                            {PROPERTY_GROUPS.map((group) => (
+                                                <optgroup key={`grp-${group.name}`} label={`🏢 ${group.name}`}>
+                                                    {group.units.map((u) => {
+                                                        const uRoomId = u.roomId;
+                                                        const uUnitId = u.unitId || 1;
+                                                        const keyVal = `${uRoomId}-${uUnitId}`;
+                                                        const conf = findConflictingBookings(booking, uRoomId, uUnitId, allBookings);
+                                                        const isCurrent = keyVal === currentKey;
+                                                        return (
+                                                            <option key={`opt-${u.key}`} value={keyVal} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
+                                                                🏠 {u.displayName} {u.subName ? `(${u.subName})` : ''} {isCurrent ? ' (현재)' : ''} {conf.length > 0 ? ' (⚠️ 중복)' : ''}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </optgroup>
+                                            ))}
+                                        </select>
                                     </div>
 
-                                    {/* 실시간 더블 부킹 경고 메시지 */}
-                                    {hasConflictOnSelectedUnit && (
-                                        <div className="p-1.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded text-rose-900 dark:text-rose-200 text-[11px] font-black flex items-center gap-1">
-                                            <span>🚨</span>
-                                            <span>
-                                                {currentConflicts[0]?.arrival} ~ {currentConflicts[0]?.departure}에 [{currentConflicts[0]?.firstName || ''} {currentConflicts[0]?.lastName || ''}]님 예약과 겹칩니다!
-                                            </span>
-                                        </div>
-                                    )}
+                                    <button
+                                        type="button"
+                                        disabled={isAssigning || selectedUnitKey === currentKey}
+                                        onClick={handleAssignUnitClick}
+                                        className={`px-3 py-1 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1 ${
+                                            targetUnitId === 0
+                                                ? 'bg-amber-600 hover:bg-amber-700'
+                                                : hasConflictOnSelectedUnit
+                                                    ? 'bg-rose-600 hover:bg-rose-700'
+                                                    : 'bg-blue-600 hover:bg-blue-700'
+                                        }`}
+                                    >
+                                        {isAssigning
+                                            ? '처리 중...'
+                                            : targetUnitId === 0
+                                                ? '⚠️ 미배정으로 해제'
+                                                : hasConflictOnSelectedUnit
+                                                    ? '⚠️ 중복 배정'
+                                                    : 'Beds24 배정'}
+                                    </button>
                                 </div>
-                            )}
 
-                            {assignMsg && (
-                                <div className={`text-[11px] font-black ${assignMsg.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                    {assignMsg.text}
-                                </div>
-                            )}
-                        </div>
+                                {/* 실시간 더블 부킹 경고 메시지 */}
+                                {hasConflictOnSelectedUnit && (
+                                    <div className="p-1.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded text-rose-900 dark:text-rose-200 text-[11px] font-black flex items-center gap-1">
+                                        <span>🚨</span>
+                                        <span>
+                                            {currentConflicts[0]?.arrival} ~ {currentConflicts[0]?.departure}에 [{currentConflicts[0]?.firstName || ''} {currentConflicts[0]?.lastName || ''}]님 예약과 겹칩니다!
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {assignMsg && (
+                            <div className={`text-[11px] font-black ${assignMsg.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                                {assignMsg.text}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 📅 연박 연장 섹션 (일정 & 추가 요금) */}
+                    {onExtendStay && (
+                        <StayExtensionSection
+                            booking={booking}
+                            allBookings={allBookings}
+                            onExtendStay={onExtendStay}
+                        />
                     )}
 
                     {/* 🏷️ 빠른 상태 옵션 */}

@@ -128,6 +128,7 @@ export default function DashboardPage() {
           onDelete={() => d.handleDeleteMemo()}
           onClose={() => d.setActiveBooking(null)}
           onAssignUnit={d.handleAssignUnit}
+          onExtendStay={d.handleExtendStay}
           propertiesInfo={d.propertiesInfo}
         />
       )}

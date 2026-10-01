@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Booking } from '../../types';
-import { getUnitsForRoomId, getUnitForBooking, findConflictingBookings } from '../../utils/bookingUtils';
-import { getChannelStyle } from '../../config';
+import { getUnitForBooking, findConflictingBookings } from '../../utils/bookingUtils';
+import { getChannelStyle, PROPERTY_GROUPS } from '../../config';
 
 interface BookingNoteData {
     note: string;
@@ -27,29 +27,35 @@ export default function UnallocatedBookingsModal({
     onAssignUnit,
     onSelectBooking,
 }: UnallocatedBookingsModalProps) {
-    // 각 예약별로 선택된 unitId 상태 관리: { [bookingId]: unitId }
-    const [selectedUnits, setSelectedUnits] = useState<Record<number, number>>({});
+    // 각 예약별로 선택된 호실 키 상태 관리: { [bookingId]: 'roomId-unitId' }
+    const [selectedUnitKeys, setSelectedUnitKeys] = useState<Record<number, string>>({});
     const [assigningId, setAssigningId] = useState<number | null>(null);
     const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    const handleSelectUnit = (bookingId: number, unitId: number) => {
-        setSelectedUnits((prev) => ({
+    const handleSelectUnitKey = (bookingId: number, unitKey: string) => {
+        setSelectedUnitKeys((prev) => ({
             ...prev,
-            [bookingId]: unitId,
+            [bookingId]: unitKey,
         }));
     };
 
     const handleConfirmAssign = async (booking: Booking) => {
-        const candidateUnits = getUnitsForRoomId(booking.roomId);
-        const chosenUnitId = selectedUnits[booking.id] || (candidateUnits.length > 0 ? candidateUnits[0].unitId : undefined);
+        const chosenKey = selectedUnitKeys[booking.id];
 
-        if (!chosenUnitId || !booking.roomId) {
+        if (!chosenKey) {
             alert('배정할 호실을 선택해 주세요.');
             return;
         }
 
+        const [targetRoomId, targetUnitId] = chosenKey.split('-').map(Number);
+
+        if (!targetRoomId || !targetUnitId) {
+            alert('올바른 호실을 선택해 주세요.');
+            return;
+        }
+
         // 🛡️ 더블 부킹 사전 체크
-        const conflicts = findConflictingBookings(booking, Number(booking.roomId), chosenUnitId, allBookings);
+        const conflicts = findConflictingBookings(booking, targetRoomId, targetUnitId, allBookings);
         if (conflicts.length > 0) {
             const c = conflicts[0];
             const cName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || `#${c.id}`;
@@ -60,7 +66,7 @@ export default function UnallocatedBookingsModal({
         setAssigningId(booking.id);
         setFeedbackMessage(null);
 
-        const result = await onAssignUnit(booking.id, Number(booking.roomId), chosenUnitId);
+        const result = await onAssignUnit(booking.id, targetRoomId, targetUnitId);
 
         setAssigningId(null);
 
@@ -133,9 +139,8 @@ export default function UnallocatedBookingsModal({
                         </div>
                     ) : (
                         bookings.map((b) => {
-                            const candidateUnits = getUnitsForRoomId(b.roomId);
                             const fallbackUnit = getUnitForBooking(b);
-                            const propName = candidateUnits[0]?.propName || fallbackUnit?.propName || '숙소';
+                            const propName = fallbackUnit?.propName || '숙소';
                             const ch = getChannelStyle(b.apiSourceId);
                             const guestName = (b.firstName || b.lastName)
                                 ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
@@ -146,7 +151,10 @@ export default function UnallocatedBookingsModal({
                             const dep = new Date(b.departure);
                             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24))) || 1;
 
-                            const selectedUnitId = selectedUnits[b.id] || (candidateUnits.length > 0 ? candidateUnits[0].unitId : 1);
+                            const chosenKey = selectedUnitKeys[b.id] || '';
+                            const [tRoomId, tUnitId] = chosenKey ? chosenKey.split('-').map(Number) : [0, 0];
+                            const currentConflicts = tRoomId && tUnitId ? findConflictingBookings(b, tRoomId, tUnitId, allBookings) : [];
+                            const hasConflict = currentConflicts.length > 0;
                             const isAssigning = assigningId === b.id;
 
                             return (
@@ -208,53 +216,65 @@ export default function UnallocatedBookingsModal({
                                         </div>
                                     </div>
 
-                                    {/* 하단: 배정할 호실 선택 및 Beds24 전송 버튼 */}
+                                    {/* 하단: 배정할 호실 선택 (전체 건물 지원) 및 Beds24 전송 버튼 */}
                                     <div className="pt-2 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                                        <div className="flex items-center gap-1.5 flex-1">
-                                            <span className="text-xs font-black text-gray-700 dark:text-slate-300 shrink-0">배정 호실 선택:</span>
-                                            <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                                                {candidateUnits.map((unit) => {
-                                                    const isSelected = selectedUnitId === unit.unitId;
-                                                    const conflictsForThisUnit = unit.unitId
-                                                        ? findConflictingBookings(b, Number(b.roomId), unit.unitId, allBookings)
-                                                        : [];
-                                                    const hasConflict = conflictsForThisUnit.length > 0;
-
-                                                    return (
-                                                        <button
-                                                            key={`cand-btn-${b.id}-${unit.key}`}
-                                                            type="button"
-                                                            onClick={() => unit.unitId && handleSelectUnit(b.id, unit.unitId)}
-                                                            className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${isSelected
-                                                                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300 dark:ring-blue-700'
-                                                                : hasConflict
-                                                                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-100'
-                                                                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-750'
-                                                                }`}
-                                                        >
-                                                            <span>🏠</span>
-                                                            <span>{unit.displayName} {unit.subName ? `(${unit.subName})` : ''}</span>
-                                                            {hasConflict && (
-                                                                <span className="text-[10px] font-extrabold bg-rose-600 text-white px-1 py-0.2 rounded-full">
-                                                                    중복
-                                                                </span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
+                                        <div className="flex flex-col gap-1 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs font-black text-gray-700 dark:text-slate-300 shrink-0">배정 호실:</span>
+                                                <select
+                                                    value={chosenKey}
+                                                    onChange={(e) => handleSelectUnitKey(b.id, e.target.value)}
+                                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-black bg-white dark:bg-slate-800 border text-gray-800 dark:text-slate-100 flex-1 cursor-pointer ${
+                                                        hasConflict
+                                                            ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200'
+                                                            : 'border-gray-300 dark:border-slate-700'
+                                                    }`}
+                                                >
+                                                    <option value="">-- 배정할 호실 선택 (전체 건물) --</option>
+                                                    {PROPERTY_GROUPS.map((group) => (
+                                                        <optgroup key={`unalloc-grp-${group.name}`} label={`🏢 ${group.name}`}>
+                                                            {group.units.map((u) => {
+                                                                const uRoomId = u.roomId;
+                                                                const uUnitId = u.unitId || 1;
+                                                                const keyVal = `${uRoomId}-${uUnitId}`;
+                                                                const conf = findConflictingBookings(b, uRoomId, uUnitId, allBookings);
+                                                                return (
+                                                                    <option key={`cand-opt-${b.id}-${keyVal}`} value={keyVal}>
+                                                                        🏠 [{group.name}] {u.displayName} {u.subName ? `(${u.subName})` : ''} {conf.length > 0 ? ' (⚠️ 중복)' : ''}
+                                                                    </option>
+                                                                );
+                                                            })}
+                                                        </optgroup>
+                                                    ))}
+                                                </select>
                                             </div>
+
+                                            {hasConflict && (
+                                                <div className="text-[11px] text-rose-600 dark:text-rose-400 font-black pl-1">
+                                                    ⚠️ {currentConflicts[0]?.arrival}~{currentConflicts[0]?.departure}에 [{currentConflicts[0]?.firstName || ''} {currentConflicts[0]?.lastName || ''}]님 예약과 겹칩니다!
+                                                </div>
+                                            )}
                                         </div>
 
                                         <button
                                             type="button"
-                                            disabled={isAssigning}
+                                            disabled={isAssigning || !chosenKey}
                                             onClick={() => handleConfirmAssign(b)}
-                                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs rounded-lg transition shadow flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
+                                            className={`px-4 py-2 text-white font-black text-xs rounded-lg transition shadow flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0 ${
+                                                hasConflict
+                                                    ? 'bg-rose-600 hover:bg-rose-700'
+                                                    : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
+                                            }`}
                                         >
                                             {isAssigning ? (
                                                 <>
                                                     <span className="animate-spin text-sm">⏳</span>
                                                     <span>Beds24 배정 중...</span>
+                                                </>
+                                            ) : hasConflict ? (
+                                                <>
+                                                    <span>⚠️</span>
+                                                    <span>중복 감지 배정</span>
                                                 </>
                                             ) : (
                                                 <>

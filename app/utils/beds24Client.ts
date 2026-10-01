@@ -153,7 +153,17 @@ export async function fetchBeds24Bookings(startDate?: string, endDate?: string) 
  * ✏️ Beds24 예약 정보 수정 함수 (호실/유닛 배정 변경 등)
  * - Beds24 API V2: POST https://api.beds24.com/v2/bookings 에 [{ id, roomId, unitId }] 전송
  */
-export async function updateBeds24Booking(bookingId: number, updateFields: { roomId?: number; unitId?: number; notes?: string }) {
+export async function updateBeds24Booking(
+    bookingId: number,
+    updateFields: {
+        roomId?: number;
+        unitId?: number;
+        notes?: string;
+        departure?: string;
+        arrival?: string;
+        price?: number;
+    }
+) {
     const token = await getValidBeds24Token();
 
     const payload = [
