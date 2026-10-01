@@ -29,6 +29,7 @@ export interface UnitConfig {
     roomId: number;
     unitId?: number;
     propName?: string;
+    themeClass?: string;
     displayName: string;
     subName?: string;
 }

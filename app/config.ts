@@ -60,6 +60,43 @@ export const ALL_UNITS: UnitConfig[] = PROPERTY_GROUPS.flatMap((group) =>
     }))
 );
 
+// 🚪 객실(룸타입) 단위 표준 정의 인터페이스
+export interface RoomTypeConfig {
+    roomId: number;
+    propName: string;
+    themeClass: string;
+    subName?: string;
+    displayName: string;
+    units: UnitConfig[];
+    unitCount: number;
+}
+
+// 🏢 13개 표준 객실(룸타입) 정의 (각 객실별 소속 유닛 목록 및 유닛 수 자동 매핑)
+export const ROOM_TYPES: RoomTypeConfig[] = PROPERTY_GROUPS.flatMap((group) => {
+    const byRoomId = new Map<number, UnitConfig[]>();
+    group.units.forEach((u) => {
+        const list = byRoomId.get(u.roomId) || [];
+        list.push({ ...u, unitKey: u.key, propName: group.name, themeClass: group.themeClass });
+        byRoomId.set(u.roomId, list);
+    });
+
+    return Array.from(byRoomId.entries()).map(([roomId, units]) => {
+        const subName = units[0]?.subName;
+        const unitLabels = units.map((u) => u.displayName).join(', ');
+        const displayName = subName ? `${subName} (${unitLabels})` : unitLabels;
+
+        return {
+            roomId,
+            propName: group.name,
+            themeClass: group.themeClass,
+            subName,
+            displayName,
+            units,
+            unitCount: units.length,
+        };
+    });
+});
+
 // 🏢 세로 타임라인 Grid Template Columns (건물 사이 16px 독립 구분 기둥 포함)
 export const VERTICAL_GRID_COLUMNS = [
     '120px',
