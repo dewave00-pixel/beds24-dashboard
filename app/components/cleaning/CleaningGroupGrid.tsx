@@ -13,6 +13,7 @@ interface CleaningGroupGridProps {
     bookingNotes: { [bookingId: number]: { note: string; tags: string[] } };
     assignments: { [unitKey: string]: CleaningAssignment };
     cleaningHistoryMap?: Record<string, Record<string, any>>;
+    propertiesInfo?: Record<string, any>;
     staffList?: string[];
     staffMap?: Record<string, string>;
     selectedStaffForMobile?: string;
@@ -29,6 +30,7 @@ export default function CleaningGroupGrid({
     bookingNotes,
     assignments,
     cleaningHistoryMap,
+    propertiesInfo,
     staffList = [],
     staffMap = DEFAULT_STAFF_MAP,
     selectedStaffForMobile,
@@ -233,6 +235,7 @@ export default function CleaningGroupGrid({
                                         <CleaningRoomCard
                                             unit={unit}
                                             dateStr={dateStr}
+                                            doorPassword={propertiesInfo?.[unit.key]?.doorPassword}
                                             assignment={assignments[unit.key]}
                                             staffList={staffList}
                                             bookings={bookings}

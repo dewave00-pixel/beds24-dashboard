@@ -15,6 +15,7 @@ interface UnitInfoData {
 
 export default function PropertiesPage() {
     const auth = useAuth();
+    const isReadOnly = auth.isStaff || (!auth.isAdmin && !auth.isManager);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
     const [propertiesInfo, setPropertiesInfo] = useState<{ [id: string]: UnitInfoData }>({});
     const [loading, setLoading] = useState<boolean>(true);
@@ -138,11 +139,19 @@ export default function PropertiesPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-xl">🔑</span>
                             <div>
-                                <h1 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 leading-tight">
-                                    숙소 비밀번호 & 호실 현황
-                                </h1>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 leading-tight">
+                                        숙소 비밀번호 & 호실 현황
+                                    </h1>
+                                    {isReadOnly && (
+                                        <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900 flex items-center gap-1">
+                                            <span>🔒</span>
+                                            <span>조회/복사 전용</span>
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
-                                    도어락 비밀번호 복사, 최대 인원 및 주요 수리사항 한눈에 관리
+                                    {isReadOnly ? '도어락 비밀번호 복사 및 호실 현황 확인' : '도어락 비밀번호 복사, 최대 인원 및 주요 수리사항 한눈에 관리'}
                                 </span>
                             </div>
                         </div>
@@ -190,7 +199,7 @@ export default function PropertiesPage() {
                                                 <th className="py-2 px-3 w-48">🔑 도어락 비밀번호</th>
                                                 <th className="py-2 px-3 w-28">👥 최대 인원</th>
                                                 <th className="py-2 px-3">🛠️ 주요 수리 / 점검 메모</th>
-                                                <th className="py-2 px-3 w-24 text-center">관리</th>
+                                                {!isReadOnly && <th className="py-2 px-3 w-24 text-center">관리</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
@@ -284,36 +293,38 @@ export default function PropertiesPage() {
                                                         </td>
 
                                                         {/* 관리 액션 버튼 */}
-                                                        <td className="py-2 px-3 text-center">
-                                                            {!isEditing ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleStartEdit(unit.key, info)}
-                                                                    className="px-2 py-1 text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded transition cursor-pointer"
-                                                                >
-                                                                    수정
-                                                                </button>
-                                                            ) : (
-                                                                <div className="flex items-center justify-center gap-1">
+                                                        {!isReadOnly && (
+                                                            <td className="py-2 px-3 text-center">
+                                                                {!isEditing ? (
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => handleSave(unit.key, unit.roomId, unit.unitId)}
-                                                                        disabled={saving}
-                                                                        className="px-2 py-1 text-[10.5px] font-black text-white bg-blue-600 hover:bg-blue-700 rounded transition cursor-pointer"
+                                                                        onClick={() => handleStartEdit(unit.key, info)}
+                                                                        className="px-2 py-1 text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded transition cursor-pointer"
                                                                     >
-                                                                        저장
+                                                                        수정
                                                                     </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleCancelEdit}
-                                                                        disabled={saving}
-                                                                        className="px-1.5 py-1 text-[10.5px] font-bold text-gray-600 dark:text-slate-300 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded border border-gray-300 dark:border-slate-700 transition cursor-pointer"
-                                                                    >
-                                                                        취소
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </td>
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center gap-1">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleSave(unit.key, unit.roomId, unit.unitId)}
+                                                                            disabled={saving}
+                                                                            className="px-2 py-1 text-[10.5px] font-black text-white bg-blue-600 hover:bg-blue-700 rounded transition cursor-pointer"
+                                                                        >
+                                                                            저장
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={handleCancelEdit}
+                                                                            disabled={saving}
+                                                                            className="px-1.5 py-1 text-[10.5px] font-bold text-gray-600 dark:text-slate-300 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                                                                        >
+                                                                            취소
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        )}
 
                                                     </tr>
                                                 );
@@ -373,13 +384,15 @@ export default function PropertiesPage() {
                                                                     {copiedId === unit.key ? '복사됨! ✅' : '복사'}
                                                                 </button>
                                                             )}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleStartEdit(unit.key, info)}
-                                                                className="px-2 py-0.5 text-[11px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded cursor-pointer ml-1"
-                                                            >
-                                                                수정
-                                                            </button>
+                                                            {!isReadOnly && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleStartEdit(unit.key, info)}
+                                                                    className="px-2 py-0.5 text-[11px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded cursor-pointer ml-1"
+                                                                >
+                                                                    수정
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="flex items-center gap-1.5 shrink-0">

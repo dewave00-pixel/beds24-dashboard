@@ -83,17 +83,17 @@ export default function DailyBookingCard({
                             type="button"
                             onClick={handleCopyPassword}
                             title="클릭 시 비밀번호 복사"
-                            className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-black transition flex items-center gap-1 cursor-pointer shrink-0 border ${
+                            className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-mono font-black transition flex items-center gap-1 cursor-pointer shrink-0 border ${
                                 copied
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 shadow-xs'
-                                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-blue-300 border-slate-300 dark:border-slate-700'
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                                    : 'bg-slate-900 dark:bg-slate-950 text-amber-300 dark:text-amber-300 border-slate-700 hover:bg-slate-800 shadow-xs'
                             }`}
                         >
                             <span>🔑 {copied ? '복사됨!' : doorPassword}</span>
                             {copied ? (
                                 <span className="text-[10px]">✅</span>
                             ) : (
-                                <span className="text-[9px] text-slate-400">📋</span>
+                                <span className="text-[9px] text-amber-200/80">📋</span>
                             )}
                         </button>
                     )}

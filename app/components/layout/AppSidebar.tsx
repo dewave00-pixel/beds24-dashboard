@@ -50,7 +50,7 @@ const MENU_ITEMS: MenuItem[] = [
         name: '숙소/비번',
         href: '/properties',
         icon: '🔑',
-        roles: ['admin', 'manager'],
+        roles: ['admin', 'manager', 'staff'],
     },
     {
         name: '체크인 관리',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase 클라이언트 연결 모듈
@@ -36,9 +37,19 @@ export async function GET() {
     }
 }
 
-// 2. POST: 숙소 호실별 비밀번호, 최대인원, 큰 수리 메모 실시간 저장/수정
+// 2. POST: 숙소 호실별 비밀번호, 최대인원, 큰 수리 메모 실시간 저장/수정 (스태프 수정 불가)
 export async function POST(request: Request) {
     try {
+        // 🔒 권한 검증: 스태프 계정 및 비로그인 수정 차단
+        const cookieStore = await cookies();
+        const role = cookieStore.get('auth_role')?.value;
+        if (!role || role.startsWith('staff_')) {
+            return NextResponse.json(
+                { success: false, error: '청소 스태프 권한은 숙소 정보를 수정할 수 없습니다.' },
+                { status: 403 }
+            );
+        }
+
         const body = await request.json();
         // 📌 unitKey로 식별자 표준화 (기존 id 필드도 하위 호환)
         const unitKey = body.unitKey || body.id;

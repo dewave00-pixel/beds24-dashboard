@@ -22,9 +22,9 @@ export function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/login', req.url));
     }
 
-    // 3. 스태프 계정 (staff_1 ~ staff_4): 오직 본인 청소 목록(/cleaning/my)만 허용
+    // 3. 스태프 계정 (staff_1 ~ staff_4): 본인 청소 목록(/cleaning/my) 및 숙소/비번(/properties) 허용
     if (role.startsWith('staff_')) {
-        if (pathname !== '/cleaning/my') {
+        if (pathname !== '/cleaning/my' && pathname !== '/properties') {
             return NextResponse.redirect(new URL('/cleaning/my', req.url));
         }
         return NextResponse.next();

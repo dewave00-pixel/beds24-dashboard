@@ -8,6 +8,7 @@ import { getUnitCleaningStatus } from '../../utils/cleaningStatus';
 interface CleaningRoomCardProps {
     unit: UnitConfig;
     dateStr: string;
+    doorPassword?: string;
     assignment?: CleaningAssignment;
     staffList: string[];
     bookings: Booking[];
@@ -23,6 +24,7 @@ interface CleaningRoomCardProps {
 export default function CleaningRoomCard({
     unit,
     dateStr,
+    doorPassword,
     assignment,
     staffList,
     bookings,
@@ -35,6 +37,15 @@ export default function CleaningRoomCard({
     isStaffView = false,
 }: CleaningRoomCardProps) {
     const [isDragOver, setIsDragOver] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyPassword = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!doorPassword) return;
+        navigator.clipboard.writeText(doorPassword);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
 
     // 공통 유틸리티로 호실 청소 상태 판별 (직전 체크아웃 DB 이력 반영)
     const statusInfo = getUnitCleaningStatus(unit, dateStr, bookings, cleaningHistoryMap);
@@ -91,11 +102,26 @@ export default function CleaningRoomCard({
                             </span>
                         )}
                     </div>
-                    {/* 상태 라벨 배지 (상태 이모지 제외) */}
-                    <div className="flex items-center gap-1 mt-0.5">
+                    {/* 상태 라벨 배지 + 도어락 비밀번호 복사 뱃지 */}
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${isCompleted ? 'bg-emerald-600 text-white' : statusInfo.badgeBg} leading-none`}>
                             {isCompleted ? '청소 완료' : statusInfo.label}
                         </span>
+                        {doorPassword && (
+                            <button
+                                type="button"
+                                onClick={handleCopyPassword}
+                                title="클릭 시 도어락 비밀번호 복사"
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-black transition flex items-center gap-1 cursor-pointer shrink-0 border ${
+                                    copied
+                                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
+                                        : 'bg-slate-900 dark:bg-slate-950 text-amber-300 dark:text-amber-300 border-slate-700 dark:border-slate-800 hover:bg-slate-800 dark:hover:bg-slate-900 hover:border-amber-400/60 shadow-2xs'
+                                }`}
+                            >
+                                <span>🔑 {copied ? '복사됨!' : doorPassword}</span>
+                                {copied ? <span className="text-[9px]">✅</span> : <span className="text-[9px] text-amber-200/80">📋</span>}
+                            </button>
+                        )}
                     </div>
                 </div>
 
