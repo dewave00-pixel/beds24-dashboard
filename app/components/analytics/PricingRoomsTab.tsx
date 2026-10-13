@@ -977,6 +977,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     {selectedWidgets.has('pickup') && (
         <DailyPickupReportSection
             bookings={bookings}
+            startDate={startDate}
+            endDate={endDate}
             selectedProperty={selectedProperty}
             selectedUnitKey={selectedUnitKey}
         />
