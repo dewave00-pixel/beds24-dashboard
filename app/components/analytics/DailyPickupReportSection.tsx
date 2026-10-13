@@ -12,6 +12,7 @@ interface DailyPickupReportSectionProps {
     endDate: string;   // 마스터바 종료일 (YYYY-MM-DD)
     selectedProperty?: string;
     selectedUnitKey?: string;
+    currentOccupancyRate?: number; // 상단 KPI 표준 가동률 (동기화용)
     onSelectBooking?: (booking: Booking) => void;
 }
 
@@ -21,6 +22,7 @@ export default function DailyPickupReportSection({
     endDate,
     selectedProperty = 'all',
     selectedUnitKey = 'all',
+    currentOccupancyRate,
     onSelectBooking,
 }: DailyPickupReportSectionProps) {
     // 📅 어제 날짜 (신규 예약 집계 기준일)
@@ -164,8 +166,8 @@ export default function DailyPickupReportSection({
 
         // 어제 유입으로 인한 마스터 기간 가동률 상승폭 (%p)
         const pickupOccPpt = totalCapacityNights > 0 ? (pickupNightsInPeriod / totalCapacityNights) * 100 : 0;
-        const currentRate = currentPeriodOccupancy.rate;
-        const prevRate = Math.max(0, currentRate - pickupOccPpt);
+        const currentRate = currentOccupancyRate !== undefined ? currentOccupancyRate : currentPeriodOccupancy.rate;
+        const prevRate = Math.max(0, Math.round((currentRate - pickupOccPpt) * 10) / 10);
         const adr = pickupNightsInPeriod > 0 ? pickupRevenueInPeriod / pickupNightsInPeriod : 0;
 
         return {
@@ -179,7 +181,7 @@ export default function DailyPickupReportSection({
             relevantBookings,
             periodDatePickupCount,
         };
-    }, [matchingValidBookings, yesterdayStr, startDate, endDate, totalCapacityNights, currentPeriodOccupancy]);
+    }, [matchingValidBookings, yesterdayStr, startDate, endDate, totalCapacityNights, currentPeriodOccupancy, currentOccupancyRate]);
 
     // 🧮 3. 최근 7일간(D-7 ~ D-1) 일일 가동률 유입 페이스 (7-Day Pace)
     const recent7DaysPace = useMemo(() => {

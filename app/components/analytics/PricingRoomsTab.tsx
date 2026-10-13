@@ -981,6 +981,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
             endDate={endDate}
             selectedProperty={selectedProperty}
             selectedUnitKey={selectedUnitKey}
+            currentOccupancyRate={summary.occupancyRate}
         />
     )}
 
