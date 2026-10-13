@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../../types';
-import { ALL_UNITS, PROPERTY_GROUPS } from '../../config';
 import {
     CountryStats,
     CountryRoomPreference,
@@ -17,6 +16,8 @@ interface CountryRevenueSectionProps {
     timeFilter: TimeFilterRange;
     customStartDate?: string;
     customEndDate?: string;
+    selectedProperty?: string;
+    selectedUnitKey?: string;
 }
 
 export default function CountryRevenueSection({
@@ -24,11 +25,12 @@ export default function CountryRevenueSection({
     timeFilter,
     customStartDate,
     customEndDate,
+    selectedProperty = 'all',
+    selectedUnitKey = 'all',
 }: CountryRevenueSectionProps) {
     const [countryDateMode, setCountryDateMode] = useState<DateFilterMode>(
         timeFilter === 'next30' ? 'stay' : 'booked'
     );
-    const [selectedUnitKey, setSelectedUnitKey] = useState<string>('all');
     const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
@@ -39,7 +41,7 @@ export default function CountryRevenueSection({
         }
     }, [timeFilter]);
 
-    // 1. 🧮 국적별 전체 통계 계산 (선택된 호실 필터 반영)
+    // 1. 🧮 국적별 전체 통계 계산 (마스터바 지점 및 선택된 호실 필터 반영)
     const { countryList, totalBookings, totalRevenue } = useMemo(() => {
         return calculateCountryStats(
             bookings,
@@ -47,9 +49,10 @@ export default function CountryRevenueSection({
             customStartDate,
             customEndDate,
             countryDateMode,
-            selectedUnitKey
+            selectedUnitKey,
+            selectedProperty !== 'all' ? selectedProperty : undefined
         );
-    }, [bookings, timeFilter, customStartDate, customEndDate, countryDateMode, selectedUnitKey]);
+    }, [bookings, timeFilter, customStartDate, customEndDate, countryDateMode, selectedUnitKey, selectedProperty]);
 
     // 2. 초기 1위 국가 자동 선택 (비어있을 때)
     useEffect(() => {
@@ -60,7 +63,7 @@ export default function CountryRevenueSection({
         }
     }, [countryList, selectedCountryCode]);
 
-    // 3. 🏆 선택된 국가 게스트의 인기 호실 랭킹 계산
+    // 3. 🏆 선택된 국가 게스트의 인기 호실 랭킹 계산 (마스터바 지점 및 호실 필터 반영)
     const roomPreferences = useMemo(() => {
         if (!selectedCountryCode) return [];
         return calculateCountryRoomPreferences(
@@ -69,9 +72,11 @@ export default function CountryRevenueSection({
             timeFilter,
             customStartDate,
             customEndDate,
-            countryDateMode
+            countryDateMode,
+            selectedProperty !== 'all' ? selectedProperty : undefined,
+            selectedUnitKey
         );
-    }, [bookings, selectedCountryCode, timeFilter, customStartDate, customEndDate, countryDateMode]);
+    }, [bookings, selectedCountryCode, timeFilter, customStartDate, customEndDate, countryDateMode, selectedProperty, selectedUnitKey]);
 
     const activeCountryObj = countryList.find((c) => c.countryCode === selectedCountryCode) || countryList[0];
 
@@ -111,24 +116,45 @@ export default function CountryRevenueSection({
         );
     }
 
-    // 도넛 차트 SVG 파라미터
-    const size = 260;
-    const strokeWidth = 46;
-    const radius = (size - strokeWidth) / 2;
+    // 도넛 차트 SVG 파라미터 (스크롤 없이 뷰포트에 쏙 들어오는 컴팩트 규격)
+    const donutSize = 220;
+    const strokeWidth = 32;
+    const radius = (donutSize - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
+    const gapLength = countryList.length > 1 ? 2 : 0;
 
-    let accumulatedPercentage = 0;
+    // 각 국적별 도넛 조각의 시작 offset 사전 계산 (누적 오차 및 포커스 어긋남 완전 방지)
+    const slices = useMemo(() => {
+        let acc = 0;
+        return countryList.map((item, idx) => {
+            const sliceLen = Math.max(0, (item.percentage / 100) * circumference - gapLength);
+            const offset = -((acc / 100) * circumference);
+            acc += item.percentage;
+            return {
+                ...item,
+                idx,
+                sliceLen,
+                offset,
+            };
+        });
+    }, [countryList, circumference, gapLength]);
+
     const hoveredItem = hoveredIdx !== null ? countryList[hoveredIdx] : null;
 
     return (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-3.5 md:p-5 shadow-xs flex flex-col gap-4">
-            {/* 1. 상단 타이틀 & 🏢 호실 필터 & ⚙️ 기준 전환 스위치 */}
+            {/* 1. 상단 타이틀 & ⚙️ 기준 전환 스위치 (호실 필터는 상단 마스터바와 일원화) */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-gray-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                     <span className="text-lg">🌍</span>
                     <div>
                         <h3 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-1.5 flex-wrap">
                             <span>Guest Origin (게스트 국적 & 인기 호실 분석)</span>
+                            {selectedProperty && selectedProperty !== 'all' && (
+                                <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                                    🏢 {selectedProperty}
+                                </span>
+                            )}
                             <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
                                 {countryDateMode === 'booked' ? '🛒 예약 접수일 기준' : '🛏️ 실제 투숙(체크아웃) 기준'}
                             </span>
@@ -139,55 +165,30 @@ export default function CountryRevenueSection({
                     </div>
                 </div>
 
-                {/* 우측 필터 컨트롤 영역 */}
-                <div className="flex flex-wrap items-center gap-2">
-                    {/* 🏠 호실 선택 드롭다운 */}
-                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-800 p-1 px-2 rounded-xl border border-gray-200 dark:border-slate-700 text-xs">
-                        <span className="text-gray-500 dark:text-slate-400 font-black hidden sm:inline">호실 필터:</span>
-                        <select
-                            value={selectedUnitKey}
-                            onChange={(e) => setSelectedUnitKey(e.target.value)}
-                            aria-label="국적별 비중을 확인할 호실 선택"
-                            className="bg-transparent font-black text-xs text-gray-900 dark:text-slate-100 border-none outline-none cursor-pointer"
-                        >
-                            <option value="all" className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">전체 숙소 (14개 호실)</option>
-                            {PROPERTY_GROUPS.map((group) => (
-                                <optgroup key={group.name} label={`🏢 ${group.name}`} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
-                                    {group.units.map((u) => (
-                                        <option key={u.key} value={u.key} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
-                                            {group.name} - {u.displayName} {u.subName ? `(${u.subName})` : ''}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* ⚙️ 기준 전환 스위치 */}
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-black">
-                        <button
-                            type="button"
-                            onClick={() => setCountryDateMode('booked')}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
-                                countryDateMode === 'booked'
-                                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <span>🛒 접수일 기준</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCountryDateMode('stay')}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
-                                countryDateMode === 'stay'
-                                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <span>🛏️ 체크아웃 기준</span>
-                        </button>
-                    </div>
+                {/* 우측 기준 전환 스위치 */}
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-black">
+                    <button
+                        type="button"
+                        onClick={() => setCountryDateMode('booked')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
+                            countryDateMode === 'booked'
+                                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        <span>🛒 접수일 기준</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setCountryDateMode('stay')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition flex items-center gap-1 cursor-pointer ${
+                            countryDateMode === 'stay'
+                                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        <span>🛏️ 체크아웃 기준</span>
+                    </button>
                 </div>
             </div>
 
@@ -195,10 +196,11 @@ export default function CountryRevenueSection({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                 {/* 좌측 도넛 차트 (5칸) */}
                 <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-gray-50/60 dark:bg-slate-800/60 rounded-2xl border border-gray-100 dark:border-slate-700">
-                    {/* 상단 범례 태그 (클릭 시 하단 인기 호실 랭킹 국가 변경) */}
-                    <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3 max-h-24 overflow-y-auto">
+                    {/* 상단 범례 태그 (스크롤 없이 감싸지도록 flex-wrap 지원) */}
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2.5">
                         {countryList.map((item, idx) => {
                             const isSelected = selectedCountryCode === item.countryCode;
+                            const isHovered = hoveredIdx === idx;
                             return (
                                 <button
                                     key={item.countryCode}
@@ -206,15 +208,15 @@ export default function CountryRevenueSection({
                                     onClick={() => setSelectedCountryCode(item.countryCode)}
                                     onMouseEnter={() => setHoveredIdx(idx)}
                                     onMouseLeave={() => setHoveredIdx(null)}
-                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold transition cursor-pointer border ${
-                                        isSelected
-                                            ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-800 shadow-xs scale-105'
-                                            : 'bg-white/80 dark:bg-slate-900/80 border-transparent text-gray-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900'
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                                        isHovered || isSelected
+                                            ? 'bg-white dark:bg-slate-900 shadow-2xs border-purple-400 dark:border-purple-600 scale-105 text-purple-900 dark:text-purple-200 font-extrabold'
+                                            : 'bg-white/80 dark:bg-slate-900/80 border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900'
                                     }`}
                                 >
                                     <span>{item.flag}</span>
                                     <span>{item.countryName}</span>
-                                    <span className="text-gray-400 dark:text-slate-500 font-normal">({item.percentage}%)</span>
+                                    <span className="text-gray-400 dark:text-slate-500 font-medium">({item.percentage}%)</span>
                                 </button>
                             );
                         })}
@@ -223,58 +225,67 @@ export default function CountryRevenueSection({
                     {/* SVG 원형 도넛 그래프 */}
                     <div className="relative flex items-center justify-center">
                         <svg
-                            width={size}
-                            height={size}
-                            viewBox={`0 0 ${size} ${size}`}
-                            className="transform -rotate-90"
+                            width={donutSize}
+                            height={donutSize}
+                            viewBox={`0 0 ${donutSize} ${donutSize}`}
+                            className="transform -rotate-90 select-none"
+                            onMouseLeave={() => setHoveredIdx(null)}
                         >
-                            {countryList.map((item, idx) => {
-                                const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
-                                const strokeDashoffset = -((accumulatedPercentage / 100) * circumference);
-                                accumulatedPercentage += item.percentage;
-
-                                const isHovered = hoveredIdx === idx;
+                            {slices.map((item) => {
+                                const strokeDasharray = `${item.sliceLen} ${circumference - item.sliceLen}`;
+                                const isHovered = hoveredIdx === item.idx;
                                 const isSelected = selectedCountryCode === item.countryCode;
 
                                 return (
                                     <circle
                                         key={item.countryCode}
-                                        cx={size / 2}
-                                        cy={size / 2}
+                                        cx={donutSize / 2}
+                                        cy={donutSize / 2}
                                         r={radius}
-                                        fill="transparent"
+                                        fill="none"
                                         stroke={item.color}
                                         strokeWidth={isHovered || isSelected ? strokeWidth + 6 : strokeWidth}
                                         strokeDasharray={strokeDasharray}
-                                        strokeDashoffset={strokeDashoffset}
+                                        strokeDashoffset={item.offset}
+                                        strokeLinecap="butt"
                                         onClick={() => setSelectedCountryCode(item.countryCode)}
-                                        onMouseEnter={() => setHoveredIdx(idx)}
-                                        onMouseLeave={() => setHoveredIdx(null)}
-                                        className="transition-all duration-300 cursor-pointer"
+                                        onMouseEnter={() => setHoveredIdx(item.idx)}
+                                        className="transition-all duration-200 cursor-pointer"
                                         style={{
-                                            filter: isHovered || isSelected ? 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' : 'none',
+                                            pointerEvents: 'stroke',
+                                            filter: isHovered || isSelected ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.25))' : 'none',
                                         }}
                                     />
                                 );
                             })}
+
+                            {/* 도넛 중앙 빈 공간 (마우스 진입 시 슬라이스 호버 해제) */}
+                            <circle
+                                cx={donutSize / 2}
+                                cy={donutSize / 2}
+                                r={Math.max(1, radius - strokeWidth / 2)}
+                                fill="transparent"
+                                style={{ pointerEvents: 'all' }}
+                                onMouseEnter={() => setHoveredIdx(null)}
+                            />
                         </svg>
 
                         {/* 도넛 중앙 정보 텍스트 */}
                         <div
                             className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none"
-                            style={{ width: size, height: size }}
+                            style={{ width: donutSize, height: donutSize }}
                         >
                             {hoveredItem ? (
                                 <div className="animate-fadeIn flex flex-col items-center">
-                                    <span className="text-lg">{hoveredItem.flag}</span>
-                                    <span className="text-xs font-black text-gray-500 dark:text-slate-400">{hoveredItem.countryName}</span>
-                                    <span className="text-xl font-black text-gray-900 dark:text-slate-100 leading-tight">
+                                    <span className="text-xl">{hoveredItem.flag}</span>
+                                    <span className="text-xs font-black text-gray-500 dark:text-slate-400 mt-0.5">{hoveredItem.countryName}</span>
+                                    <span className="text-2xl font-black text-gray-900 dark:text-slate-100 leading-tight">
                                         {hoveredItem.percentage}%
                                     </span>
                                     <span className="text-[11px] font-bold text-gray-600 dark:text-slate-300">
                                         {hoveredItem.count}건 ({hoveredItem.nights}박)
                                     </span>
-                                    <span className="text-xs font-black text-purple-700 dark:text-purple-400 mt-0.5">
+                                    <span className="text-xs font-black text-purple-700 dark:text-purple-400 mt-0.5 font-mono">
                                         ₩{hoveredItem.revenue.toLocaleString()}
                                     </span>
                                 </div>

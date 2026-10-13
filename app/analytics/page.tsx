@@ -10,20 +10,13 @@ import { useAuth } from '../hooks/useAuth';
 import AppSidebar from '../components/layout/AppSidebar';
 import { useRealtimeBookings } from '../hooks/useRealtimeBookings';
 
-// 각 탭 전용 컴포넌트 임포트 (각 탭이 자체 날짜 관리)
+// 통합 분석 대시보드 컴포넌트 임포트
 import PricingRoomsTab from '../components/analytics/PricingRoomsTab';
-import ChannelsTab from '../components/analytics/ChannelsTab';
-
-// 2대 핵심 탭 타입
-export type AnalyticsMainTab = 'pricing_rooms' | 'channels';
 
 export default function AnalyticsPage() {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-
-    // 활성 메인 탭 (기본값: 가격 & 공실)
-    const [activeMainTab, setActiveMainTab] = useState<AnalyticsMainTab>('pricing_rooms');
 
     // 🔒 권한 체크: 최고관리자(admin) 전용
     const router = useRouter();
@@ -128,43 +121,6 @@ export default function AnalyticsPage() {
 
                 {/* 2. 대시보드 본문 */}
                 <div className="p-2.5 md:p-4 flex-1 flex flex-col gap-3 max-w-7xl w-full mx-auto">
-                    {/* 2대 메인 탭바 */}
-                    <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center gap-1.5 self-start">
-                        <button
-                            type="button"
-                            onClick={() => setActiveMainTab('pricing_rooms')}
-                            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                                activeMainTab === 'pricing_rooms'
-                                    ? 'bg-blue-600 text-white shadow-2xs'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800'
-                            }`}
-                        >
-                            <span>가격 & 공실</span>
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                                activeMainTab === 'pricing_rooms' ? 'bg-blue-700 text-blue-100' : 'bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
-                            }`}>
-                                성과 분석
-                            </span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveMainTab('channels')}
-                            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                                activeMainTab === 'channels'
-                                    ? 'bg-blue-600 text-white shadow-2xs'
-                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800'
-                            }`}
-                        >
-                            <span>채널 & 유입</span>
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                                activeMainTab === 'channels' ? 'bg-blue-700 text-blue-100' : 'bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
-                            }`}>
-                                예약 출처
-                            </span>
-                        </button>
-                    </div>
-
                     {/* 로딩 표시 */}
                     {loading && (
                         <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-gray-200 dark:border-slate-800 text-center text-gray-400 dark:text-slate-500 font-bold text-xs">
@@ -172,16 +128,10 @@ export default function AnalyticsPage() {
                         </div>
                     )}
 
-                    {/* 선택된 메인 탭 화면 렌더링 */}
+                    {/* 통합 분석 대시보드 (매출, 비교, 채널 점유율, 광고 분석, 공실 레이더, 국적 분석, 성과표) */}
                     {!loading && (
-                        <div className="transition-all duration-200">
-                            {activeMainTab === 'pricing_rooms' && (
-                                <PricingRoomsTab bookings={bookings} />
-                            )}
-
-                            {activeMainTab === 'channels' && (
-                                <ChannelsTab bookings={bookings} />
-                            )}
+                        <div className="w-full transition-all duration-200">
+                            <PricingRoomsTab bookings={bookings} />
                         </div>
                     )}
                 </div>

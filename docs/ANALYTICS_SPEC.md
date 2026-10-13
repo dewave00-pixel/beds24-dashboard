@@ -125,6 +125,14 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 호실별 x OTA 광고 성과 교차 매트릭스                                      │
+│ 보기: [전체 OTA 비교] [에어비앤비 집중] [부킹닷컴 집중] [아고다 집중] [트립] │
+│ 정렬: [⚠️ 공실 많은 순 (광고 필요)] [💰 총매출 순] [📈 가동률 순]          │
+│ • WAVE 101호 : 가동률 55% | 공실 14박 ⚠️ | 에어비앤비 10박 | 부킹 3박 | 아고다 1박 │
+│ • WAVE 102호 : 가동률 85% | 공실 4박      | 에어비앤비 20박 | 부킹 4박 | 아고다 2박 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
 │ 📈 시계열 추이 그래프 & 📋 사업장/호실별 성과 요약 테이블 (기존 기능 유지)   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -134,28 +142,36 @@
 ## 4. 컴포넌트 및 로직 설계
 
 ### 4.1 신규 생성 컴포넌트
-1. `app/components/analytics/FutureOccupancyRadar.tsx`:
-   * 월간 캘린더 그리드 렌더링.
-   * 날짜별 가동률 색상 뱃지 및 클릭 시 공실 호실 칩 패널.
-   * 호실 x 날짜 매트릭스 표 토글 뷰.
-2. `app/components/analytics/PeriodComparisonSection.tsx`:
-   * A/B 기간 프리셋 및 커스텀 듀얼 날짜 피커.
-   * 매출, 가동률, ADR 증감 계산 및 카드 렌더링.
+1. `app/components/analytics/PeriodComparisonSection.tsx`:
+   * 일/주/월 빠른 프리셋 + `[◀ 이전 / 다음 ▶]` 화살표 스텝퍼 + `[📅 캘린더 날짜 점프 피커]` 통합.
+   * A vs B 기간 간 실매출, 가동률, ADR 증감액 및 증감율(±%) 비교 카드.
+2. `app/components/analytics/RoomChannelMatrixSection.tsx`:
+   * 호실별 x 4대 OTA(에어비앤비, 부킹닷컴, 아고다, 트립닷컴) 교차 매트릭스 표 및 모바일 카드.
+   * 공실률 40% 이상 호실 ⚠️ 광고 부스트 추천 뱃지 및 채널별 기여 점유율/매출/ADR 분석.
+3. `app/components/analytics/FutureOccupancyRadar.tsx`:
+   * 월간 캘린더 및 향후 7/14/30일 가동률 히트맵 그리드.
+   * 날짜별 가동률 색상 뱃지 및 클릭 시 비어있는 방 지점별 칩 패널.
+   * 뷰 모드 토글 (달력 vs 표).
+4. `app/utils/dateStepperUtils.ts`:
+   * 일/주/월/커스텀 전·후 스텝 이동 및 직전 상응 기간(B) 자동 매칭 순수 헬퍼.
 
 ### 4.2 수정 대상 모듈
 1. `app/utils/analyticsCalculations.ts`:
-   * `calculateFutureOccupancyAndVacancies(bookings, start, end, units)`: 특정 기간 일자별 가동률 및 비어있는 Unit 배열 도출.
-   * `compareTwoPeriods(bookings, periodA, periodB, unitKey)`: 두 기간 간의 지표 비교 및 증감율(%) 계산.
+   * `compareTwoPeriods(...)`: 두 기간 간 지표 비교 및 증감율(±%, ±%p) 계산 엔진.
+   * `calculateRoomChannelCrossMatrix(...)`: 호실별 x OTA 채널 기여 가동률 및 공실률 집계 엔진.
+   * `calculateFutureOccupancyAndVacancies(...)`: 특정 기간 일자별 가동률 및 비어있는 Unit 배열 도출.
 2. `app/components/analytics/PricingRoomsTab.tsx`:
-   * 상단에 `selectedUnitKey` 상태 및 호실 드롭다운 UI 추가.
-   * 신규 컴포넌트 2종(`PeriodComparisonSection`, `FutureOccupancyRadar`) 연동 배치.
+   * 상단 툴바에 `selectedUnitKey` 상태 및 호실 드롭다운 UI 추가.
+   * 신규 컴포넌트 3종(`PeriodComparisonSection`, `FutureOccupancyRadar`, `RoomChannelMatrixSection`) 연동 배치.
 
 ---
 
-## 5. 단계별 구현 순서
+## 5. 단계별 구현 결과
 
-- [ ] **Step 1**: `analyticsCalculations.ts`에 일자별 공실 추출 및 A/B 기간 비교 유틸 함수 추가
-- [ ] **Step 2**: `PeriodComparisonSection.tsx` 컴포넌트 구현 (양쪽 기간 비교)
-- [ ] **Step 3**: `FutureOccupancyRadar.tsx` 컴포넌트 구현 (월간 캘린더 + 공실 드릴다운)
-- [ ] **Step 4**: `PricingRoomsTab.tsx`에 호실 드롭다운 추가 및 전체 컴포넌트 통합
-- [ ] **Step 5**: 모바일 반응형 화면 및 실데이터 정합성 검증 후 빌드/배포
+- [x] **Step 1**: `dateStepperUtils.ts` 및 `analyticsCalculations.ts`에 A/B 기간 비교, 일자별 공실 추출, OTA 교차 매트릭스 계산 엔진 구현 완료
+- [x] **Step 2**: `PeriodComparisonSection.tsx` 구현 (일/주/월 화살표 스텝퍼 + 캘린더 피커 + 3대 KPI 비교 카드) 완료
+- [x] **Step 3**: `RoomChannelMatrixSection.tsx` 구현 (OTA별 호실 예약률/공실률/매출 교차 비교 및 광고 추천 배너) 완료
+- [x] **Step 4**: `FutureOccupancyRadar.tsx` 구현 (월간 캘린더 + 일자별 가동률 히트맵 + 공실 호실 드릴다운) 완료
+- [x] **Step 5**: `PricingRoomsTab.tsx`에 호실 드롭다운 및 신규 3종 컴포넌트 통합 완료
+- [x] **Step 6**: TypeScript 타입 검사(`npx tsc --noEmit`) 및 Next.js 프로덕션 빌드(`npm run build`) 무결성 검증 완료
+

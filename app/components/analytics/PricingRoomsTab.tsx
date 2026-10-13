@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS } from '../../config';
 import {
@@ -14,7 +14,12 @@ import {
 } from '../../utils/analyticsCalculations';
 import { calculateNetPayout, getUnitForBooking, isValidBooking } from '../../utils/bookingUtils';
 import DateRangeToolbar from './DateRangeToolbar';
-import RoomRevenueTable from './RoomRevenueTable';
+import PeriodComparisonSection from './PeriodComparisonSection';
+import RoomChannelMatrixSection from './RoomChannelMatrixSection';
+import FutureOccupancyRadar from './FutureOccupancyRadar';
+import ChannelRevenueSection from './ChannelRevenueSection';
+import CountryRevenueSection from './CountryRevenueSection';
+import LeadTimeStaySection from './LeadTimeStaySection';
 
 interface PricingRoomsTabProps {
     bookings: Booking[];
@@ -45,6 +50,113 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const [endDate, setEndDate] = useState<string>(defaultEnd);
     const [timeUnit, setTimeUnit] = useState<'day' | 'week' | 'month'>('week');
     const [selectedProperty, setSelectedProperty] = useState<string>('all');
+    const [selectedUnitKey, setSelectedUnitKey] = useState<string>('all');
+    const [showTopBtn, setShowTopBtn] = useState<boolean>(false);
+
+    // 스크롤 감지하여 일정 이상 내려가면 Top 플로팅 버튼 표시
+    useEffect(() => {
+        const handleScroll = () => {
+            setShowTopBtn(window.scrollY > 300);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // 🎛️ 커스텀 분석 뷰 위젯 설정 (사용자가 보고 싶은 모듈만 다중 체크, 순서대로 리스트 나열)
+    type WidgetKey = 'trend' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
+    const WIDGET_CONFIG: { key: WidgetKey; label: string; icon: string; desc: string }[] = [
+        { key: 'trend', label: '총매출 & 추이', icon: '💰', desc: 'KPI 카드 + 시계열 차트' },
+        { key: 'comparison', label: '기간 분석 (호실별 성과표)', icon: '⚖️', desc: '직전 기간 비교 + 호실별 실적 & 플랫폼' },
+        { key: 'channels', label: '채널 & 플랫폼 점유율', icon: '🌐', desc: 'OTA 도넛 + 상세 정산 내역' },
+        { key: 'leadTime', label: '리드타임 & 투숙기간', icon: '⏱️', desc: '예약 리드 일수 및 평균 투숙 박수(LOS) 분석' },
+        { key: 'matrix', label: 'OTA 광고 분석', icon: '🎯', desc: '호실 x 채널 기여도 매트릭스' },
+        { key: 'radar', label: '향후 가동률 레이더', icon: '📈', desc: '일자별 가동률 추세선 & 전일 대비 변동폭' },
+        { key: 'country', label: '게스트 국적 분석', icon: '🌍', desc: '국가별 유입 비중' },
+    ];
+
+    // 기본 선택: 총매출&추이 + 양쪽 기간 비교 + 채널 점유율
+    const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('analytics_custom_widgets');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) {
+                        const migrated = parsed.map((k) => (k === 'table' ? 'comparison' : k)).filter((k) => k !== 'table') as WidgetKey[];
+                        return new Set<WidgetKey>(migrated);
+                    }
+                }
+            } catch {}
+        }
+        return new Set<WidgetKey>(['trend', 'comparison', 'channels']);
+    });
+
+    // 위젯 토글 (0개 선택 가능하도록 최소 제한 해제)
+    const toggleWidget = (key: WidgetKey) => {
+        setSelectedWidgets((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(next)));
+                } catch {}
+            }
+            return next;
+        });
+    };
+
+    // 전체 선택
+    const selectAllWidgets = () => {
+        const allKeys = new Set<WidgetKey>(WIDGET_CONFIG.map((w) => w.key));
+        setSelectedWidgets(allKeys);
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(allKeys)));
+            } catch {}
+        }
+    };
+
+    // 전체 해제 (0개 빈 화면)
+    const clearAllWidgets = () => {
+        const emptySet = new Set<WidgetKey>();
+        setSelectedWidgets(emptySet);
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('analytics_custom_widgets', JSON.stringify([]));
+            } catch {}
+        }
+    };
+
+    // 기본 추천 세트 복원
+    const resetDefaultWidgets = () => {
+        const defaultKeys = new Set<WidgetKey>(['trend', 'comparison', 'channels']);
+        setSelectedWidgets(defaultKeys);
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(defaultKeys)));
+            } catch {}
+        }
+    };
+
+    // 선택된 지점에 속하는 가용 호실(Unit) 목록
+    const availableUnits = useMemo(() => {
+        if (selectedProperty === 'all') return ALL_UNITS;
+        return ALL_UNITS.filter((u) => u.propName === selectedProperty);
+    }, [selectedProperty]);
+
+    // 지점 변경 시 호실 선택 리셋 핸들러
+    const handleSelectProperty = (propName: string) => {
+        setSelectedProperty(propName);
+        setSelectedUnitKey('all');
+    };
 
     // 2. 그래프 선택 지표 (매출, 가동률, ADR)
     const [activeMetric, setActiveMetric] = useState<MetricType>('revenue');
@@ -57,25 +169,48 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         setEndDate(newEnd);
     };
 
-    // 5. 전체 집계 요약 (3대 KPI 카드용)
+    // 5. 전체 집계 요약 (3대 KPI 카드용 - 지점 및 호실 필터 완벽 반영)
     const summary: OverallSummary = useMemo(() => {
-        return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay');
-    }, [bookings, startDate, endDate]);
-
-    // 6. 사업장별 성과 요약 (수수료 제외한 깔끔한 테이블용)
+        return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', selectedProperty, selectedUnitKey);
+    }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
+    // 6. 사업장별 성과 통계 (추이 차트 지점 비교용)
     const allPropertyStats: PropertyStats[] = useMemo(() => {
-        return calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
-    }, [bookings, startDate, endDate]);
-
-    // 7. 호실별 가격 & 공실 매트릭스 데이터
+        const stats = calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
+        if (selectedProperty === 'all') return stats;
+        return stats.filter((p) => p.propName === selectedProperty);
+    }, [bookings, startDate, endDate, selectedProperty]);
+    // 7. 호실별 가격 & 공실 매트릭스 데이터 (지점 및 호실 필터 반영)
     const allRoomStats: RoomStats[] = useMemo(() => {
-        return calculateRoomStats(bookings, 'custom', startDate, endDate, 'stay');
-    }, [bookings, startDate, endDate]);
+        const stats = calculateRoomStats(bookings, 'custom', startDate, endDate, 'stay');
+        let list = stats;
+        if (selectedProperty !== 'all') {
+            list = list.filter((r) => r.propName === selectedProperty);
+        }
+        if (selectedUnitKey !== 'all') {
+            list = list.filter((r) => r.unitKey === selectedUnitKey);
+        }
+        return list;
+    }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
 
-    // 8. 시계열 시간 버킷 생성 (그래프용)
-    // - timeUnit === 'month': 기준 연도 1년(1월 ~ 12월 12개월) 연간 추이
-    // - timeUnit === 'week': 기준일(endDate) 기준 최근 3개월(약 12~13주) 주별 추이
-    // - timeUnit === 'day': 선택 기간(하루만 선택된 경우 해당 월 1일~말일) 일별 추이
+    // 8. 🎯 상단 조회 기간과 100% 동기화되는 시계열 시간 버킷 생성
+    const diffDays = useMemo(() => {
+        const s = new Date(startDate);
+        const e = new Date(endDate);
+        if (isNaN(s.getTime()) || isNaN(e.getTime())) return 1;
+        return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    }, [startDate, endDate]);
+
+    // 상단 조회 기간 변경 시, 기간 길이에 맞춰 최적의 시간 단위 자동 동기화
+    useEffect(() => {
+        if (diffDays <= 31) {
+            setTimeUnit('day');
+        } else if (diffDays <= 185) {
+            setTimeUnit('week');
+        } else {
+            setTimeUnit('month');
+        }
+    }, [diffDays]);
+
     const timeBuckets = useMemo(() => {
         const buckets: { key: string; label: string; shortLabel: string; startDate: string; endDate: string }[] = [];
         const start = new Date(startDate);
@@ -83,49 +218,30 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return buckets;
 
         if (timeUnit === 'month') {
-            // 📅 월별: 기준 연도 1년 (1월 ~ 12월 12개월 보장)
-            const targetYear = start.getFullYear();
-            const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-            if (diffMonths >= 12) {
-                const cur = new Date(start.getFullYear(), start.getMonth(), 1);
-                while (cur <= end) {
-                    const y = cur.getFullYear();
-                    const m = cur.getMonth();
-                    const firstDay = formatLocalDate(new Date(y, m, 1));
-                    const lastDay = formatLocalDate(new Date(y, m + 1, 0));
-                    buckets.push({
-                        key: firstDay,
-                        label: `${y}년 ${m + 1}월`,
-                        shortLabel: `${m + 1}월`,
-                        startDate: firstDay,
-                        endDate: lastDay,
-                    });
-                    cur.setMonth(cur.getMonth() + 1);
-                }
-            } else {
-                for (let m = 0; m < 12; m++) {
-                    const firstDay = formatLocalDate(new Date(targetYear, m, 1));
-                    const lastDay = formatLocalDate(new Date(targetYear, m + 1, 0));
-                    buckets.push({
-                        key: firstDay,
-                        label: `${targetYear}년 ${m + 1}월`,
-                        shortLabel: `${m + 1}월`,
-                        startDate: firstDay,
-                        endDate: lastDay,
-                    });
-                }
+            // 📅 월별: startDate ~ endDate 사이에 속한 월들만 정확히 생성 (3개월, 6개월, 1년 등)
+            const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+            while (cur <= end) {
+                const y = cur.getFullYear();
+                const m = cur.getMonth();
+                const firstDay = formatLocalDate(new Date(y, m, 1));
+                const lastDay = formatLocalDate(new Date(y, m + 1, 0));
+                buckets.push({
+                    key: firstDay,
+                    label: `${y}년 ${m + 1}월`,
+                    shortLabel: `${m + 1}월`,
+                    startDate: firstDay,
+                    endDate: lastDay,
+                });
+                cur.setMonth(cur.getMonth() + 1);
             }
         } else if (timeUnit === 'week') {
-            // 📅 주별: 기준일(endDate) 기준 최근 3개월 (12~13주, 약 84~91일)
-            const targetEnd = new Date(end);
-            const targetStart = new Date(targetEnd);
-            targetStart.setDate(targetStart.getDate() - 84); // 12주 전
-            const dayOfWeek = targetStart.getDay();
+            // 📅 주별: startDate ~ endDate 사이의 주차들만 정확히 생성 (시작 월요일 기준)
+            const cur = new Date(start);
+            const dayOfWeek = cur.getDay();
             const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            targetStart.setDate(targetStart.getDate() + diffToMon);
+            cur.setDate(cur.getDate() + diffToMon);
 
-            const cur = new Date(targetStart);
-            while (cur <= targetEnd) {
+            while (cur <= end) {
                 const sStr = formatLocalDate(cur);
                 const wEnd = new Date(cur);
                 wEnd.setDate(wEnd.getDate() + 6);
@@ -142,13 +258,18 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 cur.setDate(cur.getDate() + 7);
             }
         } else {
-            // 📅 일별: startDate ~ endDate (하루만 선택된 경우 해당 월 전체로 일별 그래프 보장)
+            // 📅 일별: startDate ~ endDate 사이의 날짜들만 정확히 생성
+            // (만약 1일만 선택된 경우, 선 그래프 가시성을 위해 해당 주의 7일 또는 해당 월 1일~말일 표시)
             let sDate = new Date(start);
             let eDate = new Date(end);
 
             if (startDate === endDate) {
-                sDate = new Date(start.getFullYear(), start.getMonth(), 1);
-                eDate = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+                // 단 1일 선택 시: 해당 일자가 포함된 주(월~일 7일)로 자연스러운 추세선 제공
+                const dayOfWeek = sDate.getDay();
+                const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                sDate.setDate(sDate.getDate() + diffToMon);
+                eDate = new Date(sDate);
+                eDate.setDate(eDate.getDate() + 6);
             }
 
             const cur = new Date(sDate);
@@ -171,9 +292,23 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         return buckets;
     }, [startDate, endDate, timeUnit]);
 
-    // 9. 그래프 비교 라인 정의: '전체'면 4개 건물, 특정 지점이면 그 지점의 호실들
+    // 9. 그래프 비교 라인 정의:
+    // - 특정 호실(selectedUnitKey !== 'all') 선택 시: 해당 호실 1개 단독 라인
+    // - 특정 지점(selectedProperty !== 'all') 선택 시: 그 지점의 호실들
+    // - 전체(all) 선택 시: 4개 건물 라인
     const compareTargets = useMemo(() => {
-        if (selectedProperty === 'all') {
+        if (selectedUnitKey !== 'all') {
+            const u = ALL_UNITS.find((unit) => unit.key === selectedUnitKey);
+            return [
+                {
+                    id: selectedUnitKey,
+                    label: u ? `${u.displayName} (${u.propName})` : selectedUnitKey,
+                    color: '#2563EB',
+                    type: 'unit' as const,
+                    unit: u,
+                },
+            ];
+        } else if (selectedProperty === 'all') {
             return Object.entries(PROPERTY_COLORS).map(([propKey, info]) => ({
                 id: propKey,
                 label: info.label,
@@ -191,7 +326,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 unit: u,
             }));
         }
-    }, [selectedProperty]);
+    }, [selectedProperty, selectedUnitKey]);
 
     // 10. 버킷별 지표 계산
     const validBookings = useMemo(() => bookings.filter(isValidBooking), [bookings]);
@@ -342,72 +477,253 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
 
     return (
         <div className="flex flex-col gap-3.5">
-            {/* 1. 상단 툴바 (◀ 이전 / 다음 ▶ 및 지점 필터) */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            {/* 1. 상단 통합 마스터 컨트롤 패널 (기간 + 지점/호실 타겟팅 일체형 카드 - 스크롤 시 상단 플로팅 고정) */}
+            <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 md:p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col gap-3">
+                {/* 1행: 기간 제어 마스터 */}
                 <DateRangeToolbar
                     startDate={startDate}
                     endDate={endDate}
                     onChangeRange={handleChangeRange}
                     title="조회 기간"
+                    embedded={true}
                 />
 
-                {/* 지점 선택 필터 */}
-                <div className="flex items-center gap-1.5 self-start md:self-auto bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400 ml-1">지점:</span>
-                    <button
-                        type="button"
-                        onClick={() => setSelectedProperty('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                            selectedProperty === 'all'
-                                ? 'bg-blue-600 text-white shadow-2xs'
-                                : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                        전체 사업장 (4개 지점)
-                    </button>
-                    {PROPERTY_GROUPS.map((g) => {
-                        const propLabel = g.name === 'Namsun' ? '남선' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린';
+                {/* 구분선 */}
+                <div className="h-px bg-gray-100 dark:bg-slate-800/80 w-full" />
+
+                {/* 2행: 지점 및 호실 타겟팅 드롭다운 세트 */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-gray-500 dark:text-slate-400">분석 대상:</span>
+
+                        {/* 지점(Property) 선택 드롭다운 */}
+                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800/80 p-1 px-3 rounded-xl border border-gray-200 dark:border-slate-700">
+                            <span className="text-xs font-bold text-gray-500 dark:text-slate-400">🏢 지점:</span>
+                            <select
+                                value={selectedProperty}
+                                onChange={(e) => handleSelectProperty(e.target.value)}
+                                className="bg-transparent text-xs font-bold text-gray-900 dark:text-slate-100 cursor-pointer focus:outline-none"
+                            >
+                                <option value="all" className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                                    전체 지점
+                                </option>
+                                {PROPERTY_GROUPS.map((g) => {
+                                    const propLabel = g.name === 'Namsun' ? '남선' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린';
+                                    return (
+                                        <option
+                                            key={g.name}
+                                            value={g.name}
+                                            className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                                        >
+                                            {propLabel}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+
+                        {/* 호실(Unit) 선택 드롭다운 */}
+                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800/80 p-1 px-3 rounded-xl border border-gray-200 dark:border-slate-700">
+                            <span className="text-xs font-bold text-gray-500 dark:text-slate-400">🚪 호실:</span>
+                            <select
+                                value={selectedUnitKey}
+                                onChange={(e) => {
+                                    const newKey = e.target.value;
+                                    setSelectedUnitKey(newKey);
+                                    if (newKey !== 'all') {
+                                        const matchedUnit = ALL_UNITS.find((u) => u.key === newKey);
+                                        if (matchedUnit && matchedUnit.propName && selectedProperty === 'all') {
+                                            setSelectedProperty(matchedUnit.propName);
+                                        }
+                                    }
+                                }}
+                                className="bg-transparent text-xs font-bold text-gray-900 dark:text-slate-100 cursor-pointer focus:outline-none"
+                            >
+                                <option value="all" className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+                                    {selectedProperty === 'all' ? '전체 호실 (일괄 분석)' : `${selectedProperty} 전체 호실`}
+                                </option>
+                                {availableUnits.map((u) => (
+                                    <option
+                                        key={u.key}
+                                        value={u.key}
+                                        className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                                    >
+                                        {u.displayName} {u.subName ? `(${u.subName})` : ''} - {u.propName}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* 현재 분석 범위 뱃지 */}
+                    <div className="text-xs font-bold">
+                        {selectedUnitKey !== 'all' ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                🎯 {ALL_UNITS.find((u) => u.key === selectedUnitKey)?.displayName || selectedUnitKey} 단독 분석 중
+                            </span>
+                        ) : selectedProperty !== 'all' ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                🏢 {selectedProperty} 전체 호실 분석 중
+                            </span>
+                        ) : (
+                            <span className="text-gray-400 dark:text-slate-500">
+                                전체 4개 건물 통합 분석
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* 🎛️ 2. 커스텀 분석 뷰 위젯 선택 바 (보고 싶은 항목만 다중 체크, 0개 선택 가능) */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 px-3 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-black text-gray-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                        <span>🎛️</span>
+                        <span>표시할 분석 화면:</span>
+                    </span>
+                    {WIDGET_CONFIG.map((w) => {
+                        const isSelected = selectedWidgets.has(w.key);
                         return (
                             <button
-                                key={g.name}
+                                key={w.key}
                                 type="button"
-                                onClick={() => setSelectedProperty(g.name)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                    selectedProperty === g.name
-                                        ? 'bg-blue-600 text-white shadow-2xs'
-                                        : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                onClick={() => toggleWidget(w.key)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                    isSelected
+                                        ? 'bg-blue-600 text-white shadow-2xs font-extrabold ring-2 ring-blue-500/20'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 opacity-60 hover:opacity-100'
                                 }`}
+                                title={w.desc}
                             >
-                                {propLabel}
+                                <span>{w.icon}</span>
+                                <span>{w.label}</span>
+                                <span className="text-[10px] font-mono opacity-80">
+                                    {isSelected ? '✓' : '+'}
+                                </span>
                             </button>
                         );
                     })}
                 </div>
-            </div>
-
-            {/* 2. 3대 핵심 KPI 카드 (매출, 가동률, ADR) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">매출</span>
-                    <span className="text-xl md:text-3xl font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                        ₩{summary.totalRevenue.toLocaleString()}
-                    </span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">가동률</span>
-                    <span className="text-xl md:text-3xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">
-                        {summary.occupancyRate}%
-                    </span>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">ADR</span>
-                    <span className="text-xl md:text-3xl font-extrabold text-purple-700 dark:text-purple-400 font-mono">
-                        ₩{summary.adr.toLocaleString()}
-                    </span>
+                <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 dark:text-slate-500">
+                    <span>선택됨: <strong className="text-blue-600 dark:text-blue-400">{selectedWidgets.size}</strong>/{WIDGET_CONFIG.length}</span>
+                    <span className="text-gray-300 dark:text-slate-700">|</span>
+                    <button
+                        type="button"
+                        onClick={selectAllWidgets}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                        전체 선택
+                    </button>
+                    <button
+                        type="button"
+                        onClick={clearAllWidgets}
+                        className="text-xs text-gray-500 hover:text-red-500 dark:text-slate-400 hover:underline cursor-pointer"
+                    >
+                        모두 해제
+                    </button>
                 </div>
             </div>
+
+            {/* 3. 선택된 위젯 렌더링 컨테이너 (100% 전체 너비 리스트 형식으로 시원하게 배치) */}
+            <div className="flex flex-col gap-6 w-full">
+                {/* 0개 선택 시: 친절한 안내 Empty State */}
+                {selectedWidgets.size === 0 && (
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-gray-300 dark:border-slate-800 p-12 text-center flex flex-col items-center justify-center gap-4 my-2 shadow-xs">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-3xl">
+                            📊
+                        </div>
+                        <div className="flex flex-col gap-1 max-w-md">
+                            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+                                선택된 분석 화면이 없습니다
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">
+                                상단의 분석 화면 칩을 클릭하여 확인하고 싶은 통계 위젯을 자유롭게 켜고 끌 수 있습니다.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <button
+                                type="button"
+                                onClick={resetDefaultWidgets}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                            >
+                                기본 분석 보기 (총매출 + 비교 + 채널)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={selectAllWidgets}
+                                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+                            >
+                                전체 모듈 켜기
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 1) 💰 총매출 & 추이 그래프 위젯 */}
+                {selectedWidgets.has('trend') && (
+                    <div className="flex flex-col gap-3.5">
+                        {/* 3대 핵심 KPI 카드 (매출, 가동률, ADR) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                                        {selectedUnitKey !== 'all'
+                                            ? `${ALL_UNITS.find((u) => u.key === selectedUnitKey)?.displayName || '호실'} 매출`
+                                            : selectedProperty !== 'all'
+                                            ? `${selectedProperty} 매출`
+                                            : '총매출'}
+                                    </span>
+                                    {selectedUnitKey !== 'all' && (
+                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                                            호실 단독
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-xl md:text-3xl font-extrabold text-gray-900 dark:text-slate-100 font-mono">
+                                    ₩{summary.totalRevenue.toLocaleString()}
+                                </span>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                                        {selectedUnitKey !== 'all'
+                                            ? `${ALL_UNITS.find((u) => u.key === selectedUnitKey)?.displayName || '호실'} 가동률`
+                                            : selectedProperty !== 'all'
+                                            ? `${selectedProperty} 가동률`
+                                            : '평균 가동률'}
+                                    </span>
+                                    {selectedUnitKey !== 'all' && (
+                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                                            호실 단독
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-xl md:text-3xl font-extrabold text-blue-700 dark:text-blue-400 font-mono">
+                                    {summary.occupancyRate}%
+                                </span>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                                        {selectedUnitKey !== 'all'
+                                            ? `${ALL_UNITS.find((u) => u.key === selectedUnitKey)?.displayName || '호실'} ADR`
+                                            : selectedProperty !== 'all'
+                                            ? `${selectedProperty} ADR`
+                                            : '평균 객실 단가 (ADR)'}
+                                    </span>
+                                    {selectedUnitKey !== 'all' && (
+                                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
+                                            호실 단독
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-xl md:text-3xl font-extrabold text-purple-700 dark:text-purple-400 font-mono">
+                                    ₩{summary.adr.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
 
             {/* 3. 성과 추이 선 그래프 (Google Trends 스타일) */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col gap-3">
@@ -436,34 +752,39 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold">
-                        <button
-                            type="button"
-                            onClick={() => setTimeUnit('day')}
-                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                                timeUnit === 'day' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
-                            }`}
-                        >
-                            일별
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setTimeUnit('week')}
-                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                                timeUnit === 'week' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
-                            }`}
-                        >
-                            주별 (3개월)
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setTimeUnit('month')}
-                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                                timeUnit === 'month' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
-                            }`}
-                        >
-                            월별 (1년)
-                        </button>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500 hidden sm:inline">
+                            기간 연동 ({diffDays}일):
+                        </span>
+                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold">
+                            <button
+                                type="button"
+                                onClick={() => setTimeUnit('day')}
+                                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                                    timeUnit === 'day' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
+                                }`}
+                            >
+                                일별
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTimeUnit('week')}
+                                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                                    timeUnit === 'week' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
+                                }`}
+                            >
+                                주별
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTimeUnit('month')}
+                                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                                    timeUnit === 'month' ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs font-extrabold' : 'text-gray-600 dark:text-slate-400'
+                                }`}
+                            >
+                                월별
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -647,61 +968,91 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                     </svg>
                 </div>
             </div>
-
-            {/* 4. 사업장별 성과 요약 테이블 */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-3.5 md:p-4 shadow-xs flex flex-col gap-2.5">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
-                    <span className="text-sm font-bold text-gray-900 dark:text-slate-100">
-                        사업장별 성과 요약
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">
-                        총 {allPropertyStats.length}개 사업장
-                    </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-300 font-bold border-b border-gray-200 dark:border-slate-700">
-                                <th className="py-2 px-3">사업장</th>
-                                <th className="py-2 px-3 text-right">매출</th>
-                                <th className="py-2 px-3 text-center">가동률</th>
-                                <th className="py-2 px-3 text-right">ADR</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                            {allPropertyStats.map((prop) => {
-                                const propNameKOR = prop.propName === 'Namsun' ? '남선' : prop.propName === 'YEONNAM' ? '연남' : prop.propName === 'WAVE' ? '웨이브' : '그린';
-                                const colorInfo = PROPERTY_COLORS[prop.propName] || { color: '#2563EB' };
-
-                                return (
-                                    <tr key={prop.propName} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/50 transition">
-                                        <td className="py-2.5 px-3 font-extrabold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorInfo.color }} />
-                                            <span>{propNameKOR}</span>
-                                            <span className="text-[11px] text-gray-400 dark:text-slate-500 font-normal">({prop.roomCount}개 호실)</span>
-                                        </td>
-                                        <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                            ₩{prop.totalRevenue.toLocaleString()}
-                                        </td>
-                                        <td className="py-2.5 px-3 text-center">
-                                            <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                                {prop.occupancyRate}%
-                                            </span>
-                                        </td>
-                                        <td className="py-2.5 px-3 text-right font-extrabold text-purple-700 dark:text-purple-400 font-mono">
-                                            ₩{prop.adr.toLocaleString()}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* 5. 개별 객실(호실)별 매출 및 가동률 성과 통합 테이블 (가동률 바 + 단가 3종 + 다중 정렬) */}
-            <RoomRevenueTable roomStats={allRoomStats} />
         </div>
+    )}
+
+    {/* 2) ⚖️ 양쪽 기간 종합 비교 위젯 (탑다운 전체 ➔ 건물 ➔ 호실 드릴다운) */}
+    {selectedWidgets.has('comparison') && (
+        <PeriodComparisonSection
+            bookings={bookings}
+            startDate={startDate}
+            endDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
+    {/* 3) 🌐 채널 & 플랫폼 점유율 위젯 (도넛 차트 + 상세 정산 내역) */}
+    {selectedWidgets.has('channels') && (
+        <ChannelRevenueSection
+            bookings={bookings}
+            timeFilter="custom"
+            customStartDate={startDate}
+            customEndDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
+    {/* 3-2) ⏱️ 예약 리드타임 & 투숙기간 (LOS) 분석 위젯 */}
+    {selectedWidgets.has('leadTime') && (
+        <LeadTimeStaySection
+            bookings={bookings}
+            timeFilter="custom"
+            startDate={startDate}
+            endDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
+    {/* 4) 🎯 호실별 x OTA 광고 성과 교차 매트릭스 위젯 */}
+    {selectedWidgets.has('matrix') && (
+        <RoomChannelMatrixSection
+            bookings={bookings}
+            timeFilter="custom"
+            startDate={startDate}
+            endDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
+    {/* 5) 📅 향후 공실 레이더 위젯 (월간 캘린더) */}
+    {selectedWidgets.has('radar') && (
+        <FutureOccupancyRadar
+            bookings={bookings}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
+    {/* 6) 🌍 게스트 국적 분석 위젯 */}
+    {selectedWidgets.has('country') && (
+        <CountryRevenueSection
+            bookings={bookings}
+            timeFilter="custom"
+            customStartDate={startDate}
+            customEndDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+</div>
+
+{/* 🚀 스크롤 맨 위로 이동 플로팅 버튼 (모바일/데스크톱 대응) */}
+{showTopBtn && (
+    <button
+        type="button"
+        onClick={scrollToTop}
+        aria-label="맨 위로 이동"
+        className="fixed bottom-6 right-6 z-40 p-3 rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-md text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer group"
+    >
+        <svg className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+    </button>
+)}
+</div>
     );
 }

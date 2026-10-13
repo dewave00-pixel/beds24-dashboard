@@ -1,7 +1,7 @@
 // 🧮 매출 & 가동률 계산 전담 엔진 모듈
 
 import { Booking } from '../types';
-import { ALL_UNITS, ROOM_TYPES, getChannelStyle } from '../config';
+import { ALL_UNITS, PROPERTY_GROUPS, ROOM_TYPES, getChannelStyle } from '../config';
 import { getGuestCountryInfo } from './countryHelper';
 import { calculateNetPayout, getUnitForBooking, getBookingDateKST } from './bookingUtils';
 
@@ -155,14 +155,34 @@ export function calculateOverallSummary(
     filter: TimeFilterRange,
     customStart?: string,
     customEnd?: string,
-    mode: DateFilterMode = 'stay'
+    mode: DateFilterMode = 'stay',
+    targetProperty?: string,
+    targetUnitKey?: string
 ): OverallSummary {
     const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 1. 💰 매출액 & ADR: 기간 내 체크아웃(departure)한 예약 집계
+    // 대상 유닛 필터링
+    let targetUnits = ALL_UNITS;
+    if (targetUnitKey && targetUnitKey !== 'all') {
+        targetUnits = ALL_UNITS.filter((u) => u.key === targetUnitKey);
+    } else if (targetProperty && targetProperty !== 'all') {
+        targetUnits = ALL_UNITS.filter((u) => u.propName === targetProperty);
+    }
+    const targetUnitKeys = new Set(targetUnits.map((u) => u.key));
+
+    // 1. 💰 매출액 & ADR: 기간 내 체크아웃(departure)한 예약 중 대상 호실 집계
     const checkoutBookings = validBookings.filter((b) => {
-        return b.departure >= start && b.departure <= end;
+        if (b.departure < start || b.departure > end) return false;
+        if (targetUnitKey && targetUnitKey !== 'all') {
+            const u = getUnitForBooking(b);
+            return u?.key === targetUnitKey;
+        }
+        if (targetProperty && targetProperty !== 'all') {
+            const u = getUnitForBooking(b);
+            return u?.propName === targetProperty;
+        }
+        return true;
     });
 
     let totalRevenue = 0;
@@ -196,14 +216,15 @@ export function calculateOverallSummary(
                 const matchedUnit = ALL_UNITS.find(
                     (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
                 );
-                const roomKey = matchedUnit ? matchedUnit.key : `${b.roomId}-${b.unitId || 1}`;
-                activeRoomsOnDate.add(roomKey);
+                if (matchedUnit && targetUnitKeys.has(matchedUnit.key)) {
+                    activeRoomsOnDate.add(matchedUnit.key);
+                }
             }
         });
         totalStayNights += activeRoomsOnDate.size;
     }
 
-    const totalRooms = ALL_UNITS.length || 14;
+    const totalRooms = targetUnits.length || 1;
     const totalAvailableRoomNights = totalRooms * days;
     const rawOccupancy = totalAvailableRoomNights > 0 ? (totalStayNights / totalAvailableRoomNights) * 100 : 0;
     const occupancyRate = Math.min(100, Math.round(rawOccupancy * 10) / 10);
@@ -426,6 +447,8 @@ export interface RoomStats {
     vacantNights: number;     // 해당 객실 실제 공실 박수 (availableNights - totalNights)
     occupancyRate: number;    // 해당 객실 가동률 (%) = (totalNights / availableNights) * 100
     adr: number;              // 1박 평균 객실 단가
+    avgLeadDays: number;      // 평균 리드타임 (일)
+    avgStayNights: number;    // 평균 투숙박수 (박)
     revenueShare: number;     // 전체 매출 중 점유율 (%)
     dayTypeAdr: DayTypeAdr;   // 요일별 3분류(월~목, 금~토, 일) 단가
     channels: RoomChannelStat[];  // 플랫폼(채널)별 예약 현황 목록 (건수/매출 내림차순)
@@ -457,6 +480,7 @@ export function calculateRoomStats(
         revenue: number;
         checkoutNights: number;
         checkoutBookings: number;
+        leadDaysSum: number;
         stayNights: number;
         weekdayRev: number;
         weekdayNights: number;
@@ -479,6 +503,7 @@ export function calculateRoomStats(
             revenue: 0,
             checkoutNights: 0,
             checkoutBookings: 0,
+            leadDaysSum: 0,
             stayNights: 0,
             weekdayRev: 0,
             weekdayNights: 0,
@@ -502,11 +527,19 @@ export function calculateRoomStats(
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
+        // 리드타임 계산 (접수일 ~ 입실일 KST 기준)
+        const bDate = getBookingDateKST(b.bookingTime);
+        const arrDate = b.arrival.split('T')[0];
+        const bDay = new Date(bDate);
+        const aDay = new Date(arrDate);
+        const diffDays = Math.max(0, Math.round((aDay.getTime() - bDay.getTime()) / (1000 * 60 * 60 * 24)));
+
         const rId = Number(b.roomId);
         if (roomMap[rId]) {
             roomMap[rId].revenue += price;
             roomMap[rId].checkoutNights += nights;
             roomMap[rId].checkoutBookings += 1;
+            roomMap[rId].leadDaysSum += diffDays;
 
             // 플랫폼(채널)별 통계 누적
             const ch = getChannelStyle(b.apiSourceId);
@@ -624,6 +657,8 @@ export function calculateRoomStats(
         }).sort((a, b) => b.count - a.count || b.revenue - a.revenue);
 
         const topChannel = channels.length > 0 ? channels[0] : undefined;
+        const avgLeadDays = data.checkoutBookings > 0 ? Math.round((data.leadDaysSum / data.checkoutBookings) * 10) / 10 : 0;
+        const avgStayNights = data.checkoutBookings > 0 ? Math.round((data.checkoutNights / data.checkoutBookings) * 10) / 10 : 0;
 
         return {
             unitKey: data.unitKey,
@@ -641,6 +676,8 @@ export function calculateRoomStats(
             vacantNights: vacant,
             occupancyRate: occ,
             adr: roomAdr,
+            avgLeadDays,
+            avgStayNights,
             revenueShare: share,
             dayTypeAdr: {
                 weekdayAdr,
@@ -693,13 +730,24 @@ export function calculateChannelStats(
     filter: TimeFilterRange,
     customStart?: string,
     customEnd?: string,
-    mode: DateFilterMode = 'booked'
+    mode: DateFilterMode = 'booked',
+    targetProperty?: string,
+    targetUnitKey?: string
 ): { channelList: ChannelStats[]; totalBookings: number; totalRevenue: number } {
     const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 모드별 필터링
+    // 모드별 + 대상 호실/지점별 필터링
     const targetBookings = validBookings.filter((b) => {
+        // 호실 / 지점 필터
+        if (targetUnitKey && targetUnitKey !== 'all') {
+            const u = getUnitForBooking(b);
+            if (!u || u.key !== targetUnitKey) return false;
+        } else if (targetProperty && targetProperty !== 'all') {
+            const u = getUnitForBooking(b);
+            if (!u || u.propName !== targetProperty) return false;
+        }
+
         if (mode === 'booked') {
             const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
             return bDateStr >= start && bDateStr <= end;
@@ -762,6 +810,120 @@ export function calculateChannelStats(
     };
 }
 
+export interface DailyChannelSegment {
+    channelName: string;
+    color: string;
+    revenue: number;
+    bookings: number;
+    sharePct: number;
+}
+
+export interface DailyChannelPoint {
+    dateStr: string;
+    shortLabel: string;
+    dayOfWeek: string;
+    isWeekend: boolean;
+    totalRevenue: number;
+    totalBookings: number;
+    channelSegments: DailyChannelSegment[];
+}
+
+/**
+ * 📊 일자별 채널 매출 & 예약 건수 시계열(스택 바) 데이터 집계
+ */
+export function calculateDailyChannelTrends(
+    bookings: Booking[],
+    filter: TimeFilterRange,
+    customStart?: string,
+    customEnd?: string,
+    mode: DateFilterMode = 'stay',
+    targetProperty?: string,
+    targetUnitKey?: string
+): DailyChannelPoint[] {
+    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
+    const validBookings = bookings.filter(isValidBooking);
+
+    const points: DailyChannelPoint[] = [];
+    const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+    for (let i = 0; i < days; i++) {
+        const curDateStr = addDays(start, i);
+        if (curDateStr > end) break;
+
+        const curDate = new Date(curDateStr);
+        const dayOfWeek = DAY_NAMES[curDate.getDay()];
+        const isWeekend = curDate.getDay() === 0 || curDate.getDay() === 6;
+        const [, m, d] = curDateStr.split('-');
+        const shortLabel = `${Number(m)}/${Number(d)}`;
+
+        // 해당 날짜에 해당하는 예약 필터링
+        const dateBookings = validBookings.filter((b) => {
+            // 호실 / 지점 필터
+            if (targetUnitKey && targetUnitKey !== 'all') {
+                const u = getUnitForBooking(b);
+                if (!u || u.key !== targetUnitKey) return false;
+            } else if (targetProperty && targetProperty !== 'all') {
+                const u = getUnitForBooking(b);
+                if (!u || u.propName !== targetProperty) return false;
+            }
+
+            if (mode === 'booked') {
+                const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
+                return bDateStr === curDateStr;
+            } else {
+                return b.arrival <= curDateStr && b.departure > curDateStr;
+            }
+        });
+
+        let dayRevenue = 0;
+        const channelAgg: Record<string, { revenue: number; bookings: number; color: string }> = {};
+
+        dateBookings.forEach((b) => {
+            const arr = new Date(b.arrival);
+            const dep = new Date(b.departure);
+            const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+            const fullPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+            const dayPortionPrice = mode === 'stay' ? Math.round(fullPrice / nights) : fullPrice;
+
+            const ch = getChannelStyle(b.apiSourceId);
+            const chName = ch.name || '기타';
+            const chColor = CHANNEL_COLORS[chName] || ch.bg || '#64748B';
+
+            if (!channelAgg[chName]) {
+                channelAgg[chName] = { revenue: 0, bookings: 0, color: chColor };
+            }
+            channelAgg[chName].revenue += dayPortionPrice;
+            channelAgg[chName].bookings += 1;
+            dayRevenue += dayPortionPrice;
+        });
+
+        const channelSegments: DailyChannelSegment[] = Object.entries(channelAgg).map(([chName, agg]) => {
+            const sharePct = dayRevenue > 0 ? Math.round((agg.revenue / dayRevenue) * 1000) / 10 : 0;
+            return {
+                channelName: chName,
+                color: agg.color,
+                revenue: agg.revenue,
+                bookings: agg.bookings,
+                sharePct,
+            };
+        });
+
+        channelSegments.sort((a, b) => b.revenue - a.revenue);
+
+        points.push({
+            dateStr: curDateStr,
+            shortLabel,
+            dayOfWeek,
+            isWeekend,
+            totalRevenue: dayRevenue,
+            totalBookings: dateBookings.length,
+            channelSegments,
+        });
+    }
+
+    return points;
+}
+
 export interface CountryStats {
     countryCode: string;
     countryName: string;
@@ -787,16 +949,20 @@ export function calculateCountryStats(
     customStart?: string,
     customEnd?: string,
     mode: DateFilterMode = 'booked',
-    unitKeyFilter?: string
+    unitKeyFilter?: string,
+    propertyFilter?: string
 ): { countryList: CountryStats[]; totalBookings: number; totalRevenue: number } {
     const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 모드 및 특정 호실 필터링
+    // 모드 및 특정 호실/지점 필터링
     const targetBookings = validBookings.filter((b) => {
+        const matchedUnit = getUnitForBooking(b);
+        if (propertyFilter && propertyFilter !== 'all') {
+            if (!matchedUnit || matchedUnit.propName !== propertyFilter) return false;
+        }
         if (unitKeyFilter && unitKeyFilter !== 'all') {
-            const matchedUnit = getUnitForBooking(b);
-            if (!matchedUnit || matchedUnit.key !== unitKeyFilter) return false;
+            if (!matchedUnit || (matchedUnit.key !== unitKeyFilter && String(b.roomId) !== unitKeyFilter)) return false;
         }
 
         if (mode === 'booked') {
@@ -893,13 +1059,23 @@ export function calculateCountryRoomPreferences(
     filter: TimeFilterRange,
     customStart?: string,
     customEnd?: string,
-    mode: DateFilterMode = 'stay'
+    mode: DateFilterMode = 'stay',
+    propertyFilter?: string,
+    unitKeyFilter?: string
 ): CountryRoomPreference[] {
-    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd);
+    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 1. 기간 및 국적 필터링
+    // 1. 기간, 국적, 지점/호실 필터링
     const targetBookings = validBookings.filter((b) => {
+        const matchedUnit = getUnitForBooking(b);
+        if (propertyFilter && propertyFilter !== 'all') {
+            if (!matchedUnit || matchedUnit.propName !== propertyFilter) return false;
+        }
+        if (unitKeyFilter && unitKeyFilter !== 'all') {
+            if (!matchedUnit || (matchedUnit.key !== unitKeyFilter && String(b.roomId) !== unitKeyFilter)) return false;
+        }
+
         const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
         const isDateMatch = mode === 'booked'
             ? (bDateStr >= start && bDateStr <= end)
@@ -953,5 +1129,838 @@ export function calculateCountryRoomPreferences(
 
     return result.sort((a, b) => b.count - a.count || b.revenue - a.revenue);
 }
+
+// ============================================================================
+// ⚖️ 7. A/B 기간 비교 분석기 전담 엔진 (A vs B 증감율 및 차이 계산)
+// ============================================================================
+
+export interface PeriodMetrics {
+    periodStart: string;
+    periodEnd: string;
+    periodDays: number;
+    totalRevenue: number;
+    occupancyRate: number;
+    adr: number;
+    totalNights: number;
+    totalBookings: number;
+    avgLeadDays: number;   // ⏱️ 평균 리드타임 (일 전)
+    avgStayNights: number; // 🛏️ 평균 투숙기간 (박)
+}
+
+export interface PeriodComparisonResult {
+    periodA: PeriodMetrics;
+    periodB: PeriodMetrics;
+    revenueDiff: number;       // 매출 증감액 (A - B)
+    revenuePct: number;        // 매출 증감율 (%)
+    occupancyDiff: number;     // 가동률 증감 (%p)
+    adrDiff: number;           // ADR 증감액 (A - B)
+    adrPct: number;            // ADR 증감율 (%)
+    nightsDiff: number;        // 판매 박수 증감 (A - B)
+    bookingsDiff: number;      // 예약 건수 증감 (A - B)
+    leadDaysDiff: number;      // 평균 리드타임 증감 (일)
+    stayNightsDiff: number;    // 평균 투숙기간 증감 (박)
+}
+
+export interface HierarchicalUnitComparison {
+    unitKey: string;
+    roomName: string;
+    propName: string;
+    roomId: number;
+    comparison: PeriodComparisonResult;
+}
+
+export interface HierarchicalPropertyComparison {
+    propName: string;
+    label: string;
+    unitCount: number;
+    comparison: PeriodComparisonResult;
+    units: HierarchicalUnitComparison[];
+}
+
+export interface HierarchicalComparisonResult {
+    overall: PeriodComparisonResult;
+    properties: HierarchicalPropertyComparison[];
+}
+
+/**
+ * 단일 기간에 대한 지표(매출, 가동률, ADR, 박수, 리드타임, 투숙기간 등) 집계 헬퍼 (호실/채널/지점 필터 완벽 지원)
+ */
+function calculateMetricsForPeriod(
+    bookings: Booking[],
+    startStr: string,
+    endStr: string,
+    options?: {
+        propName?: string;
+        unitKey?: string;
+        channelMatch?: string; // 'airbnb' | 'booking' | 'agoda' | 'trip'
+    }
+): PeriodMetrics {
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    const diffMs = e.getTime() - s.getTime();
+    const periodDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+
+    const validBookings = bookings.filter(isValidBooking);
+
+    // 대상 유닛 필터링 및 총 유닛 수 산출
+    let targetUnits = ALL_UNITS;
+    if (options?.propName && options.propName !== 'all') {
+        targetUnits = targetUnits.filter((u) => u.propName === options.propName);
+    }
+    if (options?.unitKey && options.unitKey !== 'all') {
+        targetUnits = targetUnits.filter((u) => u.key === options.unitKey || String(u.roomId) === options.unitKey);
+    }
+    const targetUnitKeys = new Set(targetUnits.map((u) => u.key));
+    const unitCount = Math.max(1, targetUnits.length);
+    const availableNights = periodDays * unitCount;
+
+    // 1. 매출, 건수, ADR, 리드타임 집계 (기간 내 [체크아웃]한 예약 기준 - 상단 총매출 및 정산서와 100% 일치)
+    let totalRevenue = 0;
+    let totalBookings = 0;
+    let totalLeadDays = 0;
+    let leadBookingCount = 0;
+    let stayNightsSum = 0;
+
+    validBookings.forEach((b) => {
+        // 선택 기간(startStr ~ endStr) 내에 체크아웃(departure)한 예약만 집계
+        if (b.departure < startStr || b.departure > endStr) return;
+
+        // 호실 / 지점 필터
+        const matchedUnit = getUnitForBooking(b);
+        if (options?.propName && options.propName !== 'all') {
+            if (matchedUnit && matchedUnit.propName !== options.propName) return;
+        }
+        if (options?.unitKey && options.unitKey !== 'all') {
+            const uKey = matchedUnit?.key || `${b.roomId}-${b.unitId || 1}`;
+            if (uKey !== options.unitKey && String(b.roomId) !== options.unitKey) return;
+        }
+
+        // OTA 채널 필터
+        if (options?.channelMatch && options.channelMatch !== 'all') {
+            const srcId = Number(b.apiSourceId);
+            let isMatched = false;
+            if (options.channelMatch === 'airbnb' && srcId === 46) isMatched = true;
+            if (options.channelMatch === 'booking' && srcId === 19) isMatched = true;
+            if (options.channelMatch === 'agoda' && srcId === 17) isMatched = true;
+            if (options.channelMatch === 'trip' && srcId === 53) isMatched = true;
+            if (!isMatched) return;
+        }
+
+        const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+        const arr = new Date(b.arrival);
+        const dep = new Date(b.departure);
+        const totalBookingNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+
+        // ⏱️ 리드타임: 체크인 날짜(KST) - 예약 접수 일자(KST) 정밀 일수 계산
+        const bookedKST = getBookingDateKST(b.bookingTime, b.arrival);
+        if (bookedKST && b.arrival) {
+            const arrDate = new Date(b.arrival + 'T00:00:00');
+            const bookDate = new Date(bookedKST + 'T00:00:00');
+            const diffDays = Math.round((arrDate.getTime() - bookDate.getTime()) / (1000 * 60 * 60 * 24));
+            const lDays = Math.max(0, diffDays);
+            totalLeadDays += lDays;
+            leadBookingCount += 1;
+        }
+
+        totalRevenue += netPayout;
+        stayNightsSum += totalBookingNights;
+        totalBookings += 1;
+    });
+
+    // 2. 📈 정확한 가동률(Occupancy) 계산:
+    // 기간(startStr ~ endStr) 내 각 날짜(밤)별 실제 점유된 객실 수 합산 (중복 예약 방지 및 100% 상한 절대 보장)
+    let totalStayNights = 0;
+    for (let i = 0; i < periodDays; i++) {
+        const targetDate = addDays(startStr, i);
+        if (targetDate > endStr) break;
+
+        const activeRoomsOnDate = new Set<string>();
+        validBookings.forEach((b) => {
+            if (b.arrival <= targetDate && b.departure > targetDate) {
+                const matchedUnit = getUnitForBooking(b);
+                if (matchedUnit && targetUnitKeys.has(matchedUnit.key)) {
+                    if (options?.channelMatch && options.channelMatch !== 'all') {
+                        const srcId = Number(b.apiSourceId);
+                        let isMatched = false;
+                        if (options.channelMatch === 'airbnb' && srcId === 46) isMatched = true;
+                        if (options.channelMatch === 'booking' && srcId === 19) isMatched = true;
+                        if (options.channelMatch === 'agoda' && srcId === 17) isMatched = true;
+                        if (options.channelMatch === 'trip' && srcId === 53) isMatched = true;
+                        if (!isMatched) return;
+                    }
+                    activeRoomsOnDate.add(matchedUnit.key);
+                }
+            }
+        });
+        totalStayNights += activeRoomsOnDate.size;
+    }
+
+    const rawOcc = availableNights > 0 ? (totalStayNights / availableNights) * 100 : 0;
+    const occupancyRate = Math.min(100, Math.round(rawOcc * 10) / 10);
+    const adr = totalStayNights > 0 ? Math.round(totalRevenue / totalStayNights) : 0;
+    const avgLeadDays = leadBookingCount > 0 ? Math.round((totalLeadDays / leadBookingCount) * 10) / 10 : 0;
+    const avgStayNights = totalBookings > 0 ? Math.round((stayNightsSum / totalBookings) * 10) / 10 : 0;
+
+    return {
+        periodStart: startStr,
+        periodEnd: endStr,
+        periodDays,
+        totalRevenue,
+        occupancyRate,
+        adr,
+        totalNights: totalStayNights,
+        totalBookings,
+        avgLeadDays,
+        avgStayNights,
+    };
+}
+
+/**
+ * A기간 vs B기간 증감 비교 계산 함수
+ */
+export function compareTwoPeriods(
+    bookings: Booking[],
+    periodA: { start: string; end: string },
+    periodB: { start: string; end: string },
+    options?: {
+        propName?: string;
+        unitKey?: string;
+        channelMatch?: string;
+    }
+): PeriodComparisonResult {
+    const metricsA = calculateMetricsForPeriod(bookings, periodA.start, periodA.end, options);
+    const metricsB = calculateMetricsForPeriod(bookings, periodB.start, periodB.end, options);
+
+    const revenueDiff = metricsA.totalRevenue - metricsB.totalRevenue;
+    const revenuePct = metricsB.totalRevenue > 0
+        ? Math.round((revenueDiff / metricsB.totalRevenue) * 1000) / 10
+        : (metricsA.totalRevenue > 0 ? 100 : 0);
+
+    const occupancyDiff = Math.round((metricsA.occupancyRate - metricsB.occupancyRate) * 10) / 10;
+
+    const adrDiff = metricsA.adr - metricsB.adr;
+    const adrPct = metricsB.adr > 0
+        ? Math.round((adrDiff / metricsB.adr) * 1000) / 10
+        : (metricsA.adr > 0 ? 100 : 0);
+
+    const nightsDiff = metricsA.totalNights - metricsB.totalNights;
+    const bookingsDiff = metricsA.totalBookings - metricsB.totalBookings;
+    const leadDaysDiff = Math.round((metricsA.avgLeadDays - metricsB.avgLeadDays) * 10) / 10;
+    const stayNightsDiff = Math.round((metricsA.avgStayNights - metricsB.avgStayNights) * 10) / 10;
+
+    return {
+        periodA: metricsA,
+        periodB: metricsB,
+        revenueDiff,
+        revenuePct,
+        occupancyDiff,
+        adrDiff,
+        adrPct,
+        nightsDiff,
+        bookingsDiff,
+        leadDaysDiff,
+        stayNightsDiff,
+    };
+}
+
+/**
+ * 🏛️ 계층형 탑다운(Top-Down) 양쪽 기간 비교 연산 엔진
+ * 전체 ➔ 4개 건물(지점) ➔ 각 건물별 호실들에 대해 한 번에 A vs B 비교 결과를 생성
+ */
+export function calculateHierarchicalPeriodComparison(
+    bookings: Booking[],
+    periodA: { start: string; end: string },
+    periodB: { start: string; end: string }
+): HierarchicalComparisonResult {
+    // 1. 전체 종합 비교
+    const overall = compareTwoPeriods(bookings, periodA, periodB);
+
+    // 2. 4개 건물(지점)별 비교
+    const properties: HierarchicalPropertyComparison[] = PROPERTY_GROUPS.map((pg) => {
+        const propComparison = compareTwoPeriods(bookings, periodA, periodB, { propName: pg.name });
+
+        const labelMap: Record<string, string> = {
+            YEONNAM: '연남',
+            WAVE: '웨이브',
+            Green: '그린',
+            Namsun: '남선',
+        };
+        const label = labelMap[pg.name] || pg.name;
+
+        // 각 건물에 속한 호실들별 비교
+        const propUnits = ALL_UNITS.filter((u) => u.propName === pg.name);
+        const units: HierarchicalUnitComparison[] = propUnits.map((u) => {
+            const unitComparison = compareTwoPeriods(bookings, periodA, periodB, {
+                propName: pg.name,
+                unitKey: u.key,
+            });
+            return {
+                unitKey: u.key,
+                roomName: u.displayName || u.key,
+                propName: pg.name,
+                roomId: u.roomId,
+                comparison: unitComparison,
+            };
+        });
+
+        return {
+            propName: pg.name,
+            label,
+            unitCount: propUnits.length,
+            comparison: propComparison,
+            units,
+        };
+    });
+
+    return {
+        overall,
+        properties,
+    };
+}
+
+// ============================================================================
+// 🎯 8. OTA 광고 최적화를 위한 호실 x OTA 교차 분석 매트릭스 계산 엔진
+// ============================================================================
+
+export interface OtaCrossMetric {
+    nights: number;
+    revenue: number;
+    contributionOcc: number; // 전체 공급 박수 대비 해당 OTA 기여 가동률 (%)
+    sharePct: number;        // 해당 호실 전체 판매 박수 중 점유율 (%)
+    adr: number;
+}
+
+export interface RoomChannelCrossRow {
+    unitKey: string;
+    roomName: string;
+    propName: string;
+    roomId: number;
+    unitCount: number;
+    totalRevenue: number;
+    occupancyRate: number;
+    totalNights: number;
+    availableNights: number;
+    vacantNights: number;
+    adr: number;
+    isHighVacancy: boolean; // 공실률 40% 이상 여부 (광고 부스트 추천 호실)
+    topChannelName: string;
+    otaMetrics: {
+        airbnb: OtaCrossMetric;
+        booking: OtaCrossMetric;
+        agoda: OtaCrossMetric;
+        trip: OtaCrossMetric;
+        other: OtaCrossMetric;
+    };
+}
+
+/**
+ * 호실별 x 주요 OTA 4대 플랫폼 교차 성과 매트릭스 집계
+ */
+export function calculateRoomChannelCrossMatrix(
+    bookings: Booking[],
+    filter: TimeFilterRange,
+    customStart?: string,
+    customEnd?: string,
+    propFilter: string = 'all',
+    unitFilter: string = 'all'
+): RoomChannelCrossRow[] {
+    const validBookings = bookings.filter(isValidBooking);
+    const { start, end, days } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
+
+    // 🎯 단일 호실(단독 분석) 모드일 때
+    if (unitFilter && unitFilter !== 'all') {
+        const targetUnit = ALL_UNITS.find((u) => u.key === unitFilter);
+        if (!targetUnit) return [];
+
+        const otaData: Record<'airbnb' | 'booking' | 'agoda' | 'trip' | 'other', { nights: number; revenue: number }> = {
+            airbnb: { nights: 0, revenue: 0 },
+            booking: { nights: 0, revenue: 0 },
+            agoda: { nights: 0, revenue: 0 },
+            trip: { nights: 0, revenue: 0 },
+            other: { nights: 0, revenue: 0 },
+        };
+
+        let unitTotalRevenue = 0;
+        let unitTotalNights = 0;
+
+        validBookings.forEach((b) => {
+            if (b.departure < start || b.departure > end) return;
+            const bUnit = getUnitForBooking(b);
+            if (!bUnit || bUnit.key !== targetUnit.key) return;
+
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+            const arr = new Date(b.arrival);
+            const dep = new Date(b.departure);
+            const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+
+            unitTotalRevenue += netPayout;
+            unitTotalNights += nights;
+
+            const srcId = Number(b.apiSourceId);
+            if (srcId === 46) {
+                otaData.airbnb.nights += nights;
+                otaData.airbnb.revenue += netPayout;
+            } else if (srcId === 19) {
+                otaData.booking.nights += nights;
+                otaData.booking.revenue += netPayout;
+            } else if (srcId === 17) {
+                otaData.agoda.nights += nights;
+                otaData.agoda.revenue += netPayout;
+            } else if (srcId === 53) {
+                otaData.trip.nights += nights;
+                otaData.trip.revenue += netPayout;
+            } else {
+                otaData.other.nights += nights;
+                otaData.other.revenue += netPayout;
+            }
+        });
+
+        const availableNights = 1 * days;
+        const vacantNights = Math.max(0, availableNights - unitTotalNights);
+        const occupancyRate = availableNights > 0 ? Math.min(100, Math.round((unitTotalNights / availableNights) * 1000) / 10) : 0;
+        const vacancyRate = availableNights > 0 ? Math.round((vacantNights / availableNights) * 100) : 0;
+        const adr = unitTotalNights > 0 ? Math.round(unitTotalRevenue / unitTotalNights) : 0;
+
+        const makeMetric = (data: { nights: number; revenue: number }): OtaCrossMetric => {
+            const contributionOcc = availableNights > 0
+                ? Math.round((data.nights / availableNights) * 1000) / 10
+                : 0;
+            const sharePct = unitTotalNights > 0
+                ? Math.round((data.nights / unitTotalNights) * 1000) / 10
+                : 0;
+            const chAdr = data.nights > 0 ? Math.round(data.revenue / data.nights) : 0;
+            return {
+                nights: data.nights,
+                revenue: data.revenue,
+                contributionOcc,
+                sharePct,
+                adr: chAdr,
+            };
+        };
+
+        const unitName = targetUnit.subName
+            ? `${targetUnit.displayName} (${targetUnit.subName})`
+            : targetUnit.displayName;
+
+        // 가장 점유율 높은 채널 산출
+        let topChannelName = '없음';
+        let maxChNights = 0;
+        const otaList = [
+            { name: '에어비앤비', nights: otaData.airbnb.nights },
+            { name: '부킹닷컴', nights: otaData.booking.nights },
+            { name: '아고다', nights: otaData.agoda.nights },
+            { name: '트립닷컴', nights: otaData.trip.nights },
+        ];
+        otaList.forEach((ch) => {
+            if (ch.nights > maxChNights) {
+                maxChNights = ch.nights;
+                topChannelName = ch.name;
+            }
+        });
+
+        return [
+            {
+                unitKey: targetUnit.key,
+                roomId: targetUnit.roomId,
+                roomName: unitName,
+                propName: targetUnit.propName || '',
+                unitCount: 1,
+                totalRevenue: unitTotalRevenue,
+                totalNights: unitTotalNights,
+                availableNights,
+                vacantNights,
+                occupancyRate,
+                adr,
+                isHighVacancy: vacancyRate >= 40,
+                topChannelName,
+                otaMetrics: {
+                    airbnb: makeMetric(otaData.airbnb),
+                    booking: makeMetric(otaData.booking),
+                    agoda: makeMetric(otaData.agoda),
+                    trip: makeMetric(otaData.trip),
+                    other: makeMetric(otaData.other),
+                },
+            },
+        ];
+    }
+
+    // 🏢 지점/전체 분석 모드일 때
+    const roomStats = calculateRoomStats(bookings, filter, customStart, customEnd, 'stay');
+
+    // 필터링된 호실 대상
+    let filteredRooms = roomStats;
+    if (propFilter && propFilter !== 'all') {
+        filteredRooms = filteredRooms.filter((r) => r.propName === propFilter);
+    }
+
+    return filteredRooms.map((room) => {
+        const otaData: Record<'airbnb' | 'booking' | 'agoda' | 'trip' | 'other', { nights: number; revenue: number }> = {
+            airbnb: { nights: 0, revenue: 0 },
+            booking: { nights: 0, revenue: 0 },
+            agoda: { nights: 0, revenue: 0 },
+            trip: { nights: 0, revenue: 0 },
+            other: { nights: 0, revenue: 0 },
+        };
+
+        // 해당 호실의 예약 필터링
+        validBookings.forEach((b) => {
+            if (b.departure < start || b.departure > end) return;
+            const matchedUnit = getUnitForBooking(b);
+            const uKey = matchedUnit?.key || String(b.roomId);
+            if (uKey !== room.unitKey && b.roomId !== room.roomId) return;
+
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+            const arr = new Date(b.arrival);
+            const dep = new Date(b.departure);
+            const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+
+            const srcId = Number(b.apiSourceId);
+
+            if (srcId === 46) {
+                otaData.airbnb.nights += nights;
+                otaData.airbnb.revenue += netPayout;
+            } else if (srcId === 19) {
+                otaData.booking.nights += nights;
+                otaData.booking.revenue += netPayout;
+            } else if (srcId === 17) {
+                otaData.agoda.nights += nights;
+                otaData.agoda.revenue += netPayout;
+            } else if (srcId === 53) {
+                otaData.trip.nights += nights;
+                otaData.trip.revenue += netPayout;
+            } else {
+                otaData.other.nights += nights;
+                otaData.other.revenue += netPayout;
+            }
+        });
+
+        const makeMetric = (data: { nights: number; revenue: number }): OtaCrossMetric => {
+            const contributionOcc = room.availableNights > 0
+                ? Math.round((data.nights / room.availableNights) * 1000) / 10
+                : 0;
+            const sharePct = room.totalNights > 0
+                ? Math.round((data.nights / room.totalNights) * 1000) / 10
+                : 0;
+            const adr = data.nights > 0 ? Math.round(data.revenue / data.nights) : 0;
+            return {
+                nights: data.nights,
+                revenue: data.revenue,
+                contributionOcc,
+                sharePct,
+                adr,
+            };
+        };
+
+        const vacancyRate = room.availableNights > 0
+            ? Math.round((room.vacantNights / room.availableNights) * 100)
+            : 0;
+
+        return {
+            unitKey: room.unitKey,
+            roomName: room.roomName,
+            propName: room.propName,
+            roomId: room.roomId,
+            unitCount: room.unitCount,
+            totalRevenue: room.totalRevenue,
+            occupancyRate: room.occupancyRate,
+            totalNights: room.totalNights,
+            availableNights: room.availableNights,
+            vacantNights: room.vacantNights,
+            adr: room.adr,
+            isHighVacancy: vacancyRate >= 40, // 공실률 40% 이상인 경우 광고 부스트 필요 호실
+            topChannelName: room.topChannel?.displayName || '없음',
+            otaMetrics: {
+                airbnb: makeMetric(otaData.airbnb),
+                booking: makeMetric(otaData.booking),
+                agoda: makeMetric(otaData.agoda),
+                trip: makeMetric(otaData.trip),
+                other: makeMetric(otaData.other),
+            },
+        };
+    });
+}
+
+// ============================================================================
+// 📅 9. 월간 캘린더 기반 향후 예약 & 공실 레이더 계산 엔진
+// ============================================================================
+
+export interface DailyOccupancyInfo {
+    dateStr: string;        // YYYY-MM-DD
+    dayOfWeek: string;      // 월, 화, 수...
+    isWeekend: boolean;
+    totalUnits: number;     // 공급 가능 총 유닛 수
+    bookedUnits: number;    // 예약된 유닛 수
+    vacantUnits: number;    // 비어있는 유닛 수
+    occupancyRate: number;  // 가동률 (%)
+    vacantUnitList: Array<{
+        unitKey: string;
+        propName: string;
+        unitName: string;
+        roomId: number;
+    }>;
+    bookedUnitList: Array<{
+        unitKey: string;
+        propName: string;
+        unitName: string;
+        guestName: string;
+        channelName: string;
+        channelBg: string;
+        channelText: string;
+        bookingId?: string;
+        arrival?: string;
+        departure?: string;
+        numAdult?: number;
+    }>;
+}
+
+/**
+ * 특정 기간 내 날짜별 가동률 및 비어있는 호실(유닛) 목록 추출
+ */
+export function calculateFutureOccupancyAndVacancies(
+    bookings: Booking[],
+    startStr: string,
+    endStr: string,
+    propFilter: string = 'all',
+    unitKeyFilter: string = 'all'
+): DailyOccupancyInfo[] {
+    const validBookings = bookings.filter(isValidBooking);
+
+    // 대상 유닛 목록 선정
+    let targetUnits = ALL_UNITS;
+    if (propFilter && propFilter !== 'all') {
+        targetUnits = targetUnits.filter((u) => u.propName === propFilter);
+    }
+    if (unitKeyFilter && unitKeyFilter !== 'all') {
+        targetUnits = targetUnits.filter((u) => u.key === unitKeyFilter || String(u.roomId) === unitKeyFilter);
+    }
+
+    const totalUnitsCount = Math.max(1, targetUnits.length);
+
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const result: DailyOccupancyInfo[] = [];
+
+    const cur = new Date(s);
+    while (cur <= e) {
+        const curStr = formatLocalDate(cur);
+        const dayIdx = cur.getDay();
+        const isWeekend = dayIdx === 5 || dayIdx === 6; // 금, 토
+
+        // 해당 날짜(curStr)에 숙박 중인 예약 검색 (arrival <= curStr && departure > curStr)
+        const bookedUnitKeySet = new Set<string>();
+        const bookedUnitList: DailyOccupancyInfo['bookedUnitList'] = [];
+
+        validBookings.forEach((b) => {
+            if (b.arrival <= curStr && b.departure > curStr) {
+                const matchedUnit = getUnitForBooking(b);
+                if (matchedUnit) {
+                    // 대상 유닛 범위 내에 속하는지 확인
+                    const isTarget = targetUnits.some((u) => u.key === matchedUnit.key);
+                    if (isTarget) {
+                        bookedUnitKeySet.add(matchedUnit.key);
+                        const chStyle = getChannelStyle(b.apiSourceId);
+                        bookedUnitList.push({
+                            unitKey: matchedUnit.key,
+                            propName: matchedUnit.propName || '',
+                            unitName: matchedUnit.displayName + (matchedUnit.subName ? ` (${matchedUnit.subName})` : ''),
+                            guestName: `${b.firstName || ''} ${b.lastName || ''}`.trim() || '고객',
+                            channelName: chStyle.name,
+                            channelBg: chStyle.bg,
+                            channelText: chStyle.text,
+                            bookingId: String(b.id),
+                            arrival: b.arrival,
+                            departure: b.departure,
+                            numAdult: b.numAdult,
+                        });
+                    }
+                }
+            }
+        });
+
+        // 공실 유닛 리스트 추출
+        const vacantUnitList: DailyOccupancyInfo['vacantUnitList'] = targetUnits
+            .filter((u) => !bookedUnitKeySet.has(u.key))
+            .map((u) => ({
+                unitKey: u.key,
+                propName: u.propName || '',
+                unitName: u.displayName + (u.subName ? ` (${u.subName})` : ''),
+                roomId: u.roomId,
+            }));
+
+        const bookedUnits = bookedUnitList.length;
+        const vacantUnits = vacantUnitList.length;
+        const occupancyRate = Math.min(100, Math.round((bookedUnits / totalUnitsCount) * 100));
+
+        result.push({
+            dateStr: curStr,
+            dayOfWeek: dayNames[dayIdx],
+            isWeekend,
+            totalUnits: totalUnitsCount,
+            bookedUnits,
+            vacantUnits,
+            occupancyRate,
+            vacantUnitList,
+            bookedUnitList,
+        });
+
+        cur.setDate(cur.getDate() + 1);
+    }
+
+    return result;
+}
+
+// ============================================================================
+// ⏱️ 10. 예약 리드타임(Lead Time) 및 투숙기간(LOS) 분석 계산 엔진
+// ============================================================================
+
+export interface DistributionBucket {
+    label: string;
+    subLabel: string;
+    count: number;
+    sharePct: number;
+    color: string;
+}
+
+export interface OtaLeadTimeStat {
+    otaName: string;
+    avgLeadDays: number;
+    avgStayNights: number;
+    bookingCount: number;
+    color: string;
+}
+
+export interface LeadTimeStaySummary {
+    totalBookings: number;
+    avgLeadDays: number;       // 평균 리드타임 (일)
+    medianLeadDays: number;    // 중앙값 리드타임 (일)
+    avgStayNights: number;     // 평균 투숙기간 (박, ALOS)
+    leadDistribution: DistributionBucket[]; // 0~1일, 2~7일, 8~30일, 31일+
+    stayDistribution: DistributionBucket[]; // 1박, 2~3박, 4~6박, 7박+
+    otaStats: OtaLeadTimeStat[];
+}
+
+export function calculateLeadTimeAndStayStats(
+    bookings: Booking[],
+    filter: TimeFilterRange,
+    customStart?: string,
+    customEnd?: string,
+    propFilter: string = 'all',
+    unitFilter: string = 'all'
+): LeadTimeStaySummary {
+    const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
+    const validBookings = bookings.filter(isValidBooking);
+
+    // 대상 예약 필터링 (기간 내 체크아웃 + 지점/호실 필터)
+    const targetBookings = validBookings.filter((b) => {
+        if (b.departure < start || b.departure > end) return false;
+        if (unitFilter && unitFilter !== 'all') {
+            const u = getUnitForBooking(b);
+            if (!u || u.key !== unitFilter) return false;
+        } else if (propFilter && propFilter !== 'all') {
+            const u = getUnitForBooking(b);
+            if (!u || u.propName !== propFilter) return false;
+        }
+        return true;
+    });
+
+    const leadBuckets: DistributionBucket[] = [
+        { label: '당일/직전 (0~1일)', subLabel: '급매/라스트미닛', count: 0, sharePct: 0, color: '#EF4444' },
+        { label: '단기 임박 (2~7일)', subLabel: '1주일 내 임박 예약', count: 0, sharePct: 0, color: '#F59E0B' },
+        { label: '중기 표준 (8~30일)', subLabel: '사전 계획형 예약', count: 0, sharePct: 0, color: '#3B82F6' },
+        { label: '얼리버드 (31일+)', subLabel: '장기 사전 예약', count: 0, sharePct: 0, color: '#10B981' },
+    ];
+
+    const stayBuckets: DistributionBucket[] = [
+        { label: '1박 (단기)', subLabel: '주말/단기 여행', count: 0, sharePct: 0, color: '#8B5CF6' },
+        { label: '2~3박 (표준)', subLabel: '일반 표준 관광', count: 0, sharePct: 0, color: '#3B82F6' },
+        { label: '4~6박 (중기)', subLabel: '휴가/장기 휴식', count: 0, sharePct: 0, color: '#10B981' },
+        { label: '7박+ (연박)', subLabel: '장기/한달살기', count: 0, sharePct: 0, color: '#F59E0B' },
+    ];
+
+    const otaMap: Record<string, { totalLead: number; totalStay: number; count: number; color: string }> = {};
+
+    let totalLeadDays = 0;
+    let totalStayNights = 0;
+    const allLeadDays: number[] = [];
+
+    targetBookings.forEach((b) => {
+        // 투숙 박수 계산
+        const arr = new Date(b.arrival);
+        const dep = new Date(b.departure);
+        const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+        totalStayNights += nights;
+
+        if (nights === 1) stayBuckets[0].count += 1;
+        else if (nights <= 3) stayBuckets[1].count += 1;
+        else if (nights <= 6) stayBuckets[2].count += 1;
+        else stayBuckets[3].count += 1;
+
+        // 리드타임 계산
+        let leadDays = 0;
+        if (b.bookingTime) {
+            const bookDate = new Date(b.bookingTime);
+            leadDays = Math.max(0, Math.floor((arr.getTime() - bookDate.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+        totalLeadDays += leadDays;
+        allLeadDays.push(leadDays);
+
+        if (leadDays <= 1) leadBuckets[0].count += 1;
+        else if (leadDays <= 7) leadBuckets[1].count += 1;
+        else if (leadDays <= 30) leadBuckets[2].count += 1;
+        else leadBuckets[3].count += 1;
+
+        // OTA별 매핑
+        const ch = getChannelStyle(b.apiSourceId);
+        const chName = ch.name || '기타';
+        const chColor = ch.bg || '#64748B';
+
+        if (!otaMap[chName]) {
+            otaMap[chName] = { totalLead: 0, totalStay: 0, count: 0, color: chColor };
+        }
+        otaMap[chName].totalLead += leadDays;
+        otaMap[chName].totalStay += nights;
+        otaMap[chName].count += 1;
+    });
+
+    const totalBookings = targetBookings.length;
+    const avgLeadDays = totalBookings > 0 ? Math.round((totalLeadDays / totalBookings) * 10) / 10 : 0;
+    const avgStayNights = totalBookings > 0 ? Math.round((totalStayNights / totalBookings) * 10) / 10 : 0;
+
+    // 중앙값 계산
+    allLeadDays.sort((a, b) => a - b);
+    const midIdx = Math.floor(allLeadDays.length / 2);
+    const medianLeadDays = allLeadDays.length > 0 ? allLeadDays[midIdx] : 0;
+
+    // 퍼센티지 계산
+    leadBuckets.forEach((b) => {
+        b.sharePct = totalBookings > 0 ? Math.round((b.count / totalBookings) * 1000) / 10 : 0;
+    });
+    stayBuckets.forEach((b) => {
+        b.sharePct = totalBookings > 0 ? Math.round((b.count / totalBookings) * 1000) / 10 : 0;
+    });
+
+    // OTA별 정렬 (예약 건수 많은 순)
+    const otaStats: OtaLeadTimeStat[] = Object.entries(otaMap)
+        .map(([otaName, data]) => ({
+            otaName,
+            avgLeadDays: data.count > 0 ? Math.round((data.totalLead / data.count) * 10) / 10 : 0,
+            avgStayNights: data.count > 0 ? Math.round((data.totalStay / data.count) * 10) / 10 : 0,
+            bookingCount: data.count,
+            color: data.color,
+        }))
+        .sort((a, b) => b.bookingCount - a.bookingCount);
+
+    return {
+        totalBookings,
+        avgLeadDays,
+        medianLeadDays,
+        avgStayNights,
+        leadDistribution: leadBuckets,
+        stayDistribution: stayBuckets,
+        otaStats,
+    };
+}
+
 
 

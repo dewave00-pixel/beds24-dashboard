@@ -15,7 +15,7 @@ interface ChannelDetailModalState {
     channel: RoomChannelStat;
 }
 
-type SortField = 'revenue' | 'occupancy' | 'adr' | 'room';
+type SortField = 'revenue' | 'occupancy' | 'adr' | 'room' | 'leadTime' | 'stayNights';
 type SortDirection = 'desc' | 'asc';
 
 // 4개 건물 고유 브랜드 컬러 팔레트
@@ -84,6 +84,10 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                 diff = a.occupancyRate - b.occupancyRate;
             } else if (sortField === 'adr') {
                 diff = a.adr - b.adr;
+            } else if (sortField === 'leadTime') {
+                diff = a.avgLeadDays - b.avgLeadDays;
+            } else if (sortField === 'stayNights') {
+                diff = a.avgStayNights - b.avgStayNights;
             } else if (sortField === 'room') {
                 return sortDirection === 'desc'
                     ? b.roomName.localeCompare(a.roomName, 'ko-KR')
@@ -105,44 +109,42 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
 
     return (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-3.5 md:p-5 shadow-xs flex flex-col gap-3">
-            {/* 상단 타이틀 & 건물 선택 드롭다운 필터 */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-gray-100 dark:border-slate-800">
+            {/* 상단 타이틀 & 건물 토글 칩 필터 바 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                    <span className="text-lg">🚪</span>
-                    <div>
-                        <h3 className="text-sm md:text-base font-black text-gray-900 dark:text-slate-100 tracking-tight">
-                            개별 객실(룸타입)별 매출 및 가동률 성과
-                        </h3>
-                        <span className="text-[10.5px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
-                            룸타입별 주요 예약 플랫폼, 가동률, 평균단가 및 주말/평일 세부 단가 한눈에 비교 (호실 클릭 시 플랫폼 상세 분석)
-                        </span>
-                    </div>
+                    <span className="text-base font-black text-gray-900 dark:text-slate-100 tracking-tight">
+                        호실별 성과표
+                    </span>
+                    <span className="text-xs text-gray-400 font-medium font-mono">
+                        ({processedRooms.length}개 호실)
+                    </span>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400 hidden sm:inline">
-                        총 <strong className="text-gray-900 dark:text-slate-100">{processedRooms.length}</strong>개 룸타입
-                    </span>
-
-                    {/* 숙소 선택 드롭다운 */}
-                    <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800 p-1 px-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-bold">
-                        <span className="text-gray-500 dark:text-slate-400 font-extrabold text-[11px]">🏢 건물:</span>
-                        <select
-                            value={selectedProperty}
-                            onChange={(e) => setSelectedProperty(e.target.value)}
-                            aria-label="특정 숙소의 호실만 필터링하여 조회"
-                            className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-black text-gray-800 dark:text-slate-100 cursor-pointer focus:outline-none focus:border-blue-500 shadow-2xs"
-                        >
-                            <option value="all" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                전체 숙소 ({roomStats.length}개 룸타입)
-                            </option>
-                            {PROPERTY_GROUPS.map((g) => (
-                                <option key={g.name} value={g.name} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                    {g.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                {/* 건물 선택 토글 칩 바 (드롭다운 대신 직관적인 원클릭 칩) */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                        { key: 'all', label: '전체' },
+                        { key: 'YEONNAM', label: '연남' },
+                        { key: 'WAVE', label: '웨이브' },
+                        { key: 'Green', label: '그린' },
+                        { key: 'Namsun', label: '남선' },
+                    ].map((item) => {
+                        const isActive = selectedProperty === item.key;
+                        return (
+                            <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => setSelectedProperty(item.key)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
+                                    isActive
+                                        ? 'bg-blue-600 text-white shadow-xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                }`}
+                            >
+                                {item.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -157,55 +159,56 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 onClick={() => handleSort('room')}
                             >
                                 <span className="inline-flex items-center">
-                                    순위 & 객실(룸타입)
+                                    순위 & 호실
                                     {renderSortArrow('room')}
                                 </span>
                             </th>
 
-                            {/* 2. 사업장 */}
-                            <th className="py-2.5 px-3">사업장</th>
-
-                            {/* 3. 주요 플랫폼 (예약 유입) */}
-                            <th className="py-2.5 px-3 min-w-[130px]">
-                                주요 플랫폼 (유입)
-                            </th>
-
-                            {/* 4. 가동률 (Occ) */}
+                            {/* 2. 가동률 (Occ) */}
                             <th
                                 className="py-2.5 px-3 text-center cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('occupancy')}
                             >
                                 <span className="inline-flex items-center justify-center">
-                                    가동률 (Occ)
+                                    가동률
                                     {renderSortArrow('occupancy')}
                                 </span>
                             </th>
 
-                            {/* 5. 판매 / 공급 (공실) */}
-                            <th className="py-2.5 px-3 text-center">판매 / 공급 (공실)</th>
+                            {/* 3. 리드타임 */}
+                            <th
+                                className="py-2.5 px-3 text-center cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
+                                onClick={() => handleSort('leadTime')}
+                            >
+                                <span className="inline-flex items-center justify-center">
+                                    리드타임
+                                    {renderSortArrow('leadTime')}
+                                </span>
+                            </th>
 
-                            {/* 6. 평균 단가 (ADR) */}
+                            {/* 4. 평균 박수 */}
+                            <th
+                                className="py-2.5 px-3 text-center cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
+                                onClick={() => handleSort('stayNights')}
+                            >
+                                <span className="inline-flex items-center justify-center">
+                                    평균 박수
+                                    {renderSortArrow('stayNights')}
+                                </span>
+                            </th>
+
+                            {/* 5. 평균 단가 (ADR) */}
                             <th
                                 className="py-2.5 px-3 text-right cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('adr')}
                             >
                                 <span className="inline-flex items-center justify-end">
-                                    평균 단가(ADR)
+                                    평균단가(ADR)
                                     {renderSortArrow('adr')}
                                 </span>
                             </th>
 
-                            {/* 7. 주말 단가 */}
-                            <th className="py-2.5 px-3 text-right text-purple-700 dark:text-purple-400">
-                                주말 단가 (금~토)
-                            </th>
-
-                            {/* 8. 평일 단가 */}
-                            <th className="py-2.5 px-3 text-right text-blue-700 dark:text-blue-400">
-                                평일 단가 (월~목)
-                            </th>
-
-                            {/* 9. 총매출액 */}
+                            {/* 6. 총매출액 */}
                             <th
                                 className="py-2.5 px-3 text-right cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
                                 onClick={() => handleSort('revenue')}
@@ -214,6 +217,11 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                     총매출
                                     {renderSortArrow('revenue')}
                                 </span>
+                            </th>
+
+                            {/* 7. 주요 플랫폼 (유입) */}
+                            <th className="py-2.5 px-3 min-w-[130px]">
+                                주요 플랫폼
                             </th>
                         </tr>
                     </thead>
@@ -263,15 +271,48 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                             </div>
                                         </td>
 
-                                        {/* 소속 사업장 */}
-                                        <td className="py-2.5 px-3 font-bold text-gray-700 dark:text-slate-300">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colorInfo.color }} />
-                                                <span>{propKOR}</span>
+                                        {/* 2. 가동률 (Occ) */}
+                                        <td className="py-2.5 px-3 text-center">
+                                            <div className="flex items-center justify-center gap-1.5 min-w-[100px]">
+                                                <div className="w-12 bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden shrink-0 border border-gray-200/60 dark:border-slate-700">
+                                                    <div
+                                                        className={`h-2 rounded-full transition-all duration-300 ${
+                                                            room.occupancyRate >= 80
+                                                                ? 'bg-emerald-500'
+                                                                : room.occupancyRate >= 50
+                                                                ? 'bg-blue-500'
+                                                                : 'bg-amber-500'
+                                                        }`}
+                                                        style={{ width: `${Math.min(100, Math.max(0, room.occupancyRate))}%` }}
+                                                    />
+                                                </div>
+                                                <span className="font-black text-gray-800 dark:text-slate-100 text-[11.5px] font-mono">
+                                                    {room.occupancyRate}%
+                                                </span>
                                             </div>
                                         </td>
 
-                                        {/* 주요 플랫폼 (유입) */}
+                                        {/* 3. 리드타임 */}
+                                        <td className="py-2.5 px-3 text-center font-bold text-gray-800 dark:text-slate-200 font-mono text-xs whitespace-nowrap">
+                                            {room.avgLeadDays === 0 ? '당일' : `${room.avgLeadDays}일`}
+                                        </td>
+
+                                        {/* 4. 평균 박수 */}
+                                        <td className="py-2.5 px-3 text-center font-bold text-indigo-600 dark:text-indigo-400 font-mono text-xs whitespace-nowrap">
+                                            {room.avgStayNights}박
+                                        </td>
+
+                                        {/* 5. 1박 평균단가 (ADR) */}
+                                        <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono whitespace-nowrap">
+                                            ₩{room.adr.toLocaleString()}
+                                        </td>
+
+                                        {/* 6. 총매출액 */}
+                                        <td className="py-2.5 px-3 text-right font-black text-gray-900 dark:text-slate-100 font-mono text-sm whitespace-nowrap">
+                                            ₩{room.totalRevenue.toLocaleString()}
+                                        </td>
+
+                                        {/* 7. 주요 플랫폼 (유입) */}
                                         <td className="py-2.5 px-3">
                                             {room.topChannel ? (
                                                 <div className="flex flex-col gap-1 min-w-[125px]">
@@ -310,66 +351,12 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                                 <span className="text-gray-300 dark:text-slate-600">-</span>
                                             )}
                                         </td>
-
-                                        {/* 가동률 (Occ) - 프로그레스 바 + 수치% */}
-                                        <td className="py-2.5 px-3 text-center">
-                                            <div className="flex items-center justify-center gap-1.5 min-w-[120px]">
-                                                <div className="w-16 bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden shrink-0 border border-gray-200/60 dark:border-slate-700">
-                                                    <div
-                                                        className={`h-2 rounded-full transition-all duration-300 ${
-                                                            room.occupancyRate >= 80
-                                                                ? 'bg-emerald-500'
-                                                                : room.occupancyRate >= 50
-                                                                ? 'bg-blue-500'
-                                                                : 'bg-amber-500'
-                                                        }`}
-                                                        style={{ width: `${Math.min(100, Math.max(0, room.occupancyRate))}%` }}
-                                                    />
-                                                </div>
-                                                <span className="font-black text-gray-800 dark:text-slate-100 text-[11.5px] w-10 text-right font-mono">
-                                                    {room.occupancyRate}%
-                                                </span>
-                                            </div>
-                                        </td>
-
-                                        {/* 판매 박수 vs 공급 박수 (공실) */}
-                                        <td className="py-2.5 px-3 text-center font-bold text-[11.5px]">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
-                                                    <span className="text-gray-400 dark:text-slate-500 text-[10.5px]">/ {room.availableNights}박</span>
-                                                </div>
-                                                <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                                                    {room.vacantNights > 0 ? `${room.vacantNights}박 공실` : '만실'}
-                                                </span>
-                                            </div>
-                                        </td>
-
-                                        {/* 1박 평균단가 (ADR) */}
-                                        <td className="py-2.5 px-3 text-right font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                            ₩{room.adr.toLocaleString()}
-                                        </td>
-
-                                        {/* 주말 단가 (풀어서 표시) */}
-                                        <td className="py-2.5 px-3 text-right font-bold text-purple-700 dark:text-purple-300 font-mono">
-                                            {weekendAdr > 0 ? `₩${weekendAdr.toLocaleString()}` : '-'}
-                                        </td>
-
-                                        {/* 평일 단가 (풀어서 표시) */}
-                                        <td className="py-2.5 px-3 text-right font-bold text-blue-700 dark:text-blue-300 font-mono">
-                                            {weekdayAdr > 0 ? `₩${weekdayAdr.toLocaleString()}` : '-'}
-                                        </td>
-
-                                        {/* 총매출액 */}
-                                        <td className="py-2.5 px-3 text-right font-black text-gray-900 dark:text-slate-100 font-mono text-sm">
-                                            ₩{room.totalRevenue.toLocaleString()}
-                                        </td>
                                     </tr>
 
                                     {/* 🌟 아코디언 서브 패널: 플랫폼별 상세 분석 */}
                                     {isExpanded && (
                                         <tr className="bg-blue-50/25 dark:bg-slate-800/40 border-b border-gray-100 dark:border-slate-800">
-                                            <td colSpan={9} className="p-3 md:p-4">
+                                            <td colSpan={7} className="p-3 md:p-4">
                                                 <div className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-blue-200/80 dark:border-slate-700/80 space-y-3 shadow-2xs">
                                                     <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-slate-800">
                                                         <div className="flex items-center gap-2">
@@ -460,9 +447,9 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
             {/* 📱 모바일 카드 뷰 (md 미만) */}
             <div className="grid grid-cols-1 gap-2.5 md:hidden">
                 {/* 모바일 상단 간이 정렬 탭바 */}
-                <div className="flex items-center justify-between text-xs font-bold pb-1 text-gray-600 dark:text-slate-400">
-                    <span>정렬 기준:</span>
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700 text-[11px]">
+                <div className="flex items-center justify-between text-xs font-bold pb-1 text-gray-600 dark:text-slate-400 overflow-x-auto">
+                    <span className="shrink-0 mr-1">정렬:</span>
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700 text-[11px] shrink-0">
                         <button
                             type="button"
                             onClick={() => handleSort('revenue')}
@@ -479,6 +466,20 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                         </button>
                         <button
                             type="button"
+                            onClick={() => handleSort('leadTime')}
+                            className={`px-2 py-0.5 rounded transition ${sortField === 'leadTime' ? 'bg-blue-600 text-white font-black' : 'text-gray-700 dark:text-slate-300'}`}
+                        >
+                            리드타임 {sortField === 'leadTime' && (sortDirection === 'desc' ? '▼' : '▲')}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSort('stayNights')}
+                            className={`px-2 py-0.5 rounded transition ${sortField === 'stayNights' ? 'bg-blue-600 text-white font-black' : 'text-gray-700 dark:text-slate-300'}`}
+                        >
+                            박수 {sortField === 'stayNights' && (sortDirection === 'desc' ? '▼' : '▲')}
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => handleSort('adr')}
                             className={`px-2 py-0.5 rounded transition ${sortField === 'adr' ? 'bg-blue-600 text-white font-black' : 'text-gray-700 dark:text-slate-300'}`}
                         >
@@ -490,8 +491,6 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                 {processedRooms.map((room, idx) => {
                     const weekendAdr = room.dayTypeAdr?.weekendAdr || 0;
                     const weekdayAdr = room.dayTypeAdr?.weekdayAdr || 0;
-                    const propKOR = room.propName === 'Namsun' ? '남선' : room.propName === 'YEONNAM' ? '연남' : room.propName === 'WAVE' ? '웨이브' : room.propName;
-                    const colorInfo = PROPERTY_COLORS[room.propName] || { color: '#64748B' };
                     const isExpanded = expandedRooms.has(room.unitKey);
 
                     return (
@@ -499,7 +498,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                             key={room.unitKey}
                             className="bg-gray-50/80 dark:bg-slate-800/80 rounded-xl border border-gray-200 dark:border-slate-700 p-3 flex flex-col gap-2.5 shadow-2xs"
                         >
-                            {/* 상단: 순위 + 호실 + 사업장 + 총매출 */}
+                            {/* 상단: 순위 + 호실 + 총매출 */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
@@ -523,9 +522,6 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded text-white shrink-0" style={{ backgroundColor: colorInfo.color }}>
-                                        {propKOR}
-                                    </span>
                                 </div>
                                 <span className="font-black text-gray-900 dark:text-slate-100 text-sm font-mono shrink-0">
                                     ₩{room.totalRevenue.toLocaleString()}
@@ -619,55 +615,23 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 </div>
                             )}
 
-                            {/* 중단: 가동률 바 & 공실/투숙 */}
-                            <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-gray-200/60 dark:border-slate-700/60 text-xs">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-500 dark:text-slate-400 font-bold text-[11px]">가동률:</span>
-                                    <div className="w-14 bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-gray-200/60 dark:border-slate-700">
-                                        <div
-                                            className={`h-2 rounded-full ${
-                                                room.occupancyRate >= 80
-                                                    ? 'bg-emerald-500'
-                                                    : room.occupancyRate >= 50
-                                                    ? 'bg-blue-500'
-                                                    : 'bg-amber-500'
-                                            }`}
-                                            style={{ width: `${Math.min(100, Math.max(0, room.occupancyRate))}%` }}
-                                        />
-                                    </div>
-                                    <span className="font-black text-gray-800 dark:text-slate-200 font-mono text-[11px]">
-                                        {room.occupancyRate}%
-                                    </span>
+                            {/* 하단: 4대 핵심 지표 그리드 (가동률, 리드타임, 평균박수, ADR) */}
+                            <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-gray-200/60 dark:border-slate-700/60 text-[11px] text-center font-mono">
+                                <div className="flex flex-col bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                    <span className="text-gray-400 dark:text-slate-500 text-[10px] font-bold">가동률</span>
+                                    <span className="font-black text-blue-600 dark:text-blue-400">{room.occupancyRate}%</span>
                                 </div>
-
-                                <div className="text-[11px] font-bold flex items-center gap-1">
-                                    <span className="text-gray-900 dark:text-slate-100 font-black">{room.totalNights}박</span>
-                                    <span className="text-gray-400 dark:text-slate-500 text-[10px]">/{room.availableNights}박</span>
-                                    <span className={`text-[10px] ${room.vacantNights > 0 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-emerald-600 font-bold'}`}>
-                                        ({room.vacantNights > 0 ? `${room.vacantNights}공실` : '만실'})
-                                    </span>
+                                <div className="flex flex-col bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                    <span className="text-gray-400 dark:text-slate-500 text-[10px] font-bold">리드타임</span>
+                                    <span className="font-black text-gray-900 dark:text-slate-100">{room.avgLeadDays === 0 ? '당일' : `${room.avgLeadDays}일`}</span>
                                 </div>
-                            </div>
-
-                            {/* 하단: 단가 3종 그리드 (평균단가, 주말단가, 평일단가) */}
-                            <div className="grid grid-cols-3 gap-1 pt-1 border-t border-gray-200/60 dark:border-slate-700/60 text-[11px]">
-                                <div className="flex flex-col">
-                                    <span className="text-gray-400 dark:text-slate-500 text-[10px]">평균단가(ADR)</span>
-                                    <span className="font-black text-gray-900 dark:text-slate-100 font-mono">
-                                        ₩{room.adr.toLocaleString()}
-                                    </span>
+                                <div className="flex flex-col bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                    <span className="text-gray-400 dark:text-slate-500 text-[10px] font-bold">평균박수</span>
+                                    <span className="font-black text-indigo-600 dark:text-indigo-400">{room.avgStayNights}박</span>
                                 </div>
-                                <div className="flex flex-col text-center">
-                                    <span className="text-purple-600 dark:text-purple-400 text-[10px]">주말 (금~토)</span>
-                                    <span className="font-black text-purple-700 dark:text-purple-300 font-mono">
-                                        {weekendAdr > 0 ? `₩${weekendAdr.toLocaleString()}` : '-'}
-                                    </span>
-                                </div>
-                                <div className="flex flex-col text-right">
-                                    <span className="text-blue-600 dark:text-blue-400 text-[10px]">평일 (월~목)</span>
-                                    <span className="font-black text-blue-700 dark:text-blue-300 font-mono">
-                                        {weekdayAdr > 0 ? `₩${weekdayAdr.toLocaleString()}` : '-'}
-                                    </span>
+                                <div className="flex flex-col bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                    <span className="text-gray-400 dark:text-slate-500 text-[10px] font-bold">ADR</span>
+                                    <span className="font-black text-gray-900 dark:text-slate-100">₩{room.adr.toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
