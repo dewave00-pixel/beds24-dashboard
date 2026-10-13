@@ -167,9 +167,18 @@ export default function DailyPickupReportSection({
         const postOccPpt = totalCapacityNights > 0 ? (postPickupNights / totalCapacityNights) * 100 : 0;
         const finalOccRate = currentOccupancyRate !== undefined ? currentOccupancyRate : (totalCapacityNights > 0 ? (totalStayNights / totalCapacityNights) * 100 : 0);
 
-        // 사전/사후 ADR
+        // 사전/사후/최종 ADR 및 선확보 대비 변동률
         const preAdr = preStayNights > 0 ? preRevenue / preStayNights : 0;
         const postAdr = postPickupNights > 0 ? postRevenue / postPickupNights : 0;
+        const finalAdr = totalStayNights > 0 ? totalRevenue / totalStayNights : 0;
+
+        // 선확보 대비 픽업 ADR 변동률 (%)
+        const postAdrDiff = postAdr - preAdr;
+        const postAdrDiffRate = preAdr > 0 && postAdr > 0 ? ((postAdr - preAdr) / preAdr) * 100 : 0;
+
+        // 선확보 대비 최종 마감 ADR 변동률 (%)
+        const finalAdrDiff = finalAdr - preAdr;
+        const finalAdrDiffRate = preAdr > 0 && finalAdr > 0 ? ((finalAdr - preAdr) / preAdr) * 100 : 0;
 
         return {
             preBookings,
@@ -182,9 +191,14 @@ export default function DailyPickupReportSection({
             postRevenue,
             postOccPpt,
             postAdr,
+            postAdrDiff,
+            postAdrDiffRate,
             totalStayNights,
             totalRevenue,
             finalOccRate,
+            finalAdr,
+            finalAdrDiff,
+            finalAdrDiffRate,
         };
     }, [matchingValidBookings, asOfDateStr, startDate, endDate, totalCapacityNights, currentOccupancyRate]);
 
@@ -427,7 +441,7 @@ export default function DailyPickupReportSection({
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-blue-100 dark:border-blue-900/50 font-mono">
+                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 pt-2.5 border-t border-blue-100 dark:border-blue-900/50 font-mono">
                         <div className="flex items-center justify-between">
                             <span>사전 판매 박수</span>
                             <span className="font-bold text-slate-900 dark:text-slate-200">
@@ -438,6 +452,12 @@ export default function DailyPickupReportSection({
                             <span>사전 확보 매출</span>
                             <span className="font-bold text-slate-900 dark:text-slate-200">
                                 ₩{Math.round(paceSummary.preRevenue).toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-dashed border-blue-100 dark:border-blue-900/40">
+                            <span className="font-medium text-blue-800 dark:text-blue-300">선확보 객단가(ADR)</span>
+                            <span className="font-black text-blue-700 dark:text-blue-300">
+                                ₩{Math.round(paceSummary.preAdr).toLocaleString()}
                             </span>
                         </div>
                     </div>
@@ -467,7 +487,7 @@ export default function DailyPickupReportSection({
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-emerald-100 dark:border-emerald-900/50 font-mono">
+                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 pt-2.5 border-t border-emerald-100 dark:border-emerald-900/50 font-mono">
                         <div className="flex items-center justify-between">
                             <span>추가 유입 박수</span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400">
@@ -479,6 +499,26 @@ export default function DailyPickupReportSection({
                             <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                 +₩{Math.round(paceSummary.postRevenue).toLocaleString()}
                             </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-dashed border-emerald-100 dark:border-emerald-900/40">
+                            <span className="font-medium text-emerald-800 dark:text-emerald-300">픽업 객단가(ADR)</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="font-black text-emerald-700 dark:text-emerald-300">
+                                    ₩{Math.round(paceSummary.postAdr).toLocaleString()}
+                                </span>
+                                {paceSummary.preAdr > 0 && paceSummary.postAdr > 0 && (
+                                    <span
+                                        className={`text-[10px] font-black px-1.5 py-0.2 rounded ${
+                                            paceSummary.postAdrDiffRate >= 0
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200'
+                                                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200'
+                                        }`}
+                                    >
+                                        {paceSummary.postAdrDiffRate >= 0 ? '+' : ''}
+                                        {paceSummary.postAdrDiffRate.toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -501,7 +541,7 @@ export default function DailyPickupReportSection({
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 font-mono">
+                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 pt-2.5 border-t border-slate-100 dark:border-slate-800 font-mono">
                         <div className="flex items-center justify-between">
                             <span>총 판매 박수</span>
                             <span className="font-bold text-slate-900 dark:text-slate-200">
@@ -513,6 +553,26 @@ export default function DailyPickupReportSection({
                             <span className="font-bold text-slate-900 dark:text-slate-200">
                                 ₩{Math.round(paceSummary.totalRevenue).toLocaleString()}
                             </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-200 dark:border-slate-800">
+                            <span className="font-medium text-indigo-800 dark:text-indigo-300">최종 객단가(ADR)</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="font-black text-indigo-700 dark:text-indigo-300">
+                                    ₩{Math.round(paceSummary.finalAdr).toLocaleString()}
+                                </span>
+                                {paceSummary.preAdr > 0 && paceSummary.finalAdr > 0 && (
+                                    <span
+                                        className={`text-[10px] font-black px-1.5 py-0.2 rounded ${
+                                            paceSummary.finalAdrDiffRate >= 0
+                                                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/80 dark:text-indigo-200'
+                                                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200'
+                                        }`}
+                                    >
+                                        {paceSummary.finalAdrDiffRate >= 0 ? '+' : ''}
+                                        {paceSummary.finalAdrDiffRate.toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
