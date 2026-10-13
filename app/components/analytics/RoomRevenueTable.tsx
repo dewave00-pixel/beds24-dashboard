@@ -687,7 +687,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                                 </div>
                             ) : (
                                 selectedChannelDetail.channel.bookings.map((b, idx) => {
-                                    const netPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+                                    const netPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime);
                                     const arr = new Date(b.arrival);
                                     const dep = new Date(b.departure);
                                     const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));

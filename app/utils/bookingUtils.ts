@@ -1,5 +1,5 @@
 import { Booking, UnitConfig } from '../types';
-import { ALL_UNITS, OTA_COMMISSION_RATES } from '../config';
+import { ALL_UNITS, OTA_COMMISSION_RATES, OTA_COMMISSION_POLICY } from '../config';
 
 // 💳 OTA 채널별 실수령 정산금 수수료율 폴백 (안전한 방어용)
 const FALLBACK_COMMISSION_RATES: Record<number, number> = {
@@ -10,12 +10,6 @@ const FALLBACK_COMMISSION_RATES: Record<number, number> = {
     14: 0.0,   // Expedia (이미 정산금)
 };
 
-/**
- * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
- * - Airbnb(46): 15.5% 공제
- * - Booking.com(19): 17.5% 공제
- * - Trip.com(53), Agoda(17), Expedia(14): 0% 공제 (이미 정산금)
- */
 /**
  * 🏷️ 예약의 notes 필드에서 호스트가 직접 수령한 연박 추가 요금 합산액 추출
  * 포맷: [연박직접수령:180000]
@@ -31,18 +25,46 @@ export function getDirectExtensionPrice(notes?: string | null): number {
 }
 
 /**
+ * 💳 예약 체결 시점(bookingTime)을 고려한 동적 OTA 수수료율 산출 함수
+ * - Booking.com(19): 2026-10-08 17:25 이후 20.5% (기본 17.5% + 광고 3%) / 이전 17.5%
+ * - Trip.com(53): 2026-10-09 13:08 이후 3.0% (광고 3%) / 이전 0.0%
+ * - Expedia(14): 2026-10-13 19:24 이후 3.0% (광고 3%) / 이전 0.0%
+ * - Airbnb(46): 15.5% 고정
+ * - Agoda(17): 0.0% (이미 정산금으로 수신)
+ */
+export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string): number {
+    const id = Number(apiSourceId);
+    const rule = OTA_COMMISSION_POLICY[id];
+    if (!rule) {
+        return OTA_COMMISSION_RATES?.[id] ?? FALLBACK_COMMISSION_RATES[id] ?? 0;
+    }
+
+    if (rule.adRate !== undefined && rule.adEffectiveFrom) {
+        if (bookingTime) {
+            const normalized = bookingTime.replace('T', ' ');
+            if (normalized >= rule.adEffectiveFrom) {
+                return rule.adRate;
+            }
+            return rule.baseRate;
+        }
+        // bookingTime이 없는 신규/미지정 예약의 경우 최신 adRate 적용
+        return rule.adRate;
+    }
+
+    return rule.baseRate;
+}
+
+/**
  * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
- * - Airbnb(46): 15.5% 공제
- * - Booking.com(19): 17.5% 공제
- * - Trip.com(53), Agoda(17), Expedia(14): 0% 공제 (이미 정산금)
  * ⚠️ 호스트가 계좌 등으로 직접 수령한 연박 추가 요금(directAdditionalPrice)은 플랫폼 수수료 0%로 100% 실수령 합산
  */
 export function calculateNetPayout(
     price: number,
     apiSourceId?: number,
-    directAdditionalPrice: number = 0
+    directAdditionalPrice: number = 0,
+    bookingTime?: string
 ): number {
-    const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
+    const rate = getOtaCommissionRate(apiSourceId, bookingTime);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
 
@@ -54,11 +76,16 @@ export function calculateNetPayout(
 /**
  * ℹ️ 예약의 수수료 공제율 및 정산 요약 정보 반환
  */
-export function getCommissionInfo(price: number, apiSourceId?: number, directAdditionalPrice: number = 0) {
-    const rate = OTA_COMMISSION_RATES?.[Number(apiSourceId)] ?? FALLBACK_COMMISSION_RATES[Number(apiSourceId)] ?? 0;
+export function getCommissionInfo(
+    price: number,
+    apiSourceId?: number,
+    directAdditionalPrice: number = 0,
+    bookingTime?: string
+) {
+    const rate = getOtaCommissionRate(apiSourceId, bookingTime);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
-    const netPayout = calculateNetPayout(price, apiSourceId, directPrice);
+    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime);
     const hasDeduction = rate > 0;
     return {
         grossPrice: price,

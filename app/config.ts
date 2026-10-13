@@ -124,16 +124,28 @@ export const getChannelStyle = (apiSourceId?: number) => {
     }
 };
 
-// 💳 OTA 채널별 실수령 정산금 수수료율 정책 (apiSourceId 기준)
-// - Trip.com(53), Agoda(17), Expedia(14): 수수료가 이미 차감된 정산 금액으로 수신 (공제율 0%)
-// - Airbnb(46): 호스트 수수료 15.5% 공제
-// - Booking.com(19): 플랫폼 수수료 17.5% 공제
+// 💳 OTA 채널별 광고 프로모션 및 수수료 인상 적용 시점 정책
+export interface OtaCommissionRule {
+    baseRate: number;        // 기본 수수료율
+    adRate?: number;          // 광고 적용 수수료율
+    adEffectiveFrom?: string; // 광고 적용 시작 시점 (YYYY-MM-DD HH:mm KST)
+}
+
+export const OTA_COMMISSION_POLICY: Record<number, OtaCommissionRule> = {
+    46: { baseRate: 0.155 }, // Airbnb: 호스트 수수료 15.5% 고정
+    19: { baseRate: 0.175, adRate: 0.205, adEffectiveFrom: '2026-10-08 17:25' }, // Booking.com: 10/8 17:25 이후 17.5% -> 20.5% (+3% 광고)
+    53: { baseRate: 0.0, adRate: 0.03, adEffectiveFrom: '2026-10-09 13:08' },    // Trip.com: 10/9 13:08 이후 0% -> 3% (+3% 광고)
+    14: { baseRate: 0.0, adRate: 0.03, adEffectiveFrom: '2026-10-13 19:24' },    // Expedia: 10/13 19:24 이후 0% -> 3% (+3% 광고)
+    17: { baseRate: 0.0 },   // Agoda: 0% (이미 정산금으로 수신)
+};
+
+// 💳 하위 호환용 최신 기준 수수료율
 export const OTA_COMMISSION_RATES: Record<number, number> = {
     46: 0.155, // Airbnb 15.5%
-    19: 0.175, // Booking.com 17.5%
-    53: 0.0,   // Trip.com (이미 정산금)
-    17: 0.0,   // Agoda (이미 정산금)
-    14: 0.0,   // Expedia (이미 정산금)
+    19: 0.205, // Booking.com 최신 20.5%
+    53: 0.03,  // Trip.com 최신 3%
+    14: 0.03,  // Expedia 최신 3%
+    17: 0.0,   // Agoda 0%
 };
 
 // 🇰🇷 주요 공휴일 지정 (YYYY-MM-DD)

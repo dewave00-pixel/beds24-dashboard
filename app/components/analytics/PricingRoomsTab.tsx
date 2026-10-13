@@ -364,7 +364,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 let rev = 0;
                 let nights = 0;
                 matchedBookings.forEach((b) => {
-                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId);
+                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime);
                     rev += payout;
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
