@@ -20,6 +20,7 @@ import FutureOccupancyRadar from './FutureOccupancyRadar';
 import ChannelRevenueSection from './ChannelRevenueSection';
 import CountryRevenueSection from './CountryRevenueSection';
 import LeadTimeStaySection from './LeadTimeStaySection';
+import DailyPickupReportSection from './DailyPickupReportSection';
 
 interface PricingRoomsTabProps {
     bookings: Booking[];
@@ -67,9 +68,10 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     };
 
     // 🎛️ 커스텀 분석 뷰 위젯 설정 (사용자가 보고 싶은 모듈만 다중 체크, 순서대로 리스트 나열)
-    type WidgetKey = 'trend' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
+    type WidgetKey = 'trend' | 'pickup' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
     const WIDGET_CONFIG: { key: WidgetKey; label: string; icon: string; desc: string }[] = [
         { key: 'trend', label: '총매출 & 추이', icon: '💰', desc: 'KPI 카드 + 시계열 차트' },
+        { key: 'pickup', label: '일일 예약 유입 (Pick-up)', icon: '⚡', desc: '하루 동안 늘어난 매출·박수·가동률 리포트' },
         { key: 'comparison', label: '기간 분석 (호실별 성과표)', icon: '⚖️', desc: '직전 기간 비교 + 호실별 실적 & 플랫폼' },
         { key: 'channels', label: '채널 & 플랫폼 점유율', icon: '🌐', desc: 'OTA 도넛 + 상세 정산 내역' },
         { key: 'leadTime', label: '리드타임 & 투숙기간', icon: '⏱️', desc: '예약 리드 일수 및 평균 투숙 박수(LOS) 분석' },
@@ -78,7 +80,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         { key: 'country', label: '게스트 국적 분석', icon: '🌍', desc: '국가별 유입 비중' },
     ];
 
-    // 기본 선택: 총매출&추이 + 양쪽 기간 비교 + 채널 점유율
+    // 기본 선택: 총매출&추이 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
     const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -92,7 +94,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 }
             } catch {}
         }
-        return new Set<WidgetKey>(['trend', 'comparison', 'channels']);
+        return new Set<WidgetKey>(['trend', 'pickup', 'comparison', 'channels']);
     });
 
     // 위젯 토글 (0개 선택 가능하도록 최소 제한 해제)
@@ -969,6 +971,15 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 </div>
             </div>
         </div>
+    )}
+
+    {/* 1-2) ⚡ 일일 예약 유입 & 가동률 증분 리포트 (Daily Pick-up) */}
+    {selectedWidgets.has('pickup') && (
+        <DailyPickupReportSection
+            bookings={bookings}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
     )}
 
     {/* 2) ⚖️ 양쪽 기간 종합 비교 위젯 (탑다운 전체 ➔ 건물 ➔ 호실 드릴다운) */}
