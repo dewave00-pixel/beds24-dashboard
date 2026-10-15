@@ -18,9 +18,8 @@ interface ChannelsTabProps {
 type InflowMetric = 'count' | 'revenue';
 
 // 5대 핵심 OTA 플랫폼 및 기타 채널 정의 (트립, 부킹, 에어비앤비, 익스피디아, 아고다, 기타)
-// 5대 핵심 OTA 플랫폼 및 기타 채널 정의 (대시보드 config.ts 색상과 100% 일치)
 const CHANNEL_PALETTE: { id: string; name: string; color: string; strokeColor?: string; matchApiId: number[] }[] = [
-    { id: 'airbnb', name: '에어비앤비', color: '#d9ead3', strokeColor: '#2e7d32', matchApiId: [46] },
+    { id: 'airbnb', name: '에어비앤비', color: '#FF385C', strokeColor: '#FF385C', matchApiId: [46] },
     { id: 'trip', name: '트립닷컴', color: '#f1c232', strokeColor: '#d97706', matchApiId: [53] },
     { id: 'booking', name: '부킹닷컴', color: '#4a86e8', strokeColor: '#2563eb', matchApiId: [19] },
     { id: 'agoda', name: '아고다', color: '#9900ff', strokeColor: '#7c3aed', matchApiId: [17] },

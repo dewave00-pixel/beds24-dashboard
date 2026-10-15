@@ -21,7 +21,7 @@ type SortMode = 'vacancy' | 'revenue' | 'occupancy' | 'airbnb' | 'booking' | 'ag
 type ChannelFocus = 'all' | 'airbnb' | 'booking' | 'agoda' | 'trip';
 
 const OTA_CONFIG: Record<string, { name: string; color: string; bg: string }> = {
-    airbnb: { name: '에어비앤비', color: '#14532d', bg: '#d9ead3' }, // 에어비앤비: #d9ead3 (연초록)
+    airbnb: { name: '에어비앤비', color: '#FF385C', bg: '#FFF1F2' },
     trip: { name: '트립닷컴', color: '#d97706', bg: '#f1c232' },     // 트립닷컴: #f1c232 (옐로우)
     booking: { name: '부킹닷컴', color: '#4a86e8', bg: '#4a86e8' }, // 부킹닷컴: #4a86e8 (블루)
     agoda: { name: '아고다', color: '#9900ff', bg: '#9900ff' },     // 아고다: #9900ff (퍼플)
@@ -215,7 +215,7 @@ export default function RoomChannelMatrixSection({
 
                             {/* 4대 주요 OTA 컬럼 */}
                             {(channelFocus === 'all' || channelFocus === 'airbnb') && (
-                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-emerald-700 dark:text-emerald-400">
+                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-rose-600 dark:text-rose-400">
                                     에어비앤비 (Airbnb)
                                 </th>
                             )}
@@ -409,7 +409,7 @@ export default function RoomChannelMatrixSection({
                         {/* 4대 OTA 기여 현황 */}
                         <div className="space-y-1.5 pt-1 text-[11px]">
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-emerald-700 dark:text-emerald-400">에어비앤비</span>
+                                <span className="font-bold text-rose-600 dark:text-rose-400">에어비앤비</span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
                                     {r.otaMetrics.airbnb.nights}박 ({r.otaMetrics.airbnb.contributionOcc}%)
                                 </span>

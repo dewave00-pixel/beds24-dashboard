@@ -709,9 +709,9 @@ export interface ChannelStats {
     bookings: Booking[];      // 해당 채널의 예약 객체 목록
 }
 
-// 플랫폼 고유 브랜드 색상 매핑 (대시보드 config.ts getChannelStyle과 100% 일치)
+// 플랫폼 고유 브랜드 색상 매핑
 const CHANNEL_COLORS: Record<string, string> = {
-    'Airbnb': '#d9ead3',     // 에어비앤비 (연초록)
+    'Airbnb': '#FF385C',     // 에어비앤비 (시그니처 코랄/로즈)
     'Trip.com': '#f1c232',   // 트립닷컴 (옐로우)
     'Booking.com': '#4a86e8',// 부킹닷컴 (블루)
     'Agoda': '#9900ff',      // 아고다 (퍼플)
