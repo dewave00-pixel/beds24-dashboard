@@ -5,6 +5,39 @@ import '../dashboard.css';
 import { useAuth } from '../hooks/useAuth';
 import AppSidebar from '../components/layout/AppSidebar';
 
+export interface CareSurveyInfo {
+    id: string;
+    createdAt: string;
+    cleanliness: string[];
+    facility: string[];
+    environment: string[];
+    comment: string;
+}
+
+export interface GuestCareItem {
+    id: string;
+    booking_id: number;
+    property_name: string;
+    room_name: string;
+    unit_key?: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    q1_cleanliness?: string[];
+    q2_facility?: string[];
+    q3_environment?: string[];
+    q4_comment?: string;
+    created_at: string;
+}
+
+export interface CareStats {
+    totalCount: number;
+    propertyCounts: Record<string, number>;
+    cleanlinessIssues: number;
+    facilityIssues: number;
+    environmentIssues: number;
+}
+
 interface TodayArrivalItem {
     bookingId: number;
     guestName: string;
@@ -17,6 +50,7 @@ interface TodayArrivalItem {
     status: 'PASSWORD_VIEWED' | 'RULES_AGREED' | 'LOOKED_UP' | 'UNCHECKED';
     lastEventAt: string | null;
     numGuests: number;
+    careSurvey?: CareSurveyInfo | null;
 }
 
 interface CheckinLogItem {
@@ -46,8 +80,15 @@ export default function CheckinManagementPage() {
     const [logs, setLogs] = useState<CheckinLogItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
+    // 게스트 케어 데이터 상태
+    const [careSurveys, setCareSurveys] = useState<GuestCareItem[]>([]);
+    const [careStats, setCareStats] = useState<CareStats | null>(null);
+    const [careLoading, setCareLoading] = useState<boolean>(false);
+    const [selectedCareSurvey, setSelectedCareSurvey] = useState<GuestCareItem | null>(null);
+    const [careCategoryFilter, setCareCategoryFilter] = useState<string>('ALL'); // 'ALL' | 'cleanliness' | 'facility' | 'environment' | 'comment'
+
     // 필터 및 탭 상태
-    const [activeTab, setActiveTab] = useState<'today' | 'logs'>('today');
+    const [activeTab, setActiveTab] = useState<'today' | 'logs' | 'care'>('today');
     const [propertyFilter, setPropertyFilter] = useState<string>('ALL');
     const [statusFilter, setStatusFilter] = useState<string>('ALL'); // 오늘 현황 필터
     const [eventFilter, setEventFilter] = useState<string>('ALL'); // 전체 로그 필터
@@ -70,7 +111,31 @@ export default function CheckinManagementPage() {
         });
     };
 
-    // 1. API 데이터 페칭
+    // 케어 설문 코드 한국어 매핑
+    const CARE_LABEL_MAP: Record<string, string> = {
+        // 청결도 (q1)
+        floor: '바닥/청결',
+        bedding: '침구류',
+        bathroom: '욕실/화장실',
+        kitchen: '주방/식기',
+        trash: '쓰레기/정리',
+        // 시설/비품 (q2)
+        ac: '에어컨/난방',
+        water: '온수/수압',
+        tv: 'TV/OTT',
+        wifi: '와이파이',
+        towel: '수건/어메니티',
+        appliance: '가전제품',
+        // 환경 (q3)
+        noise: '소음',
+        odor: '냄새/환기',
+        bugs: '벌레',
+        light: '조명/채광',
+    };
+
+    const getCareLabel = (code: string) => CARE_LABEL_MAP[code] || code;
+
+    // 1. API 데이터 페칭 (체크인 로그 및 오늘 현황)
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
@@ -95,18 +160,45 @@ export default function CheckinManagementPage() {
         }
     }, [propertyFilter, activeTab, eventFilter, logDateFilter, searchQuery]);
 
+    // 2. 게스트 케어 전용 데이터 페칭
+    const fetchCareData = useCallback(async () => {
+        try {
+            setCareLoading(true);
+            const params = new URLSearchParams();
+            if (propertyFilter !== 'ALL') params.set('property', propertyFilter);
+            if (searchQuery.trim()) params.set('search', searchQuery.trim());
+            params.set('limit', '100');
+
+            const res = await fetch(`/api/checkin/care?${params.toString()}`, { cache: 'no-store' });
+            const json = await res.json();
+
+            if (json.success) {
+                setCareSurveys(json.surveys || []);
+                setCareStats(json.stats || null);
+            }
+        } catch (e) {
+            console.error('게스트 케어 데이터 로딩 실패:', e);
+        } finally {
+            setCareLoading(false);
+        }
+    }, [propertyFilter, searchQuery]);
+
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+        fetchCareData();
+    }, [fetchData, fetchCareData]);
 
-    // 2. 자동 새로고침 타이머
+    // 3. 자동 새로고침 타이머
     useEffect(() => {
         if (autoRefreshSec <= 0) return;
         const timer = setInterval(() => {
             fetchData();
+            if (activeTab === 'care') {
+                fetchCareData();
+            }
         }, autoRefreshSec * 1000);
         return () => clearInterval(timer);
-    }, [autoRefreshSec, fetchData]);
+    }, [autoRefreshSec, fetchData, fetchCareData, activeTab]);
 
     // 3. 복사 피드백 헬퍼
     const handleCopy = (text: string, label: string) => {
@@ -258,6 +350,43 @@ export default function CheckinManagementPage() {
             return true;
         });
     }, [todayArrivals, propertyFilter, statusFilter, searchQuery]);
+
+    // 4-1. 게스트 케어 설문 피드백 필터링
+    const filteredCareSurveys = useMemo(() => {
+        return careSurveys.filter((item) => {
+            if (propertyFilter !== 'ALL') {
+                const prop = (item.property_name || '').toLowerCase();
+                const filter = propertyFilter.toLowerCase();
+                if (filter === '웨이브' && !prop.includes('wave') && !prop.includes('웨이브')) return false;
+                else if (filter === '호랑' && !prop.includes('horang') && !prop.includes('호랑')) return false;
+                else if (filter === '연남' && !prop.includes('yeonnam') && !prop.includes('연남')) return false;
+                else if (filter === '그린' && !prop.includes('green') && !prop.includes('그린')) return false;
+                else if (filter === '남선' && !prop.includes('namsun') && !prop.includes('남선')) return false;
+                else if (!prop.includes(filter)) return false;
+            }
+
+            if (careCategoryFilter === 'cleanliness') {
+                if (!item.q1_cleanliness || item.q1_cleanliness.length === 0) return false;
+            } else if (careCategoryFilter === 'facility') {
+                if (!item.q2_facility || item.q2_facility.length === 0) return false;
+            } else if (careCategoryFilter === 'environment') {
+                if (!item.q3_environment || item.q3_environment.length === 0) return false;
+            } else if (careCategoryFilter === 'comment') {
+                if (!item.q4_comment || !item.q4_comment.trim()) return false;
+            }
+
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const matchName = (item.guest_name || '').toLowerCase().includes(q);
+                const matchBookId = String(item.booking_id || '').includes(q);
+                const matchRoom = (item.room_name || '').toLowerCase().includes(q);
+                const matchComment = (item.q4_comment || '').toLowerCase().includes(q);
+                if (!matchName && !matchBookId && !matchRoom && !matchComment) return false;
+            }
+
+            return true;
+        });
+    }, [careSurveys, propertyFilter, careCategoryFilter, searchQuery]);
 
     // 이벤트 뱃지 렌더러 (이모지 제거)
     const renderEventBadge = (eventType: string) => {
@@ -423,7 +552,7 @@ export default function CheckinManagementPage() {
                     {/* 탭 전환 및 필터 컨트롤 바 */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-3 md:p-4 shadow-xs space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                            {/* 듀얼 탭 전환 버튼 */}
+                            {/* 3단 탭 전환 버튼 */}
                             <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
                                 <button
                                     type="button"
@@ -434,7 +563,7 @@ export default function CheckinManagementPage() {
                                             : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'
                                     }`}
                                 >
-                                    <span>오늘 체크인 현황</span>
+                                    <span>오늘 체크인</span>
                                     <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300">
                                         {todayArrivals.length}
                                     </span>
@@ -454,11 +583,30 @@ export default function CheckinManagementPage() {
                                         {logs.length}
                                     </span>
                                 </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('care')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                                        activeTab === 'care'
+                                            ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs ring-1 ring-purple-200 dark:ring-purple-800'
+                                            : 'text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300'
+                                    }`}
+                                >
+                                    <span>게스트 케어</span>
+                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                        activeTab === 'care'
+                                            ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                                            : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
+                                    }`}>
+                                        {careSurveys.length}
+                                    </span>
+                                </button>
                             </div>
 
                             {/* 숙소(지점) 필터 */}
                             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                                {['ALL', '연남', '웨이브', '그린', '남선'].map((prop) => (
+                                {['ALL', '웨이브', '호랑', '연남', '그린', '남선'].map((prop) => (
                                     <button
                                         key={prop}
                                         type="button"
@@ -500,7 +648,7 @@ export default function CheckinManagementPage() {
                                         </button>
                                     ))}
                                 </div>
-                            ) : (
+                            ) : activeTab === 'logs' ? (
                                 <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto">
                                     {[
                                         { id: 'ALL', label: '전체 이벤트' },
@@ -520,6 +668,29 @@ export default function CheckinManagementPage() {
                                             }`}
                                         >
                                             {ev.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto">
+                                    {[
+                                        { id: 'ALL', label: '전체 피드백' },
+                                        { id: 'cleanliness', label: '청결 이슈' },
+                                        { id: 'facility', label: '시설 이슈' },
+                                        { id: 'environment', label: '환경 이슈' },
+                                        { id: 'comment', label: '의견(코멘트) 있음' },
+                                    ].map((cat) => (
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            onClick={() => setCareCategoryFilter(cat.id)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                                careCategoryFilter === cat.id
+                                                    ? 'bg-purple-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                            }`}
+                                        >
+                                            {cat.label}
                                         </button>
                                     ))}
                                 </div>
@@ -714,7 +885,34 @@ export default function CheckinManagementPage() {
 
                                                         {/* 진행 상태 */}
                                                         <td className="py-3 px-4">
-                                                            {renderTodayStatusBadge(item.status)}
+                                                            <div className="flex flex-col gap-1 items-start">
+                                                                {renderTodayStatusBadge(item.status)}
+                                                                {item.careSurvey && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSelectedCareSurvey({
+                                                                                id: item.careSurvey!.id,
+                                                                                booking_id: item.bookingId,
+                                                                                property_name: item.propertyName,
+                                                                                room_name: item.unitName || item.subName || '',
+                                                                                guest_name: item.guestName,
+                                                                                check_in: todayDate,
+                                                                                check_out: '',
+                                                                                q1_cleanliness: item.careSurvey!.cleanliness,
+                                                                                q2_facility: item.careSurvey!.facility,
+                                                                                q3_environment: item.careSurvey!.environment,
+                                                                                q4_comment: item.careSurvey!.comment,
+                                                                                created_at: item.careSurvey!.createdAt,
+                                                                            });
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/70 dark:hover:bg-purple-900/80 text-purple-700 dark:text-purple-300 transition cursor-pointer border border-purple-200 dark:border-purple-800"
+                                                                        title="클릭하여 케어 설문 피드백 확인"
+                                                                    >
+                                                                        <span>💬 케어 설문 제출됨</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </td>
 
                                                         {/* 최근 활동 */}
@@ -791,10 +989,34 @@ export default function CheckinManagementPage() {
                                                         </span>
                                                     </div>
 
-                                                    <div className="text-right shrink-0">
+                                                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
                                                         {renderTodayStatusBadge(item.status)}
+                                                        {item.careSurvey && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedCareSurvey({
+                                                                        id: item.careSurvey!.id,
+                                                                        booking_id: item.bookingId,
+                                                                        property_name: item.propertyName,
+                                                                        room_name: item.unitName || item.subName || '',
+                                                                        guest_name: item.guestName,
+                                                                        check_in: todayDate,
+                                                                        check_out: '',
+                                                                        q1_cleanliness: item.careSurvey!.cleanliness,
+                                                                        q2_facility: item.careSurvey!.facility,
+                                                                        q3_environment: item.careSurvey!.environment,
+                                                                        q4_comment: item.careSurvey!.comment,
+                                                                        created_at: item.careSurvey!.createdAt,
+                                                                    });
+                                                                }}
+                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                                                            >
+                                                                <span>💬 케어 제출됨</span>
+                                                            </button>
+                                                        )}
                                                         {item.lastEventAt && (
-                                                            <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold mt-1">
+                                                            <div className="text-[10px] text-gray-400 dark:text-slate-500 font-bold mt-0.5">
                                                                 {formatTimeKst(item.lastEventAt)} 접속
                                                             </div>
                                                         )}
@@ -1060,6 +1282,232 @@ export default function CheckinManagementPage() {
                             )}
                         </div>
                     )}
+
+                    {/* 탭 3: 게스트 케어 피드백 현황판 */}
+                    {activeTab === 'care' && (
+                        <div className="space-y-4">
+                            {/* 게스트 케어 KPI 통계 카드 */}
+                            {careStats && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 md:gap-3.5">
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 md:p-4 border border-gray-200 dark:border-slate-800 shadow-xs">
+                                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold">
+                                            전체 접수 피드백
+                                        </div>
+                                        <div className="text-xl md:text-2xl font-black text-gray-900 dark:text-slate-100 mt-1 flex items-baseline gap-1">
+                                            <span>{careStats.totalCount}</span>
+                                            <span className="text-xs font-bold text-gray-400">건</span>
+                                        </div>
+                                        <div className="text-[10.5px] text-purple-600 dark:text-purple-400 font-bold mt-1 truncate">
+                                            {Object.entries(careStats.propertyCounts)
+                                                .map(([p, c]) => `${p} ${c}건`)
+                                                .join(' · ') || '기록 없음'}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 md:p-4 border border-gray-200 dark:border-slate-800 shadow-xs">
+                                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold flex items-center gap-1">
+                                            <span>청결 이슈</span>
+                                        </div>
+                                        <div className="text-xl md:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 flex items-baseline gap-1">
+                                            <span>{careStats.cleanlinessIssues}</span>
+                                            <span className="text-xs font-bold text-gray-400">건</span>
+                                        </div>
+                                        <div className="text-[10.5px] text-gray-400 dark:text-slate-500 font-medium mt-1">
+                                            바닥, 침구, 욕실, 주방 등
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 md:p-4 border border-gray-200 dark:border-slate-800 shadow-xs">
+                                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold flex items-center gap-1">
+                                            <span>시설/비품 이슈</span>
+                                        </div>
+                                        <div className="text-xl md:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 flex items-baseline gap-1">
+                                            <span>{careStats.facilityIssues}</span>
+                                            <span className="text-xs font-bold text-gray-400">건</span>
+                                        </div>
+                                        <div className="text-[10.5px] text-gray-400 dark:text-slate-500 font-medium mt-1">
+                                            에어컨, 온수, TV, 와이파이 등
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 md:p-4 border border-gray-200 dark:border-slate-800 shadow-xs">
+                                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold flex items-center gap-1">
+                                            <span>환경/소음 이슈</span>
+                                        </div>
+                                        <div className="text-xl md:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1 flex items-baseline gap-1">
+                                            <span>{careStats.environmentIssues}</span>
+                                            <span className="text-xs font-bold text-gray-400">건</span>
+                                        </div>
+                                        <div className="text-[10.5px] text-gray-400 dark:text-slate-500 font-medium mt-1">
+                                            소음, 냄새, 벌레, 조명 등
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 게스트 케어 피드백 목록 카드 그리드 */}
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden">
+                                <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                                    <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
+                                        <span>게스트 케어 접수 목록</span>
+                                        <span className="text-purple-600 dark:text-purple-400 text-xs font-bold">
+                                            ({filteredCareSurveys.length}건)
+                                        </span>
+                                    </h3>
+                                    <div className="text-[11px] text-gray-400 dark:text-slate-500 font-medium">
+                                        체크인 페이지에서 게스트가 직접 작성한 피드백
+                                    </div>
+                                </div>
+
+                                {careLoading ? (
+                                    <div className="py-16 text-center">
+                                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent mb-3"></div>
+                                        <p className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                                            게스트 케어 데이터를 불러오는 중...
+                                        </p>
+                                    </div>
+                                ) : filteredCareSurveys.length === 0 ? (
+                                    <div className="py-16 text-center">
+                                        <p className="text-sm font-black text-gray-700 dark:text-slate-300">
+                                            해당 조건의 게스트 케어 설문 데이터가 없습니다.
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                                            숙소 필터나 카테고리 필터를 변경해 보세요.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {filteredCareSurveys.map((care) => {
+                                            const hasCleanliness = care.q1_cleanliness && care.q1_cleanliness.length > 0;
+                                            const hasFacility = care.q2_facility && care.q2_facility.length > 0;
+                                            const hasEnv = care.q3_environment && care.q3_environment.length > 0;
+                                            const isClean = !hasCleanliness && !hasFacility && !hasEnv;
+
+                                            return (
+                                                <div
+                                                    key={care.id}
+                                                    className="bg-gray-50/75 dark:bg-slate-800/60 rounded-xl p-3.5 border border-gray-200/75 dark:border-slate-700/60 hover:border-purple-300 dark:hover:border-purple-600 transition flex flex-col justify-between space-y-3"
+                                                >
+                                                    <div>
+                                                        {/* 상단: 숙소/호실/게스트명 및 작성시간 */}
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                                                        {care.property_name}
+                                                                    </span>
+                                                                    <span className="font-black text-gray-900 dark:text-slate-100 text-xs">
+                                                                        {care.room_name}
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="font-black text-gray-900 dark:text-slate-100 text-sm">
+                                                                    {care.guest_name}
+                                                                </h4>
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono font-bold block">
+                                                                    {formatDateKst(care.created_at)}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono block">
+                                                                    {formatTimeKst(care.created_at)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 예약 정보 */}
+                                                        <div className="mt-2 text-[11px] text-gray-500 dark:text-slate-400 flex items-center justify-between">
+                                                            <span>
+                                                                투숙: {care.check_in} ~ {care.check_out}
+                                                            </span>
+                                                            <a
+                                                                href={`https://beds24.com/control2.php?pagetype=bookingedit&bookid=${care.booking_id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 dark:text-blue-400 hover:underline font-mono font-bold"
+                                                            >
+                                                                #{care.booking_id} ↗
+                                                            </a>
+                                                        </div>
+
+                                                        {/* 이슈 태그 뱃지들 */}
+                                                        <div className="mt-2.5 flex flex-wrap gap-1">
+                                                            {isClean && (
+                                                                <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                                    특이사항 없음 (만족)
+                                                                </span>
+                                                            )}
+                                                            {hasCleanliness &&
+                                                                care.q1_cleanliness!.map((c) => (
+                                                                    <span
+                                                                        key={`clean_${c}`}
+                                                                        className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                                                                    >
+                                                                        청결: {getCareLabel(c)}
+                                                                    </span>
+                                                                ))}
+                                                            {hasFacility &&
+                                                                care.q2_facility!.map((f) => (
+                                                                    <span
+                                                                        key={`fac_${f}`}
+                                                                        className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                                                    >
+                                                                        시설: {getCareLabel(f)}
+                                                                    </span>
+                                                                ))}
+                                                            {hasEnv &&
+                                                                care.q3_environment!.map((e) => (
+                                                                    <span
+                                                                        key={`env_${e}`}
+                                                                        className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                                                    >
+                                                                        환경: {getCareLabel(e)}
+                                                                    </span>
+                                                                ))}
+                                                        </div>
+
+                                                        {/* 게스트 의견/코멘트 */}
+                                                        {care.q4_comment ? (
+                                                            <div className="mt-3 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-xs text-gray-800 dark:text-slate-200">
+                                                                <span className="text-gray-400 dark:text-slate-500 font-bold mr-1">💬 의견:</span>
+                                                                <span className="font-bold">"{care.q4_comment}"</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-3 text-[11px] text-gray-400 dark:text-slate-500 italic">
+                                                                별도 코멘트 없음
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* 카드 하단 액션 */}
+                                                    <div className="pt-2 border-t border-gray-100 dark:border-slate-750 flex items-center justify-between">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedCareSurvey(care)}
+                                                            className="text-xs font-black text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 cursor-pointer flex items-center gap-1"
+                                                        >
+                                                            <span>상세 보기</span>
+                                                            <span>→</span>
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const shareText = `[게스트 케어 접수]\n- 숙소: ${care.property_name} ${care.room_name}\n- 게스트: ${care.guest_name} (#${care.booking_id})\n- 투숙: ${care.check_in} ~ ${care.check_out}\n- 청결: ${hasCleanliness ? care.q1_cleanliness!.map(getCareLabel).join(', ') : '이상없음'}\n- 시설: ${hasFacility ? care.q2_facility!.map(getCareLabel).join(', ') : '이상없음'}\n- 환경: ${hasEnv ? care.q3_environment!.map(getCareLabel).join(', ') : '이상없음'}\n- 코멘트: "${care.q4_comment || '없음'}"`;
+                                                                handleCopy(shareText, `share_${care.id}`);
+                                                            }}
+                                                            className="px-2 py-1 bg-white hover:bg-gray-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-md text-[11px] font-bold border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+                                                        >
+                                                            {copiedText === `share_${care.id}` ? '복사됨!' : '공유 텍스트 복사'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
 
@@ -1144,6 +1592,172 @@ export default function CheckinManagementPage() {
                             <button
                                 type="button"
                                 onClick={() => setSelectedLog(null)}
+                                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white dark:text-slate-200 border border-transparent dark:border-slate-700 rounded-xl text-xs font-black transition cursor-pointer"
+                            >
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 게스트 케어 피드백 상세 보기 팝업 모달 */}
+            {selectedCareSurvey && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-md text-xs font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                    게스트 케어
+                                </span>
+                                <h3 className="font-black text-gray-900 dark:text-slate-100 text-sm">
+                                    설문 피드백 상세 내역
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCareSurvey(null)}
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 font-black text-sm cursor-pointer p-1"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 text-xs text-gray-700 dark:text-slate-300">
+                            {/* 게스트 및 예약 기본 정보 */}
+                            <div className="grid grid-cols-3 gap-2 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl">
+                                <span className="font-bold text-gray-400 dark:text-slate-400">게스트 성함:</span>
+                                <span className="col-span-2 font-black text-purple-700 dark:text-purple-300 text-sm">
+                                    {selectedCareSurvey.guest_name}
+                                </span>
+
+                                <span className="font-bold text-gray-400 dark:text-slate-400">숙소 / 호실:</span>
+                                <span className="col-span-2 font-bold">
+                                    {selectedCareSurvey.property_name} {selectedCareSurvey.room_name}
+                                </span>
+
+                                <span className="font-bold text-gray-400 dark:text-slate-400">투숙 일정:</span>
+                                <span className="col-span-2 font-bold">
+                                    {selectedCareSurvey.check_in || '-'} ~ {selectedCareSurvey.check_out || '-'}
+                                </span>
+
+                                <span className="font-bold text-gray-400 dark:text-slate-400">예약 ID:</span>
+                                <span className="col-span-2 font-bold font-mono">
+                                    <a
+                                        href={`https://beds24.com/control2.php?pagetype=bookingedit&bookid=${selectedCareSurvey.booking_id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                                    >
+                                        #{selectedCareSurvey.booking_id} ↗
+                                    </a>
+                                </span>
+
+                                <span className="font-bold text-gray-400 dark:text-slate-400">작성 일시:</span>
+                                <span className="col-span-2 font-bold font-mono">
+                                    {new Date(selectedCareSurvey.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                                </span>
+                            </div>
+
+                            {/* 카테고리별 설문 응답 내용 */}
+                            <div className="space-y-2.5">
+                                {/* 1. 청결도 */}
+                                <div className="p-3 bg-gray-50 dark:bg-slate-800/80 rounded-xl space-y-1">
+                                    <span className="font-bold text-gray-500 dark:text-slate-400 block text-[11px]">
+                                        1. 객실 청결도 이슈
+                                    </span>
+                                    {selectedCareSurvey.q1_cleanliness && selectedCareSurvey.q1_cleanliness.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {selectedCareSurvey.q1_cleanliness.map((c) => (
+                                                <span
+                                                    key={c}
+                                                    className="px-2 py-0.5 rounded-md text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-900"
+                                                >
+                                                    {getCareLabel(c)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                            이상 없음 (청결 만족)
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* 2. 시설/비품 */}
+                                <div className="p-3 bg-gray-50 dark:bg-slate-800/80 rounded-xl space-y-1">
+                                    <span className="font-bold text-gray-500 dark:text-slate-400 block text-[11px]">
+                                        2. 시설 및 비품 이슈
+                                    </span>
+                                    {selectedCareSurvey.q2_facility && selectedCareSurvey.q2_facility.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {selectedCareSurvey.q2_facility.map((f) => (
+                                                <span
+                                                    key={f}
+                                                    className="px-2 py-0.5 rounded-md text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-900"
+                                                >
+                                                    {getCareLabel(f)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                            이상 없음 (시설 만족)
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* 3. 환경/소음 */}
+                                <div className="p-3 bg-gray-50 dark:bg-slate-800/80 rounded-xl space-y-1">
+                                    <span className="font-bold text-gray-500 dark:text-slate-400 block text-[11px]">
+                                        3. 주변 환경 및 소음 이슈
+                                    </span>
+                                    {selectedCareSurvey.q3_environment && selectedCareSurvey.q3_environment.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {selectedCareSurvey.q3_environment.map((e) => (
+                                                <span
+                                                    key={e}
+                                                    className="px-2 py-0.5 rounded-md text-xs font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900"
+                                                >
+                                                    {getCareLabel(e)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                            이상 없음 (환경 만족)
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* 4. 게스트 의견 원문 */}
+                                <div className="p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1">
+                                    <span className="font-bold text-purple-800 dark:text-purple-300 block text-[11px]">
+                                        💬 게스트 남긴 말씀 (원문)
+                                    </span>
+                                    <p className="font-bold text-sm text-gray-900 dark:text-slate-100 whitespace-pre-wrap">
+                                        {selectedCareSurvey.q4_comment ? `"${selectedCareSurvey.q4_comment}"` : '별도 코멘트가 없습니다.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 모달 하단 버튼 */}
+                        <div className="pt-2 flex items-center justify-between border-t border-gray-100 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const shareText = `[게스트 케어 접수 알림]\n- 숙소: ${selectedCareSurvey.property_name} ${selectedCareSurvey.room_name}\n- 게스트: ${selectedCareSurvey.guest_name} (#${selectedCareSurvey.booking_id})\n- 투숙: ${selectedCareSurvey.check_in} ~ ${selectedCareSurvey.check_out}\n- 청결: ${selectedCareSurvey.q1_cleanliness && selectedCareSurvey.q1_cleanliness.length > 0 ? selectedCareSurvey.q1_cleanliness.map(getCareLabel).join(', ') : '이상없음'}\n- 시설: ${selectedCareSurvey.q2_facility && selectedCareSurvey.q2_facility.length > 0 ? selectedCareSurvey.q2_facility.map(getCareLabel).join(', ') : '이상없음'}\n- 환경: ${selectedCareSurvey.q3_environment && selectedCareSurvey.q3_environment.length > 0 ? selectedCareSurvey.q3_environment.map(getCareLabel).join(', ') : '이상없음'}\n- 코멘트: "${selectedCareSurvey.q4_comment || '없음'}"`;
+                                    handleCopy(shareText, 'modal_share');
+                                }}
+                                className="px-3 py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                            >
+                                {copiedText === 'modal_share' ? '공유 텍스트 복사됨!' : '팀 공유 텍스트 복사'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCareSurvey(null)}
                                 className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white dark:text-slate-200 border border-transparent dark:border-slate-700 rounded-xl text-xs font-black transition cursor-pointer"
                             >
                                 닫기

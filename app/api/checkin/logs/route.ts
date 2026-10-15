@@ -45,15 +45,24 @@ export async function GET(request: Request) {
 
         const todayBookingIds = validTodayBookings.map((b) => b.id);
 
-        // 2. 오늘 입실 예약들과 관련된 로그 조회 (booking_id 매칭)
+        // 2. 오늘 입실 예약들과 관련된 로그 및 게스트 케어 조회 (booking_id 매칭)
         let matchedLogs: any[] = [];
+        let matchedCareSurveys: any[] = [];
         if (todayBookingIds.length > 0) {
-            const { data: logsForToday } = await supabase
-                .from('checkin_logs')
-                .select('*')
-                .in('booking_id', todayBookingIds);
-            matchedLogs = logsForToday || [];
+            const [logsRes, careRes] = await Promise.all([
+                supabase.from('checkin_logs').select('*').in('booking_id', todayBookingIds),
+                supabase.from('guest_care_surveys').select('*').in('booking_id', todayBookingIds),
+            ]);
+            matchedLogs = logsRes.data || [];
+            matchedCareSurveys = careRes.data || [];
         }
+
+        const careSurveyMap: Record<number, any> = {};
+        matchedCareSurveys.forEach((care) => {
+            if (care.booking_id) {
+                careSurveyMap[care.booking_id] = care;
+            }
+        });
 
         // 3. 오늘 발생한 'LOOKUP_FAILED' 로그 건수 조회
         const { count: todayFailuresCount } = await supabase
@@ -131,6 +140,7 @@ export async function GET(request: Request) {
             const channel = raw.apiSource || raw.channel || raw.referer || 'Direct';
             const phone = raw.mobile || raw.phone || '';
             const statusInfo = bookingStatusMap[b.id] || { status: 'UNCHECKED', lastEventAt: null };
+            const careSurvey = careSurveyMap[b.id] || null;
 
             return {
                 bookingId: b.id,
@@ -144,6 +154,16 @@ export async function GET(request: Request) {
                 status: statusInfo.status,
                 lastEventAt: statusInfo.lastEventAt,
                 numGuests: raw.numAdult ? Number(raw.numAdult) + Number(raw.numChild || 0) : 1,
+                careSurvey: careSurvey
+                    ? {
+                          id: careSurvey.id,
+                          createdAt: careSurvey.created_at,
+                          cleanliness: careSurvey.q1_cleanliness || [],
+                          facility: careSurvey.q2_facility || [],
+                          environment: careSurvey.q3_environment || [],
+                          comment: careSurvey.q4_comment || '',
+                      }
+                    : null,
             };
         });
 
@@ -195,6 +215,7 @@ export async function GET(request: Request) {
                 uncheckedCount,
                 passwordViewedCount,
                 todayFailuresCount: todayFailuresCount || 0,
+                careSubmittedCount: matchedCareSurveys.length,
             },
             todayArrivalsList,
             logs: logs || [],
