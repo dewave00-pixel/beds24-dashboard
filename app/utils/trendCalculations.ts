@@ -96,7 +96,7 @@ export function calculatePeriodStats(
     let checkoutNights = 0;
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
         totalRevenue += price;
 
         const arr = new Date(b.arrival);

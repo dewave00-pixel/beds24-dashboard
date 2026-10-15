@@ -44,7 +44,7 @@ export default function BookingModal({
 
     const currentUnit = getUnitForBooking(booking);
     const directPrice = getDirectExtensionPrice(booking.notes);
-    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId, directPrice, booking.bookingTime);
+    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId, directPrice, booking.bookingTime, booking.roomId);
 
     // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
     const currentKey = Number(booking.unitId) > 0 && booking.roomId

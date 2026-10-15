@@ -25,20 +25,60 @@ export function getDirectExtensionPrice(notes?: string | null): number {
 }
 
 /**
- * 💳 예약 체결 시점(bookingTime)을 고려한 동적 OTA 수수료율 산출 함수
- * - Booking.com(19): 2026-10-08 17:25 이후 20.5% (기본 17.5% + 광고 3%) / 이전 17.5%
- * - Trip.com(53): 2026-10-09 13:08 이후 3.0% (광고 3%) / 이전 0.0%
- * - Expedia(14): 2026-10-13 19:24 이후 3.0% (광고 3%) / 이전 0.0%
+ * 💳 예약 체결 시점(bookingTime)과 객실(roomId)을 고려한 동적 OTA 수수료율 산출 함수
+ * - Booking.com(19): 
+ *     - 2026-10-08 17:25 이전: 17.5%
+ *     - 2026-10-08 17:25 ~ 2026-10-15 11:05 이전: 20.5% (+3% 광고)
+ *     - 2026-10-15 11:05 이후: 일반 20.5%, 그린만 25.5% (+5% 추가)
+ * - Trip.com(53): 
+ *     - 2026-10-09 13:08 이전: 0.0%
+ *     - 2026-10-09 13:08 ~ 2026-10-15 11:05 이전: 3.0%
+ *     - 2026-10-15 11:05 이후: 10.0%
+ * - Expedia(14): 
+ *     - 2026-10-13 19:24 이전: 0.0%
+ *     - 2026-10-13 19:24 ~ 2026-10-15 11:05 이전: 3.0%
+ *     - 2026-10-15 11:05 이후: 10.0%
+ * - Agoda(17): 
+ *     - 2026-10-15 11:05 이전: 0.0%
+ *     - 2026-10-15 11:05 이후: 10.0%
  * - Airbnb(46): 15.5% 고정
- * - Agoda(17): 0.0% (이미 정산금으로 수신)
  */
-export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string): number {
+export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string, roomId?: number): number {
     const id = Number(apiSourceId);
     const rule = OTA_COMMISSION_POLICY[id];
     if (!rule) {
         return OTA_COMMISSION_RATES?.[id] ?? FALLBACK_COMMISSION_RATES[id] ?? 0;
     }
 
+    // 1) 시점별 다단계 정책(tiers)이 등록된 경우
+    if (rule.tiers && rule.tiers.length > 0) {
+        if (bookingTime) {
+            const normalized = bookingTime.replace('T', ' ');
+            // effectiveFrom 내림차순 정렬하여 현재 시점 이후로 가장 늦게 시작된 tier 찾기
+            const sortedTiers = [...rule.tiers].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+            const matchedTier = sortedTiers.find((t) => normalized >= t.effectiveFrom);
+
+            if (matchedTier) {
+                if (roomId && matchedTier.roomOverrides?.[Number(roomId)] !== undefined) {
+                    return matchedTier.roomOverrides[Number(roomId)];
+                }
+                return matchedTier.rate;
+            }
+            return rule.baseRate;
+        }
+
+        // bookingTime이 없는 신규/미지정 예약의 경우 최신(마지막) tier 적용
+        const latestTier = [...rule.tiers].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+        if (latestTier) {
+            if (roomId && latestTier.roomOverrides?.[Number(roomId)] !== undefined) {
+                return latestTier.roomOverrides[Number(roomId)];
+            }
+            return latestTier.rate;
+        }
+        return rule.baseRate;
+    }
+
+    // 2) 하위 호환용 (단일 adRate 정책)
     if (rule.adRate !== undefined && rule.adEffectiveFrom) {
         if (bookingTime) {
             const normalized = bookingTime.replace('T', ' ');
@@ -47,7 +87,6 @@ export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string)
             }
             return rule.baseRate;
         }
-        // bookingTime이 없는 신규/미지정 예약의 경우 최신 adRate 적용
         return rule.adRate;
     }
 
@@ -62,9 +101,10 @@ export function calculateNetPayout(
     price: number,
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
-    bookingTime?: string
+    bookingTime?: string,
+    roomId?: number
 ): number {
-    const rate = getOtaCommissionRate(apiSourceId, bookingTime);
+    const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
 
@@ -80,12 +120,13 @@ export function getCommissionInfo(
     price: number,
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
-    bookingTime?: string
+    bookingTime?: string,
+    roomId?: number
 ) {
-    const rate = getOtaCommissionRate(apiSourceId, bookingTime);
+    const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
-    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime);
+    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime, roomId);
     const hasDeduction = rate > 0;
     return {
         grossPrice: price,

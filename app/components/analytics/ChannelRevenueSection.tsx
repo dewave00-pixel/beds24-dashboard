@@ -784,7 +784,7 @@ export default function ChannelRevenueSection({
                                     const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
                                     const grossPrice = Number(b.price) || 0;
-                                    const netPayout = calculateNetPayout(grossPrice, b.apiSourceId, 0, b.bookingTime);
+                                    const netPayout = calculateNetPayout(grossPrice, b.apiSourceId, 0, b.bookingTime, b.roomId);
                                     const bookingDateKST = getBookingDateKST(b.bookingTime, b.arrival);
 
                                     return (

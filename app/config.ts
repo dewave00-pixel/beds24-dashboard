@@ -125,27 +125,57 @@ export const getChannelStyle = (apiSourceId?: number) => {
 };
 
 // 💳 OTA 채널별 광고 프로모션 및 수수료 인상 적용 시점 정책
+export interface CommissionTier {
+    effectiveFrom: string; // YYYY-MM-DD HH:mm KST
+    rate: number;          // 해당 시점부터 적용되는 기본 수수료율
+    roomOverrides?: Record<number, number>; // 특정 객실(roomId) 전용 수수료율 (예: 그린 560093, 560097)
+}
+
 export interface OtaCommissionRule {
     baseRate: number;        // 기본 수수료율
-    adRate?: number;          // 광고 적용 수수료율
-    adEffectiveFrom?: string; // 광고 적용 시작 시점 (YYYY-MM-DD HH:mm KST)
+    tiers?: CommissionTier[]; // 시점별 다단계 수수료율 정책
+    adRate?: number;          // [하위 호환용] 단일 광고 적용 수수료율
+    adEffectiveFrom?: string; // [하위 호환용] 단일 광고 적용 시작 시점 (YYYY-MM-DD HH:mm KST)
 }
 
 export const OTA_COMMISSION_POLICY: Record<number, OtaCommissionRule> = {
     46: { baseRate: 0.155 }, // Airbnb: 호스트 수수료 15.5% 고정
-    19: { baseRate: 0.175, adRate: 0.205, adEffectiveFrom: '2026-10-08 17:25' }, // Booking.com: 10/8 17:25 이후 17.5% -> 20.5% (+3% 광고)
-    53: { baseRate: 0.0, adRate: 0.03, adEffectiveFrom: '2026-10-09 13:08' },    // Trip.com: 10/9 13:08 이후 0% -> 3% (+3% 광고)
-    14: { baseRate: 0.0, adRate: 0.03, adEffectiveFrom: '2026-10-13 19:24' },    // Expedia: 10/13 19:24 이후 0% -> 3% (+3% 광고)
-    17: { baseRate: 0.0 },   // Agoda: 0% (이미 정산금으로 수신)
+    19: {
+        baseRate: 0.175,
+        tiers: [
+            { effectiveFrom: '2026-10-08 17:25', rate: 0.205 }, // 10/8 17:25 이후 기본 17.5% + 광고 3% = 20.5%
+            { effectiveFrom: '2026-10-15 11:05', rate: 0.205, roomOverrides: { 560093: 0.255, 560097: 0.255 } }, // 10/15 11:05 이후 일반 20.5%, 그린만 25.5%(+5% 추가)
+        ],
+    },
+    53: {
+        baseRate: 0.0,
+        tiers: [
+            { effectiveFrom: '2026-10-09 13:08', rate: 0.03 }, // 10/9 13:08 이후 3% 광고
+            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
+        ],
+    },
+    14: {
+        baseRate: 0.0,
+        tiers: [
+            { effectiveFrom: '2026-10-13 19:24', rate: 0.03 }, // 10/13 19:24 이후 3% 광고
+            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
+        ],
+    },
+    17: {
+        baseRate: 0.0,
+        tiers: [
+            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
+        ],
+    },
 };
 
-// 💳 하위 호환용 최신 기준 수수료율
+// 💳 최신 기준 표준 수수료율 (참고 및 폴백용)
 export const OTA_COMMISSION_RATES: Record<number, number> = {
     46: 0.155, // Airbnb 15.5%
-    19: 0.205, // Booking.com 최신 20.5%
-    53: 0.03,  // Trip.com 최신 3%
-    14: 0.03,  // Expedia 최신 3%
-    17: 0.0,   // Agoda 0%
+    19: 0.205, // Booking.com 최신 20.5% (그린 25.5%)
+    53: 0.10,  // Trip.com 최신 10%
+    14: 0.10,  // Expedia 최신 10%
+    17: 0.10,  // Agoda 최신 10%
 };
 
 // 🇰🇷 주요 공휴일 지정 (YYYY-MM-DD)

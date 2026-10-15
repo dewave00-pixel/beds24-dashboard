@@ -118,7 +118,7 @@ export default function DailyPickupReportSection({
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime);
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
 
             let overlapNights = 0;
             const cur = new Date(b.arrival);
@@ -251,7 +251,7 @@ export default function DailyPickupReportSection({
                 const arr = new Date(b.arrival);
                 const dep = new Date(b.departure);
                 const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime);
+                const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
 
                 let overlap = 0;
                 const cDate = new Date(b.arrival);

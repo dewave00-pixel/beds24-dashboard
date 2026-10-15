@@ -219,7 +219,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                 }
 
                 const apiId = Number(b.apiSourceId) || 0;
-                const payout = calculateNetPayout(Number(b.price) || 0, apiId, 0, b.bookingTime);
+                const payout = calculateNetPayout(Number(b.price) || 0, apiId, 0, b.bookingTime, b.roomId);
 
                 let chKey = 'other';
                 if (apiId === 53) chKey = 'trip';
