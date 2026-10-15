@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export const DEFAULT_STAFF_MAP: Record<string, string> = {
+const DEFAULT_STAFF_MAP: Record<string, string> = {
     manager: '소영매니저님',
     staff_2: '가연영님',
     staff_3: '지명님',
