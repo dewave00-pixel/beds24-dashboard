@@ -709,15 +709,15 @@ export interface ChannelStats {
     bookings: Booking[];      // 해당 채널의 예약 객체 목록
 }
 
-// 플랫폼 고유 브랜드 색상 매핑
+// 플랫폼 고유 브랜드 색상 매핑 (대시보드 config.ts getChannelStyle과 100% 일치)
 const CHANNEL_COLORS: Record<string, string> = {
-    'Airbnb': '#FF5A5F',
-    'Agoda': '#EAA315',
-    'Booking.com': '#003580',
-    'Trip.com': '#2681FF',
-    'Expedia': '#64748B',
-    '직접 예약': '#10B981',
-    '기타': '#64748B',
+    'Airbnb': '#d9ead3',     // 에어비앤비 (연초록)
+    'Trip.com': '#f1c232',   // 트립닷컴 (옐로우)
+    'Booking.com': '#4a86e8',// 부킹닷컴 (블루)
+    'Agoda': '#9900ff',      // 아고다 (퍼플)
+    'Expedia': '#cccccc',    // 익스피디아 (그레이)
+    '직접 예약': '#6c757d',  // 직접 예약 (슬레이트)
+    '기타': '#6c757d',       // 기타 채널
 };
 
 /**

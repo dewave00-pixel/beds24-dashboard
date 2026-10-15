@@ -18,13 +18,14 @@ interface ChannelsTabProps {
 type InflowMetric = 'count' | 'revenue';
 
 // 5대 핵심 OTA 플랫폼 및 기타 채널 정의 (트립, 부킹, 에어비앤비, 익스피디아, 아고다, 기타)
-const CHANNEL_PALETTE: { id: string; name: string; color: string; matchApiId: number[] }[] = [
-    { id: 'trip', name: '트립닷컴', color: '#2681FF', matchApiId: [53] },
-    { id: 'booking', name: '부킹닷컴', color: '#003580', matchApiId: [19] },
-    { id: 'airbnb', name: '에어비앤비', color: '#FF385C', matchApiId: [46] },
-    { id: 'expedia', name: '익스피디아', color: '#EAA812', matchApiId: [14] },
-    { id: 'agoda', name: '아고다', color: '#8B5CF6', matchApiId: [17] },
-    { id: 'other', name: '기타/직거래', color: '#64748B', matchApiId: [0] },
+// 5대 핵심 OTA 플랫폼 및 기타 채널 정의 (대시보드 config.ts 색상과 100% 일치)
+const CHANNEL_PALETTE: { id: string; name: string; color: string; strokeColor?: string; matchApiId: number[] }[] = [
+    { id: 'airbnb', name: '에어비앤비', color: '#d9ead3', strokeColor: '#2e7d32', matchApiId: [46] },
+    { id: 'trip', name: '트립닷컴', color: '#f1c232', strokeColor: '#d97706', matchApiId: [53] },
+    { id: 'booking', name: '부킹닷컴', color: '#4a86e8', strokeColor: '#2563eb', matchApiId: [19] },
+    { id: 'agoda', name: '아고다', color: '#9900ff', strokeColor: '#7c3aed', matchApiId: [17] },
+    { id: 'expedia', name: '익스피디아', color: '#cccccc', strokeColor: '#4b5563', matchApiId: [14] },
+    { id: 'other', name: '기타/직거래', color: '#6c757d', strokeColor: '#475569', matchApiId: [0] },
 ];
 
 export default function ChannelsTab({ bookings }: ChannelsTabProps) {
@@ -357,7 +358,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                     <div key={ch.id} className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-500 dark:text-slate-400 flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: ch.color }} />
+                                <span className="w-2.5 h-2.5 rounded-xs border border-black/15 dark:border-white/20" style={{ backgroundColor: ch.color }} />
                                 {ch.name}
                             </span>
                             <span className="text-[11px] font-extrabold text-gray-700 dark:text-slate-300 font-mono">
@@ -449,7 +450,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                                             : `₩${(hoveredRow.values[ch.id]?.revenue || 0).toLocaleString()}`;
                                     return (
                                         <div key={ch.id} className="flex items-center gap-1.5 text-xs bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-2xs">
-                                            <span className="w-2.5 h-2.5 rounded-xs" style={{ backgroundColor: ch.color }} />
+                                            <span className="w-2.5 h-2.5 rounded-xs border border-black/15 dark:border-white/20" style={{ backgroundColor: ch.color }} />
                                             <span className="font-bold text-slate-700 dark:text-slate-300">{ch.name}:</span>
                                             <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100">{val}</span>
                                         </div>
@@ -465,7 +466,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                             <div className="flex flex-wrap items-center gap-2.5">
                                 {overallInflowSummary.map((ch) => (
                                     <div key={ch.id} className="flex items-center gap-1.5 text-xs bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
-                                        <span className="w-2 h-2 rounded-xs" style={{ backgroundColor: ch.color }} />
+                                        <span className="w-2 h-2 rounded-xs border border-black/15 dark:border-white/20" style={{ backgroundColor: ch.color }} />
                                         <span className="text-slate-500 dark:text-slate-400 font-medium">{ch.name}:</span>
                                         <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                                             {inflowMetric === 'count' ? `${ch.totalC}건` : `₩${ch.totalR.toLocaleString()}`}
@@ -566,7 +567,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                                     {inflowChartData.length > 1 && (
                                         <polyline
                                             fill="none"
-                                            stroke={ch.color}
+                                            stroke={ch.strokeColor || ch.color}
                                             strokeWidth="2.5"
                                             strokeLinecap="round"
                                             strokeLinejoin="round"

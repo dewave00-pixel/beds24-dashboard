@@ -21,11 +21,11 @@ type SortMode = 'vacancy' | 'revenue' | 'occupancy' | 'airbnb' | 'booking' | 'ag
 type ChannelFocus = 'all' | 'airbnb' | 'booking' | 'agoda' | 'trip';
 
 const OTA_CONFIG: Record<string, { name: string; color: string; bg: string }> = {
-    airbnb: { name: '에어비앤비', color: '#FF385C', bg: '#FFF1F2' },
-    booking: { name: '부킹닷컴', color: '#003580', bg: '#EFF6FF' },
-    agoda: { name: '아고다', color: '#8B5CF6', bg: '#F5F3FF' },
-    trip: { name: '트립닷컴', color: '#2681FF', bg: '#EFF6FF' },
-    other: { name: '기타/직거래', color: '#64748B', bg: '#F8FAFC' },
+    airbnb: { name: '에어비앤비', color: '#14532d', bg: '#d9ead3' }, // 에어비앤비: #d9ead3 (연초록)
+    trip: { name: '트립닷컴', color: '#d97706', bg: '#f1c232' },     // 트립닷컴: #f1c232 (옐로우)
+    booking: { name: '부킹닷컴', color: '#4a86e8', bg: '#4a86e8' }, // 부킹닷컴: #4a86e8 (블루)
+    agoda: { name: '아고다', color: '#9900ff', bg: '#9900ff' },     // 아고다: #9900ff (퍼플)
+    other: { name: '기타/직거래', color: '#6c757d', bg: '#6c757d' }, // 기타
 };
 
 export default function RoomChannelMatrixSection({
@@ -215,7 +215,7 @@ export default function RoomChannelMatrixSection({
 
                             {/* 4대 주요 OTA 컬럼 */}
                             {(channelFocus === 'all' || channelFocus === 'airbnb') && (
-                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-rose-600 dark:text-rose-400">
+                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-emerald-700 dark:text-emerald-400">
                                     에어비앤비 (Airbnb)
                                 </th>
                             )}
@@ -230,7 +230,7 @@ export default function RoomChannelMatrixSection({
                                 </th>
                             )}
                             {(channelFocus === 'all' || channelFocus === 'trip') && (
-                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-sky-600 dark:text-sky-400">
+                                <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-amber-600 dark:text-amber-400">
                                     트립닷컴 (Trip)
                                 </th>
                             )}
@@ -409,7 +409,7 @@ export default function RoomChannelMatrixSection({
                         {/* 4대 OTA 기여 현황 */}
                         <div className="space-y-1.5 pt-1 text-[11px]">
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-rose-600 dark:text-rose-400">에어비앤비</span>
+                                <span className="font-bold text-emerald-700 dark:text-emerald-400">에어비앤비</span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
                                     {r.otaMetrics.airbnb.nights}박 ({r.otaMetrics.airbnb.contributionOcc}%)
                                 </span>
@@ -427,7 +427,7 @@ export default function RoomChannelMatrixSection({
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-sky-600 dark:text-sky-400">트립닷컴</span>
+                                <span className="font-bold text-amber-600 dark:text-amber-400">트립닷컴</span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
                                     {r.otaMetrics.trip.nights}박 ({r.otaMetrics.trip.contributionOcc}%)
                                 </span>
