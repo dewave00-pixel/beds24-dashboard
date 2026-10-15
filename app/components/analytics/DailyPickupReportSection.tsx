@@ -109,9 +109,9 @@ export default function DailyPickupReportSection({
         // 예약 체결일(bookingTime 기준, 없으면 arrival 기준)
         const getBookingDate = (b: Booking) => (b.bookingTime ? b.bookingTime.slice(0, 10) : b.arrival);
 
-        // 사전 확보 예약 (bookingDate <= asOfDateStr)
+        // 사전 확보 예약 (bookingDate < asOfDateStr, 즉 기준 시점 00:00 이전 선확보)
         const preBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
-        // 사후 유입 예약 (bookingDate > asOfDateStr)
+        // 사후 유입 예약 (bookingDate >= asOfDateStr, 즉 기준 시점부터 신규 유입)
         const postBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
 
         matchingValidBookings.forEach((b) => {
@@ -135,7 +135,7 @@ export default function DailyPickupReportSection({
                 const bDate = getBookingDate(b);
                 const item = { booking: b, overlapNights, netPayout, proportionalRev };
 
-                if (bDate <= asOfDateStr) {
+                if (bDate < asOfDateStr) {
                     preBookings.push(item);
                 } else {
                     postBookings.push(item);
@@ -204,9 +204,8 @@ export default function DailyPickupReportSection({
 
     // 🧮 2. 기준일 이후 일별 누적 유입 곡선 데이터 (Pace Progression)
     const paceTimeline = useMemo(() => {
-        // 기준일 다음날부터 추적 시작
-        const nextDay = new Date(asOfDateStr);
-        nextDay.setDate(nextDay.getDate() + 1);
+        // 기준일(asOfDateStr) 당일부터 추적 시작
+        const cur = new Date(asOfDateStr);
 
         // 추적 종료일: 선택된 마스터 기간의 종료일(endDate)을 절대 초과하지 않음!
         // (현재 진행 중인 월/기간인 경우 오늘(todayStr)까지만 추적하여 미래 빈 날짜 방지)
@@ -230,7 +229,6 @@ export default function DailyPickupReportSection({
         let runningOccRate = paceSummary.preOccRate;
         let runningNights = paceSummary.preStayNights;
 
-        const cur = new Date(nextDay);
         // 과도한 루프 방지 (최대 60일)
         let loopCount = 0;
 
@@ -473,7 +471,7 @@ export default function DailyPickupReportSection({
                     <div>
                         <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-black mb-1">
                             <span className="flex items-center gap-1.5">
-                                <span>📈 {asOfDateStr.slice(5)} 이후 추가 유입 가동률</span>
+                                <span>📈 {asOfDateStr.slice(5)}부터 추가 유입 가동률</span>
                             </span>
                             <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
                                 픽업 성과
@@ -594,7 +592,7 @@ export default function DailyPickupReportSection({
                             </span>
                         </h4>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            기준일({asOfDateStr}) 이후 매일매일 신규 예약이 들어올 때마다 가동률이 몇 %p씩 차올랐는지 보여줍니다.
+                            기준일({asOfDateStr})부터 매일매일 신규 예약이 들어올 때마다 가동률이 몇 %p씩 차올랐는지 보여줍니다.
                         </p>
                     </div>
 
@@ -612,7 +610,7 @@ export default function DailyPickupReportSection({
 
                 {paceTimeline.length === 0 ? (
                     <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                        기준일({asOfDateStr}) 이후 해당 기간으로 들어온 추가 예약이 없습니다.
+                        기준일({asOfDateStr})부터 해당 기간으로 들어온 추가 예약이 없습니다.
                     </div>
                 ) : (
                     <div className="overflow-x-auto pb-2">
@@ -691,7 +689,7 @@ export default function DailyPickupReportSection({
                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                             }`}
                         >
-                            📈 기준일({asOfDateStr.slice(5)}) 이후 추가 유입된 예약 ({paceSummary.postBookings.length}건)
+                            📈 기준일({asOfDateStr.slice(5)})부터 추가 유입된 예약 ({paceSummary.postBookings.length}건)
                         </button>
                         <button
                             onClick={() => setDetailListTab('pre')}
