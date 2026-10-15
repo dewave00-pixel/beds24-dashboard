@@ -208,12 +208,16 @@ export default function DailyPickupReportSection({
         const nextDay = new Date(asOfDateStr);
         nextDay.setDate(nextDay.getDate() + 1);
 
-        // 추적 종료일: 마스터 기간 종료일과 오늘 중 더 늦은 날 (단, 최대 endDate + 15일까지)
-        const timelineEndDate = new Date(Math.max(new Date(endDate).getTime(), new Date(todayStr).getTime()));
+        // 추적 종료일: 선택된 마스터 기간의 종료일(endDate)을 절대 초과하지 않음!
+        // (현재 진행 중인 월/기간인 경우 오늘(todayStr)까지만 추적하여 미래 빈 날짜 방지)
+        const targetEnd = new Date(endDate);
+        const today = new Date(todayStr);
+        const timelineEndDate = targetEnd > today ? today : targetEnd;
 
         const items: {
             dateStr: string;
             label: string;
+            shortDate: string;
             dayNights: number;
             dayOccPpt: number;
             dayRev: number;
@@ -272,10 +276,11 @@ export default function DailyPickupReportSection({
             runningOccRate += dayOccPpt;
             runningNights += dayNights;
 
-            // 유입이 있거나 주요 날짜인 경우 기록
+            const shortDate = `${m}/${d}`;
             items.push({
                 dateStr,
                 label: `${m}/${d} (${dayName})`,
+                shortDate,
                 dayNights,
                 dayOccPpt,
                 dayRev,
@@ -656,9 +661,9 @@ export default function DailyPickupReportSection({
                                                 {item.cumulativeOccRate.toFixed(0)}%
                                             </span>
 
-                                            {/* 날짜 라벨 */}
-                                            <span className="text-[9.5px] truncate text-slate-500 dark:text-slate-400 leading-none mt-0.5">
-                                                {item.label.slice(0, 5)}
+                                            {/* 날짜 라벨 (9/2, 9/30 등 깔끔 표기) */}
+                                            <span className="text-[9px] font-mono truncate text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                                                {item.shortDate}
                                             </span>
                                         </div>
                                     );
