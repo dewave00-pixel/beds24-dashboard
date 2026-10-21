@@ -147,35 +147,18 @@ export const OTA_COMMISSION_POLICY: Record<number, OtaCommissionRule> = {
             { effectiveFrom: '2026-10-15 11:05', rate: 0.205, roomOverrides: { 560093: 0.255, 560097: 0.255 } }, // 10/15 11:05 이후 일반 20.5%, 그린만 25.5%(+5% 추가)
         ],
     },
-    53: {
-        baseRate: 0.0,
-        tiers: [
-            { effectiveFrom: '2026-10-09 13:08', rate: 0.03 }, // 10/9 13:08 이후 3% 광고
-            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
-        ],
-    },
-    14: {
-        baseRate: 0.0,
-        tiers: [
-            { effectiveFrom: '2026-10-13 19:24', rate: 0.03 }, // 10/13 19:24 이후 3% 광고
-            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
-        ],
-    },
-    17: {
-        baseRate: 0.0,
-        tiers: [
-            { effectiveFrom: '2026-10-15 11:05', rate: 0.10 }, // 10/15 11:05 이후 10% 광고
-        ],
-    },
+    53: { baseRate: 0.0 }, // Trip.com: 0% (이미 정산금으로 수신)
+    14: { baseRate: 0.0 }, // Expedia: 0% (이미 정산금으로 수신)
+    17: { baseRate: 0.0 }, // Agoda: 0% (이미 정산금으로 수신)
 };
 
 // 💳 최신 기준 표준 수수료율 (참고 및 폴백용)
 export const OTA_COMMISSION_RATES: Record<number, number> = {
     46: 0.155, // Airbnb 15.5%
     19: 0.205, // Booking.com 최신 20.5% (그린 25.5%)
-    53: 0.10,  // Trip.com 최신 10%
-    14: 0.10,  // Expedia 최신 10%
-    17: 0.10,  // Agoda 최신 10%
+    53: 0.0,   // Trip.com 0% (정산금)
+    14: 0.0,   // Expedia 0% (정산금)
+    17: 0.0,   // Agoda 0% (정산금)
 };
 
 // 🇰🇷 주요 공휴일 지정 (YYYY-MM-DD)

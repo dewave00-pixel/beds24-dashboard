@@ -26,22 +26,12 @@ export function getDirectExtensionPrice(notes?: string | null): number {
 
 /**
  * 💳 예약 체결 시점(bookingTime)과 객실(roomId)을 고려한 동적 OTA 수수료율 산출 함수
+ * - Airbnb(46): 15.5% 고정 (호스트 수수료 차감)
  * - Booking.com(19): 
  *     - 2026-10-08 17:25 이전: 17.5%
  *     - 2026-10-08 17:25 ~ 2026-10-15 11:05 이전: 20.5% (+3% 광고)
  *     - 2026-10-15 11:05 이후: 일반 20.5%, 그린만 25.5% (+5% 추가)
- * - Trip.com(53): 
- *     - 2026-10-09 13:08 이전: 0.0%
- *     - 2026-10-09 13:08 ~ 2026-10-15 11:05 이전: 3.0%
- *     - 2026-10-15 11:05 이후: 10.0%
- * - Expedia(14): 
- *     - 2026-10-13 19:24 이전: 0.0%
- *     - 2026-10-13 19:24 ~ 2026-10-15 11:05 이전: 3.0%
- *     - 2026-10-15 11:05 이후: 10.0%
- * - Agoda(17): 
- *     - 2026-10-15 11:05 이전: 0.0%
- *     - 2026-10-15 11:05 이후: 10.0%
- * - Airbnb(46): 15.5% 고정
+ * - Trip.com(53), Expedia(14), Agoda(17) 및 기타: 0.0% (Beds24에 이미 정산금으로 수신되어 추가 차감 불필요)
  */
 export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string, roomId?: number): number {
     const id = Number(apiSourceId);
