@@ -96,6 +96,7 @@ export default function DashboardPage() {
                 displayDaysCount={d.displayDaysCount}
                 onDateClick={d.handleDateClick}
                 onBookingClick={auth.isAdmin ? d.handleBookingClick : undefined}
+                onLoadMoreDays={d.loadMoreDays}
               />
             ) : (
               <HorizontalTimeline
@@ -108,6 +109,7 @@ export default function DashboardPage() {
                 ROW_HEIGHT={ROW_HEIGHT}
                 onDateClick={d.handleDateClick}
                 onBookingClick={auth.isAdmin ? d.handleBookingClick : undefined}
+                onLoadMoreDays={d.loadMoreDays}
               />
             )}
           </ZoomableTimelineWrapper>

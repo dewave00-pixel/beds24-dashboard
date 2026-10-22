@@ -36,6 +36,9 @@ export default function DashboardToolbar({
                     <span className="text-blue-600 dark:text-blue-400 font-extrabold">{timelineDates[0]}</span>
                     <span>~</span>
                     <span className="text-blue-600 dark:text-blue-400 font-extrabold">{timelineDates[timelineDates.length - 1]}</span>
+                    <span className="text-[11px] font-extrabold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700">
+                        {timelineDates.length}일간
+                    </span>
                 </div>
 
                 {selectedDate && (
@@ -106,12 +109,12 @@ export default function DashboardToolbar({
                 </div>
             </div>
 
-            {/* 우측: 주간 이동 + 🔥 특이사항 모아보기 버튼 */}
+            {/* 우측: 날짜 이동 + 🔥 특이사항 모아보기 버튼 */}
             <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <div className="flex gap-1">
-                    <button onClick={() => onMoveDays(-7)} className="btn-secondary">◀ 지난주</button>
-                    <button onClick={onGoToday} className="btn-secondary btn-secondary-blue">오늘 기준</button>
-                    <button onClick={() => onMoveDays(7)} className="btn-secondary">다음주 ▶</button>
+                    <button onClick={() => onMoveDays(-14)} className="btn-secondary" title="14일 이전으로 이동">◀ 이전 14일</button>
+                    <button onClick={onGoToday} className="btn-secondary btn-secondary-blue" title="오늘 기준 한 달 표시로 초기화">오늘 기준</button>
+                    <button onClick={() => onMoveDays(14)} className="btn-secondary" title="14일 이후로 이동">다음 14일 ▶</button>
                 </div>
 
                 <button
