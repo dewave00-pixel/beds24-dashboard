@@ -50,7 +50,8 @@ export function useDashboard() {
     // 날짜 계산 기준 (기본값: 한국 시간 오늘 기준 이틀 전부터)
     const [startDate, setStartDate] = useState<Date>(() => getKSTDateOffset(-2));
 
-    const displayDaysCount = 14;
+    const INITIAL_DISPLAY_DAYS = 30; // 기본 한 달(30일) 표시
+    const [displayDaysCount, setDisplayDaysCount] = useState<number>(INITIAL_DISPLAY_DAYS);
 
     // 1. Supabase 메모/태그 불러오기
     const fetchNotes = async () => {
@@ -230,6 +231,7 @@ export function useDashboard() {
                 setTodayStr(newToday);
                 setTomorrowStr(newTomorrow);
                 setStartDate(getKSTDateOffset(-2));
+                setDisplayDaysCount(INITIAL_DISPLAY_DAYS);
                 reloadAll();
 
                 // 다음 자정 예약
@@ -247,6 +249,7 @@ export function useDashboard() {
                     setTodayStr(currentToday);
                     setTomorrowStr(getKSTTomorrowStr());
                     setStartDate(getKSTDateOffset(-2));
+                    setDisplayDaysCount(INITIAL_DISPLAY_DAYS);
                     reloadAll();
                 }
             }
@@ -270,7 +273,7 @@ export function useDashboard() {
     // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않았으며 오늘 이후 퇴실하는 현재/미래 예약만 표시)
     const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b) && b.departure >= todayStr);
 
-    // 14일 날짜 배열 생성 (한국 시간 기준 정확한 포맷팅)
+    // 날짜 배열 생성 (기본 30일부터 스크롤 시 14일씩 동적 확장)
     const timelineDates: string[] = [];
     for (let i = 0; i < displayDaysCount; i++) {
         const d = new Date(startDate);
@@ -286,6 +289,15 @@ export function useDashboard() {
 
     const goToday = () => {
         setStartDate(getKSTDateOffset(-2));
+        setDisplayDaysCount(INITIAL_DISPLAY_DAYS);
+    };
+
+    // 🔄 스크롤 끝 도달 시 다음 날짜 추가 생성 (기본 +14일, 최대 180일까지)
+    const loadMoreDays = (count: number = 14) => {
+        setDisplayDaysCount((prev) => {
+            if (prev >= 180) return prev;
+            return prev + count;
+        });
     };
 
     const handleDateClick = (dStr: string) => {
@@ -485,6 +497,7 @@ export function useDashboard() {
         timelineDates,
         moveDays,
         goToday,
+        loadMoreDays,
         reloadAll,
         syncWithBeds24,
         zoomLevel,

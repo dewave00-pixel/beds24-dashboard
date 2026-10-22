@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../../config';
 import { isValidBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
@@ -20,6 +20,7 @@ interface HorizontalTimelineProps {
     ROW_HEIGHT: number;
     onDateClick: (dateStr: string) => void;
     onBookingClick?: (e: React.MouseEvent, booking: Booking) => void;
+    onLoadMoreDays?: (count?: number) => void;
 }
 
 export default function HorizontalTimeline({
@@ -32,15 +33,31 @@ export default function HorizontalTimeline({
     ROW_HEIGHT,
     onDateClick,
     onBookingClick,
+    onLoadMoreDays,
 }: HorizontalTimelineProps) {
+    const isTriggeringRef = useRef<boolean>(false);
+
+    // 📜 우측으로 스크롤 시 끝 300px 전 다음 날짜 자동 확장 (무한 스크롤)
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!onLoadMoreDays || isTriggeringRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = e.currentTarget;
+        if (scrollWidth - scrollLeft - clientWidth < 300) {
+            isTriggeringRef.current = true;
+            onLoadMoreDays(14);
+            setTimeout(() => {
+                isTriggeringRef.current = false;
+            }, 400);
+        }
+    };
+
     return (
-        <div className="grid-table-container">
+        <div className="grid-table-container" onScroll={handleScroll}>
             <div className="min-w-max">
 
                 {/* 상단 날짜 헤더 */}
                 <div
                     className="grid divide-x divide-gray-300 dark:divide-slate-700 border-b-2 border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 font-bold text-xs"
-                    style={{ gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px)` }}
+                    style={{ gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px) 90px` }}
                 >
                     <div className="sticky-corner-1 p-2 flex items-center justify-center bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-extrabold border-r border-gray-300 dark:border-slate-700">
                         숙소 / 날짜 ➔
@@ -79,6 +96,18 @@ export default function HorizontalTimeline({
                             </div>
                         );
                     })}
+
+                    {/* ➕ 우측 끝 더보기 헤더 셀 */}
+                    <div
+                        onClick={() => onLoadMoreDays?.(14)}
+                        className="sticky-top-1 p-1 flex flex-col items-center justify-center cursor-pointer transition bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-700 dark:text-blue-300 font-extrabold border-l-2 border-blue-400 select-none shadow-xs"
+                        title="클릭 시 다음 14일을 뒤에 이어서 불러옵니다"
+                    >
+                        <div className="text-[11px] font-black flex items-center gap-0.5">
+                            <span>➕ 더보기</span>
+                        </div>
+                        <div className="text-[8.5px] opacity-80 font-bold">(+14일)</div>
+                    </div>
                 </div>
 
                 {/* Y축 & 타임라인 본문 */}
@@ -94,7 +123,7 @@ export default function HorizontalTimeline({
                                             key={`h-row-${unit.key}`}
                                             className="grid divide-x divide-gray-300 dark:divide-slate-800 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                                             style={{
-                                                gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px)`,
+                                                gridTemplateColumns: `200px repeat(${timelineDates.length}, ${COL_WIDTH}px) 90px`,
                                                 height: `${ROW_HEIGHT}px`,
                                             }}
                                         >
@@ -133,6 +162,15 @@ export default function HorizontalTimeline({
                                                     />
                                                 );
                                             })}
+
+                                            {/* ➕ 우측 끝 행 더보기 연결 셀 */}
+                                            <div
+                                                onClick={() => onLoadMoreDays?.(14)}
+                                                className="h-full flex items-center justify-center bg-gray-50/60 dark:bg-slate-800/40 hover:bg-blue-50/80 dark:hover:bg-slate-800 cursor-pointer border-l-2 border-dashed border-gray-300 dark:border-slate-700 transition"
+                                                title="클릭하거나 오른쪽으로 스크롤하면 다음 날짜가 이어집니다"
+                                            >
+                                                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-black hover:text-blue-600 dark:hover:text-blue-400">▶</span>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -324,6 +362,25 @@ export default function HorizontalTimeline({
                         })}
                     </div>
 
+                </div>
+
+                {/* 📌 타임라인 하단 무한 스크롤 안내 및 수동 더보기 바 */}
+                <div className="sticky-left py-3 px-4 bg-gray-50 dark:bg-slate-800/90 border-t border-gray-300 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200 font-bold">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>현재 <strong className="text-blue-600 dark:text-blue-400 font-black">{timelineDates.length}일간</strong>의 예약이 표시 중입니다. (오른쪽으로 스크롤 시 자동 확장)</span>
+                    </div>
+                    {onLoadMoreDays && (
+                        <button
+                            type="button"
+                            onClick={() => onLoadMoreDays(14)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-extrabold rounded-md shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="다음 14일 추가로 불러오기"
+                        >
+                            <span>📅</span>
+                            <span>+ 다음 14일 더보기</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

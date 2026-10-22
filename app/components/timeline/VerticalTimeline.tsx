@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, VERTICAL_GRID_COLUMNS, getDayType } from '../../config';
 import { isValidBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
@@ -24,6 +24,7 @@ interface VerticalTimelineProps {
     displayDaysCount: number;
     onDateClick: (dateStr: string) => void;
     onBookingClick?: (e: React.MouseEvent, booking: Booking) => void;
+    onLoadMoreDays?: (count?: number) => void;
 }
 
 export default function VerticalTimeline({
@@ -36,8 +37,23 @@ export default function VerticalTimeline({
     displayDaysCount,
     onDateClick,
     onBookingClick,
+    onLoadMoreDays,
 }: VerticalTimelineProps) {
     const [overlapModalData, setOverlapModalData] = useState<{ dateStr: string; bookings: Booking[] } | null>(null);
+    const isTriggeringRef = useRef<boolean>(false);
+
+    // 📜 아래로 스크롤 시 바닥 300px 전 다음 날짜 자동 확장 (무한 스크롤)
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!onLoadMoreDays || isTriggeringRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollHeight - scrollTop - clientHeight < 300) {
+            isTriggeringRef.current = true;
+            onLoadMoreDays(14);
+            setTimeout(() => {
+                isTriggeringRef.current = false;
+            }, 400);
+        }
+    };
 
     const handleItemClick = (e: React.MouseEvent, clickedBooking: Booking, colRoomId: number, colUnitId?: number) => {
         e.stopPropagation();
@@ -70,7 +86,7 @@ export default function VerticalTimeline({
     };
 
     return (
-        <div className="grid-table-container">
+        <div className="grid-table-container" onScroll={handleScroll}>
             <div className="min-w-max">
                 {/* 2단 고정 헤더 */}
                 <TimelineHeader />
@@ -279,6 +295,25 @@ export default function VerticalTimeline({
                             </div>
                         ))}
                     </div>
+                </div>
+
+                {/* 📌 타임라인 하단 무한 스크롤 안내 및 수동 더보기 바 */}
+                <div className="sticky-left py-3 px-4 bg-gray-50 dark:bg-slate-800/90 border-t border-gray-300 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200 font-bold">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>현재 <strong className="text-blue-600 dark:text-blue-400 font-black">{timelineDates.length}일간</strong>의 예약이 표시 중입니다. (아래로 스크롤 시 자동 확장)</span>
+                    </div>
+                    {onLoadMoreDays && (
+                        <button
+                            type="button"
+                            onClick={() => onLoadMoreDays(14)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-extrabold rounded-md shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="다음 14일 추가로 불러오기"
+                        >
+                            <span>📅</span>
+                            <span>+ 다음 14일 더보기</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
