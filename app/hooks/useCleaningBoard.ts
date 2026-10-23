@@ -4,8 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useDashboard } from './useDashboard';
 import { ALL_UNITS } from '../config';
 import { CleaningAssignment } from '../types';
-import { getUnitCleaningStatus, isBookingForUnit } from '../utils/cleaningStatus';
-import { isValidBooking } from '../utils/bookingUtils';
+import { getCleaningHistoryDates, getUnitCleaningStatus } from '../utils/cleaningStatus';
 
 export const DEFAULT_STAFF_MAP: Record<string, string> = {
     manager: '소영매니저님',
@@ -34,22 +33,7 @@ export function useCleaningBoard() {
 
     // 📅 오늘 입실하는 객실들의 직전 체크아웃 날짜 목록 추출 (DB 청소 완료 검증용)
     const historyDates = useMemo(() => {
-        const datesSet = new Set<string>();
-        ALL_UNITS.forEach((unit) => {
-            const hasCheckin = dash.bookings.some((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.arrival === selectedDate);
-            const hasCheckout = dash.bookings.some((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.departure === selectedDate);
-
-            // 오늘 입실이 있지만 오늘 퇴실은 없는 공실 텀 객실의 직전 퇴실일 탐색
-            if (hasCheckin && !hasCheckout) {
-                const pastBookings = dash.bookings
-                    .filter((b) => isValidBooking(b) && isBookingForUnit(b, unit) && b.departure < selectedDate)
-                    .sort((a, b) => b.departure.localeCompare(a.departure));
-                if (pastBookings[0]?.departure) {
-                    datesSet.add(pastBookings[0].departure);
-                }
-            }
-        });
-        return Array.from(datesSet);
+        return getCleaningHistoryDates(ALL_UNITS, selectedDate, dash.bookings);
     }, [dash.bookings, selectedDate]);
 
     // 🧹 청소 대상 호실 선정 (청소 필요 판별 or 수동 배정된 호실)
