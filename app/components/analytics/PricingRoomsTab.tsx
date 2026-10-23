@@ -7,6 +7,7 @@ import {
     calculateRoomStats,
     calculatePropertyStats,
     calculateOverallSummary,
+    calculateChannelStats,
     formatLocalDate,
     RoomStats,
     PropertyStats,
@@ -21,6 +22,9 @@ import ChannelRevenueSection from './ChannelRevenueSection';
 import CountryRevenueSection from './CountryRevenueSection';
 import LeadTimeStaySection from './LeadTimeStaySection';
 import DailyPickupReportSection from './DailyPickupReportSection';
+import OtaAdCostManager from './OtaAdCostManager';
+import { useOtaAdCosts } from '../../hooks/useOtaAdCosts';
+import { calculateRevenueAfterAdSpend, calculateTripAdSpend } from '../../utils/adCostCalculations';
 
 interface PricingRoomsTabProps {
     bookings: Booking[];
@@ -53,6 +57,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const [selectedProperty, setSelectedProperty] = useState<string>('all');
     const [selectedUnitKey, setSelectedUnitKey] = useState<string>('all');
     const [showTopBtn, setShowTopBtn] = useState<boolean>(false);
+    const adCosts = useOtaAdCosts(startDate, endDate);
 
     // 스크롤 감지하여 일정 이상 내려가면 Top 플로팅 버튼 표시
     useEffect(() => {
@@ -175,6 +180,25 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const summary: OverallSummary = useMemo(() => {
         return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', selectedProperty, selectedUnitKey);
     }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
+    const overallSettlementSummary: OverallSummary = useMemo(() => {
+        return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay');
+    }, [bookings, startDate, endDate]);
+    const tripAdSpend = useMemo(
+        () => calculateTripAdSpend(adCosts.charges, startDate, endDate),
+        [adCosts.charges, startDate, endDate]
+    );
+    const overallRevenueAfterAdSpend = calculateRevenueAfterAdSpend(
+        overallSettlementSummary.totalRevenue,
+        tripAdSpend
+    );
+    const tripSettlementRevenue = useMemo(() => {
+        const result = calculateChannelStats(bookings, 'custom', startDate, endDate, 'stay');
+        return result.channelList.find((channel) => channel.name === 'Trip.com')?.revenue || 0;
+    }, [bookings, startDate, endDate]);
+    const tripRevenueAfterAdSpend = calculateRevenueAfterAdSpend(tripSettlementRevenue, tripAdSpend);
+    const isOverallRevenueView = selectedProperty === 'all' && selectedUnitKey === 'all';
+    const canApplyAdSpend = isOverallRevenueView && !adCosts.loading && !adCosts.error;
+    const displayedRevenue = canApplyAdSpend ? overallRevenueAfterAdSpend : summary.totalRevenue;
     // 6. 사업장별 성과 통계 (추이 차트 지점 비교용)
     const allPropertyStats: PropertyStats[] = useMemo(() => {
         const stats = calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
@@ -673,7 +697,9 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                             ? `${ALL_UNITS.find((u) => u.key === selectedUnitKey)?.displayName || '호실'} 매출`
                                             : selectedProperty !== 'all'
                                             ? `${selectedProperty} 매출`
-                                            : '총매출'}
+                                            : canApplyAdSpend
+                                            ? '광고비 차감 후 매출'
+                                            : '정산 매출'}
                                     </span>
                                     {selectedUnitKey !== 'all' && (
                                         <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
@@ -682,8 +708,22 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                     )}
                                 </div>
                                 <span className="text-xl md:text-3xl font-extrabold text-gray-900 dark:text-slate-100 font-mono">
-                                    ₩{summary.totalRevenue.toLocaleString()}
+                                    ₩{displayedRevenue.toLocaleString()}
                                 </span>
+                                {isOverallRevenueView && (
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold text-gray-400 dark:text-slate-500">
+                                        {adCosts.loading ? (
+                                            <span>Trip 광고비 확인 중…</span>
+                                        ) : adCosts.error ? (
+                                            <span className="text-rose-500">광고비 반영 실패 · 정산 매출 표시 중</span>
+                                        ) : (
+                                            <>
+                                                <span>정산 ₩{summary.totalRevenue.toLocaleString()}</span>
+                                                <span className="text-rose-500">Trip 충전 -₩{tripAdSpend.toLocaleString()}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs flex flex-col gap-1">
@@ -1022,14 +1062,34 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
 
     {/* 4) 🎯 호실별 x OTA 광고 성과 교차 매트릭스 위젯 */}
     {selectedWidgets.has('matrix') && (
-        <RoomChannelMatrixSection
-            bookings={bookings}
-            timeFilter="custom"
-            startDate={startDate}
-            endDate={endDate}
-            selectedProperty={selectedProperty}
-            selectedUnitKey={selectedUnitKey}
-        />
+        <>
+            <OtaAdCostManager
+                key={`${startDate}-${endDate}`}
+                settings={adCosts.settings}
+                charges={adCosts.charges}
+                startDate={startDate}
+                endDate={endDate}
+                settlementRevenue={overallSettlementSummary.totalRevenue}
+                revenueAfterAdSpend={overallRevenueAfterAdSpend}
+                tripSettlementRevenue={tripSettlementRevenue}
+                tripRevenueAfterAdSpend={tripRevenueAfterAdSpend}
+                tripAdSpend={tripAdSpend}
+                loading={adCosts.loading}
+                saving={adCosts.saving}
+                error={adCosts.error}
+                onSaveSetting={adCosts.saveSetting}
+                onAddTripCharge={adCosts.addTripCharge}
+                onDeleteTripCharge={adCosts.deleteTripCharge}
+            />
+            <RoomChannelMatrixSection
+                bookings={bookings}
+                timeFilter="custom"
+                startDate={startDate}
+                endDate={endDate}
+                selectedProperty={selectedProperty}
+                selectedUnitKey={selectedUnitKey}
+            />
+        </>
     )}
 
     {/* 5) 📅 향후 공실 레이더 위젯 (월간 캘린더) */}

@@ -1,5 +1,10 @@
 import { Booking, UnitConfig } from '../types';
-import { ALL_UNITS, OTA_COMMISSION_RATES, OTA_COMMISSION_POLICY } from '../config';
+import {
+    ALL_UNITS,
+    OTA_COMMISSION_RATES,
+    OTA_COMMISSION_POLICY,
+    OTHER_CHANNEL_COMMISSION_RATE,
+} from '../config';
 
 // 💳 OTA 채널별 실수령 정산금 수수료율 폴백 (안전한 방어용)
 const FALLBACK_COMMISSION_RATES: Record<number, number> = {
@@ -31,13 +36,14 @@ export function getDirectExtensionPrice(notes?: string | null): number {
  *     - 2026-10-08 17:25 이전: 17.5%
  *     - 2026-10-08 17:25 ~ 2026-10-15 11:05 이전: 20.5% (+3% 광고)
  *     - 2026-10-15 11:05 이후: 일반 20.5%, 그린만 25.5% (+5% 추가)
- * - Trip.com(53), Expedia(14), Agoda(17) 및 기타: 0.0% (Beds24에 이미 정산금으로 수신되어 추가 차감 불필요)
+ * - Trip.com(53), Expedia(14), Agoda(17): 0.0% (Beds24에 이미 정산금으로 수신되어 추가 차감 불필요)
+ * - 정책에 등록되지 않은 기타 채널(apiSourceId 없음 포함): 20%
  */
 export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string, roomId?: number): number {
     const id = Number(apiSourceId);
     const rule = OTA_COMMISSION_POLICY[id];
     if (!rule) {
-        return OTA_COMMISSION_RATES?.[id] ?? FALLBACK_COMMISSION_RATES[id] ?? 0;
+        return OTA_COMMISSION_RATES?.[id] ?? FALLBACK_COMMISSION_RATES[id] ?? OTHER_CHANNEL_COMMISSION_RATE;
     }
 
     // 1) 시점별 다단계 정책(tiers)이 등록된 경우
