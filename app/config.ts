@@ -161,6 +161,9 @@ export const OTA_COMMISSION_RATES: Record<number, number> = {
     17: 0.0,   // Agoda 0% (정산금)
 };
 
+// 정책에 등록되지 않은 기타 채널(apiSourceId 없음/미지원)의 기본 수수료율
+export const OTHER_CHANNEL_COMMISSION_RATE = 0.20;
+
 // 🇰🇷 주요 공휴일 지정 (YYYY-MM-DD)
 export const HOLIDAYS: { [key: string]: string } = {
     '2026-01-01': '신정',

@@ -49,3 +49,24 @@ export interface CleaningAssignment {
     isCompleted?: boolean; // ✅ 청소 완료 여부
     completedAt?: string;  // 🕒 청소 완료 시각 (예: '14:50')
 }
+
+// OTA별 현재 광고 책정값 (참고용이며 매출 자동 차감 대상이 아님)
+export interface OtaAdSetting {
+    apiSourceId: number;
+    channelName: string;
+    cpcAmount: number | null;
+    cpbRate: number | null;
+    note: string;
+    updatedAt: string;
+}
+
+// 실제 결제된 OTA 광고비 원장 (현재는 Trip.com 선충전 내역)
+export interface OtaAdCharge {
+    id: string;
+    apiSourceId: number;
+    channelName: string;
+    chargeDate: string;
+    amount: number;
+    note: string;
+    createdAt: string;
+}
