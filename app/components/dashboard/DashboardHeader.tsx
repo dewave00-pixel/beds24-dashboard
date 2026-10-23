@@ -11,6 +11,9 @@ export interface DashboardHeaderProps {
     tomorrowCheckIns: Booking[];
     tomorrowCheckOuts: Booking[];
     unallocatedCount?: number;
+    unassignedCleaningCount?: number;
+    isCleaningSummaryLoading?: boolean;
+    hasCleaningSummaryError?: boolean;
     viewMode: 'vertical' | 'horizontal';
     loading: boolean;
     isSyncing?: boolean;
@@ -30,6 +33,9 @@ export default function DashboardHeader({
     tomorrowCheckIns = [],
     tomorrowCheckOuts = [],
     unallocatedCount = 0,
+    unassignedCleaningCount = 0,
+    isCleaningSummaryLoading = false,
+    hasCleaningSummaryError = false,
     viewMode = 'vertical',
     loading = false,
     isSyncing = false,
@@ -81,6 +87,29 @@ export default function DashboardHeader({
 
             {/* 2. 우측: 오늘/내일 현황 버튼 & 세로/가로 뷰 전환 & 새로고침 */}
             <div className="flex items-center gap-2 flex-wrap">
+
+                {/* 🧹 오늘 청소 필요 객실 중 담당자 미배정 현황 */}
+                <div
+                    role="status"
+                    aria-live="polite"
+                    title="오늘 청소가 필요하지만 담당자가 배정되지 않은 객실 수"
+                    className={`px-2.5 py-1 md:px-3 border rounded-xl flex flex-col items-start shadow-2xs text-left ${
+                        hasCleaningSummaryError
+                            ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                            : unassignedCleaningCount > 0
+                                ? 'bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-400 dark:border-rose-600 text-rose-900 dark:text-rose-200'
+                                : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    }`}
+                >
+                    <span className="text-[10px] font-black tracking-tight">청소 미배정</span>
+                    <span className="text-xs font-black">
+                        {isCleaningSummaryLoading
+                            ? '확인 중…'
+                            : hasCleaningSummaryError
+                                ? '확인 실패'
+                                : `${unassignedCleaningCount}실`}
+                    </span>
+                </div>
 
                 {/* 📋 오늘 현황 버튼 */}
                 <button

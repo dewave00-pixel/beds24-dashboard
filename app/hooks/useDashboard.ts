@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Booking } from '../types';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Booking, CleaningAssignment } from '../types';
+import { ALL_UNITS } from '../config';
 import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
+import { getCleaningHistoryDates, getUnitCleaningStatus } from '../utils/cleaningStatus';
 import {
     getKSTTodayStr,
     getKSTTomorrowStr,
@@ -28,6 +30,10 @@ export function useDashboard() {
     const [loading, setLoading] = useState<boolean>(true);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [todayCleaningAssignments, setTodayCleaningAssignments] = useState<Record<string, CleaningAssignment>>({});
+    const [todayCleaningHistory, setTodayCleaningHistory] = useState<Record<string, Record<string, CleaningAssignment>>>({});
+    const [isTodayCleaningSummaryLoading, setIsTodayCleaningSummaryLoading] = useState<boolean>(true);
+    const [todayCleaningSummaryError, setTodayCleaningSummaryError] = useState<boolean>(false);
 
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
@@ -264,7 +270,10 @@ export function useDashboard() {
     }, [todayStr]);
 
     // 🛡️ 유효한 예약만 입/퇴실 목록에 포함 (inquiry, cancelled 등 제외)
-    const activeBookings = bookings.filter((b) => isValidBooking(b));
+    const activeBookings = useMemo(
+        () => bookings.filter((booking) => isValidBooking(booking)),
+        [bookings]
+    );
     const todayCheckIns = activeBookings.filter((b) => b.arrival === todayStr);
     const todayCheckOuts = activeBookings.filter((b) => b.departure === todayStr);
     const tomorrowCheckIns = activeBookings.filter((b) => b.arrival === tomorrowStr);
@@ -272,6 +281,60 @@ export function useDashboard() {
 
     // ⚠️ 미배정 예약 목록 추출 (unitId가 지정되지 않았으며 오늘 이후 퇴실하는 현재/미래 예약만 표시)
     const unallocatedBookings = activeBookings.filter((b) => isUnallocatedBooking(b) && b.departure >= todayStr);
+
+    // 오늘 체크인 객실의 직전 청소 완료 여부까지 동일하게 판별하기 위한 이력 날짜
+    const todayCleaningHistoryDates = useMemo(
+        () => getCleaningHistoryDates(ALL_UNITS, todayStr, activeBookings),
+        [activeBookings, todayStr]
+    );
+    const todayCleaningHistoryDatesKey = todayCleaningHistoryDates.join(',');
+
+    // 오늘 청소 배정 및 직전 청소 이력 조회
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const fetchTodayCleaningSummary = async () => {
+            setIsTodayCleaningSummaryLoading(true);
+            setTodayCleaningSummaryError(false);
+
+            try {
+                const historyParam = todayCleaningHistoryDatesKey
+                    ? `&historyDates=${encodeURIComponent(todayCleaningHistoryDatesKey)}`
+                    : '';
+                const response = await fetch(
+                    `/api/assignments?targetDate=${todayStr}${historyParam}`,
+                    { cache: 'no-store', signal: controller.signal }
+                );
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '청소 배정 현황을 불러오지 못했습니다.');
+                }
+
+                setTodayCleaningAssignments(result.data || {});
+                setTodayCleaningHistory(result.history || {});
+            } catch (fetchError) {
+                if (controller.signal.aborted) return;
+                console.error('오늘 청소 미배정 현황 불러오기 실패:', fetchError);
+                setTodayCleaningSummaryError(true);
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsTodayCleaningSummaryLoading(false);
+                }
+            }
+        };
+
+        fetchTodayCleaningSummary();
+        return () => controller.abort();
+    }, [bookings, todayStr, todayCleaningHistoryDatesKey]);
+
+    // 예약 건수가 아닌 실제 호실(unit.key) 기준으로 청소 필요 + 미배정 객실만 계산
+    const unassignedCleaningCount = useMemo(() => {
+        return ALL_UNITS.filter((unit) => {
+            const status = getUnitCleaningStatus(unit, todayStr, activeBookings, todayCleaningHistory);
+            return status.needsCleaning && !todayCleaningAssignments[unit.key];
+        }).length;
+    }, [activeBookings, todayStr, todayCleaningAssignments, todayCleaningHistory]);
 
     // 날짜 배열 생성 (기본 30일부터 스크롤 시 14일씩 동적 확장)
     const timelineDates: string[] = [];
@@ -494,6 +557,9 @@ export function useDashboard() {
         tomorrowCheckIns,
         tomorrowCheckOuts,
         unallocatedBookings,
+        unassignedCleaningCount,
+        isTodayCleaningSummaryLoading,
+        todayCleaningSummaryError,
         timelineDates,
         moveDays,
         goToday,
