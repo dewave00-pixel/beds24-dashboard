@@ -35,6 +35,37 @@ export function isBookingForUnit(booking: Booking, unit: UnitConfig): boolean {
 }
 
 /**
+ * 특정 날짜의 체크인 객실 상태를 판별할 때 필요한 직전 퇴실일 목록을 구한다.
+ */
+export function getCleaningHistoryDates(
+    units: UnitConfig[],
+    dateStr: string,
+    bookings: Booking[]
+): string[] {
+    const dates = new Set<string>();
+
+    units.forEach((unit) => {
+        const unitBookings = bookings.filter((booking) =>
+            isValidBooking(booking) && isBookingForUnit(booking, unit)
+        );
+        const hasCheckin = unitBookings.some((booking) => booking.arrival === dateStr);
+        const hasCheckout = unitBookings.some((booking) => booking.departure === dateStr);
+
+        if (hasCheckin && !hasCheckout) {
+            const previousBooking = unitBookings
+                .filter((booking) => booking.departure < dateStr)
+                .sort((a, b) => b.departure.localeCompare(a.departure))[0];
+
+            if (previousBooking?.departure) {
+                dates.add(previousBooking.departure);
+            }
+        }
+    });
+
+    return Array.from(dates).sort();
+}
+
+/**
  * 특정 날짜 기준 호실의 청소 상태 및 우선순위 분석 (직전 체크아웃 DB 이력 반영)
  */
 export function getUnitCleaningStatus(

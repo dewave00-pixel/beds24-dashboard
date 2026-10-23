@@ -44,6 +44,9 @@ export default function DashboardPage() {
           tomorrowCheckIns={d.tomorrowCheckIns}
           tomorrowCheckOuts={d.tomorrowCheckOuts}
           unallocatedCount={d.unallocatedBookings.length}
+          unassignedCleaningCount={d.unassignedCleaningCount}
+          isCleaningSummaryLoading={d.isTodayCleaningSummaryLoading}
+          hasCleaningSummaryError={d.todayCleaningSummaryError}
           viewMode={d.viewMode}
           loading={d.loading}
           isSyncing={d.isSyncing}
