@@ -526,6 +526,30 @@ export function useDashboard() {
         }
     };
 
+    // 🚫 예약 취소 처리 (Beds24 API + Supabase DB + 로컬 상태 동기화)
+    const handleCancelBooking = async (bookingId: number): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const res = await fetch('/api/bookings/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId }),
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                // 타임라인/대시보드 예약 목록에서 해당 예약을 즉시 제거 (실제 취소되어 공실로 전환)
+                setBookings((prev) => prev.filter((b) => Number(b.id) !== Number(bookingId)));
+                setActiveBooking(null);
+                return { success: true };
+            } else {
+                return { success: false, error: result.error || '예약 취소 실패' };
+            }
+        } catch (err: any) {
+            console.error('예약 취소 API 호출 에러:', err);
+            return { success: false, error: err.message || '네트워크 오류가 발생했습니다.' };
+        }
+    };
+
     return {
         bookings,
         loading,
@@ -579,6 +603,7 @@ export function useDashboard() {
         handleDeleteMemo,
         handleAssignUnit,
         handleExtendStay,
+        handleCancelBooking,
         isRealtimeConnected,
     };
 }

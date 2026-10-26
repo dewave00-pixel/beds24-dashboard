@@ -135,13 +135,26 @@ export function getCommissionInfo(
 }
 
 /**
- * 🛡️ 유효한 활성 예약인지 검증 (취소, 삭제, 단순 숙소 문의 필터링)
+ * 🛡️ 유효한 활성 예약인지 검증 (취소, 삭제, 단순 숙소 문의 필터링 - 타임라인/청소/체크인용)
  */
 export function isValidBooking(booking?: Booking | null): boolean {
     if (!booking) return false;
     const status = (booking.status || '').toLowerCase().trim();
     if (status === 'cancelled' || status === 'deleted' || status === 'inquiry') {
         return false;
+    }
+    return true;
+}
+
+/**
+ * 💰 통계/매출 집계용 예약 검증 (활성 투숙 예약 + 위약금이 발생한 취소 예약 포함)
+ */
+export function isRevenueBooking(booking?: Booking | null): boolean {
+    if (!booking) return false;
+    const status = (booking.status || '').toLowerCase().trim();
+    if (status === 'deleted' || status === 'inquiry') return false;
+    if (status === 'cancelled') {
+        return (Number(booking.price) || 0) > 0;
     }
     return true;
 }

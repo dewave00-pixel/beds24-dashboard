@@ -162,6 +162,7 @@ export async function updateBeds24Booking(
         departure?: string;
         arrival?: string;
         price?: number;
+        status?: string;
     }
 ) {
     const token = await getValidBeds24Token();

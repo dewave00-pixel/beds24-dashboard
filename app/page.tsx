@@ -134,6 +134,7 @@ export default function DashboardPage() {
           onClose={() => d.setActiveBooking(null)}
           onAssignUnit={d.handleAssignUnit}
           onExtendStay={d.handleExtendStay}
+          onCancelBooking={auth.isAdmin ? d.handleCancelBooking : undefined}
           propertiesInfo={d.propertiesInfo}
         />
       )}

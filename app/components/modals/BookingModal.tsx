@@ -19,6 +19,7 @@ interface BookingModalProps {
     onClose: () => void;
     onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
     onExtendStay?: (bookingId: number, newDeparture: string, additionalPrice: number, note?: string) => Promise<{ success: boolean; error?: string }>;
+    onCancelBooking?: (bookingId: number) => Promise<{ success: boolean; error?: string }>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
 }
 
@@ -34,6 +35,7 @@ export default function BookingModal({
     onClose,
     onAssignUnit,
     onExtendStay,
+    onCancelBooking,
     propertiesInfo,
 }: BookingModalProps) {
     const ch = getChannelStyle(booking.apiSourceId);
@@ -54,6 +56,11 @@ export default function BookingModal({
     const [selectedUnitKey, setSelectedUnitKey] = useState<string>(currentKey);
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // 🚫 예약 취소 모달 상태
+    const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+    const [isCancelling, setIsCancelling] = useState<boolean>(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
 
     // 파싱된 선택 호실 정보
     const [targetRoomId, targetUnitId] = selectedUnitKey === '0-0'
@@ -134,7 +141,7 @@ export default function BookingModal({
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
+            <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
 
                 {/* 상단 헤더 */}
                 <div
@@ -421,27 +428,122 @@ export default function BookingModal({
 
                 {/* 하단 버튼 바 */}
                 <div className="p-3 md:p-4 bg-gray-100 dark:bg-slate-950 border-t border-gray-300 dark:border-slate-800 flex justify-between items-center shrink-0">
-                    <button
-                        onClick={onDelete}
-                        className="px-3 py-2 text-xs font-extrabold text-red-700 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-950/50 rounded-lg border border-red-300 dark:border-rose-900/60 transition cursor-pointer"
-                    >
-                        초기화/삭제
-                    </button>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                        >
+                            초기화/삭제
+                        </button>
+                        {onCancelBooking && booking.status !== 'cancelled' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCancelError(null);
+                                    setShowCancelConfirm(true);
+                                }}
+                                className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-rose-300 dark:border-rose-900/60 transition cursor-pointer flex items-center gap-1"
+                            >
+                                <span>🚫</span>
+                                <span>예약 취소</span>
+                            </button>
+                        )}
+                    </div>
                     <div className="flex gap-2">
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                            className="px-3.5 sm:px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
                         >
                             닫기
                         </button>
                         <button
+                            type="button"
                             onClick={onSave}
-                            className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition cursor-pointer"
+                            className="px-4 sm:px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition cursor-pointer"
                         >
                             저장하기
                         </button>
                     </div>
                 </div>
+
+                {/* 🚫 예약 취소 안전 확인 모달 오버레이 */}
+                {showCancelConfirm && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                        <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900 rounded-xl p-5 max-w-sm w-full shadow-2xl flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-extrabold text-base">
+                                <span>⚠️</span>
+                                <span>Beds24 예약 취소 확인</span>
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed space-y-2">
+                                <p>
+                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id})을 <strong>cancelled</strong> 상태로 전환합니다.
+                                </p>
+                                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg text-rose-800 dark:text-rose-200 text-xs">
+                                    <p className="font-semibold">💡 처리 안내:</p>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                        <li>Beds24 및 타임라인에서 취소되어 객실 재고가 공실로 반환됩니다.</li>
+                                        {Number(booking.price) > 0 ? (
+                                            <li>
+                                                결제/위약금 <strong>{Number(booking.price).toLocaleString()}원</strong>은 매출 통계에 계속 안전하게 보존됩니다.
+                                            </li>
+                                        ) : (
+                                            <li>결제 금액이 0원이므로 타임라인 및 통계에서 제외됩니다.</li>
+                                        )}
+                                    </ul>
+                                </div>
+                                {cancelError && (
+                                    <p className="text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-100 dark:bg-rose-900/50 p-2 rounded">
+                                        ❌ {cancelError}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-2">
+                                <button
+                                    type="button"
+                                    disabled={isCancelling}
+                                    onClick={() => setShowCancelConfirm(false)}
+                                    className="px-3.5 py-1.5 text-xs font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                                >
+                                    돌아가기
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isCancelling}
+                                    onClick={async () => {
+                                        if (!onCancelBooking) return;
+                                        setIsCancelling(true);
+                                        setCancelError(null);
+                                        try {
+                                            const res = await onCancelBooking(booking.id);
+                                            if (res.success) {
+                                                setShowCancelConfirm(false);
+                                                onClose();
+                                            } else {
+                                                setCancelError(res.error || '취소 처리에 실패했습니다.');
+                                            }
+                                        } catch (err: any) {
+                                            setCancelError(err?.message || '네트워크 오류가 발생했습니다.');
+                                        } finally {
+                                            setIsCancelling(false);
+                                        }
+                                    }}
+                                    className="px-4 py-1.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 rounded-lg shadow transition cursor-pointer flex items-center gap-1.5"
+                                >
+                                    {isCancelling ? (
+                                        <>
+                                            <span className="animate-spin text-xs">⏳</span>
+                                            <span>처리 중...</span>
+                                        </>
+                                    ) : (
+                                        <span>예약 취소 확정</span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>

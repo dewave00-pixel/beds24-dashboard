@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Booking, UnitConfig } from '../../types';
 import { ALL_UNITS, PROPERTY_GROUPS, getChannelStyle } from '../../config';
-import { getUnitForBooking, calculateNetPayout, isValidBooking } from '../../utils/bookingUtils';
+import { getUnitForBooking, calculateNetPayout, isRevenueBooking } from '../../utils/bookingUtils';
 import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface MultiMetricTrendTabProps {
@@ -196,7 +196,7 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
     }, [startDate, endDate, timeUnit]);
 
     // 4. 버킷별 & 호실별 3대 지표 정밀 계산
-    const validBookings = useMemo(() => bookings.filter(isValidBooking), [bookings]);
+    const validBookings = useMemo(() => bookings.filter(isRevenueBooking), [bookings]);
 
     const chartData = useMemo(() => {
         return timeBuckets.map((bucket) => {
@@ -224,10 +224,12 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
                     const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
                     rev += price;
 
-                    const arr = new Date(b.arrival);
-                    const dep = new Date(b.departure);
-                    const n = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    nights += n;
+                    if (b.status !== 'cancelled') {
+                        const arr = new Date(b.arrival);
+                        const dep = new Date(b.departure);
+                        const n = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+                        nights += n;
+                    }
                 });
 
                 const adr = nights > 0 ? Math.round(rev / nights) : 0;
