@@ -159,6 +159,7 @@ export async function updateBeds24Booking(
         roomId?: number;
         unitId?: number | null;
         allowAutoAction?: 'enable' | 'disable';
+        infoItems?: Array<{ id?: number; code: string; text?: string }>;
         notes?: string;
         departure?: string;
         arrival?: string;
