@@ -104,32 +104,39 @@ export default function StayExtensionSection({
     };
 
     return (
-        <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-lg border border-emerald-300 dark:border-emerald-800/80 overflow-hidden transition-all duration-200">
-            {/* 📱 1. 아코디언 토글 헤더 바 (평소에는 슬림하게 1줄만 차지) */}
-            <button
-                type="button"
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-lg border border-emerald-300 dark:border-emerald-800/80 overflow-hidden transition-all duration-200 shrink-0">
+            {/* 📱 1. 아코디언 토글 헤더 바 (iOS Safari 웹킷 버튼 텍스트 잘림 방지: role=button div 사용) */}
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full p-2.5 flex items-center justify-between hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition cursor-pointer text-left focus:outline-none"
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsOpen(!isOpen);
+                    }
+                }}
+                className="w-full min-h-[46px] px-3 py-2.5 flex items-center justify-between gap-2 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition cursor-pointer text-left focus:outline-none select-none"
             >
                 <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 flex items-center gap-1">
+                    <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 flex items-center gap-1 shrink-0">
                         <span>📅</span> 일정 연장 (연박 신청)
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-200/70 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-bold">
+                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-200/80 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-bold shrink-0">
                         현재: {currentDep} 퇴실
                     </span>
                 </div>
-                <div className="flex items-center gap-1 text-emerald-800 dark:text-emerald-300 text-xs font-black shrink-0">
-                    <span className="text-[11px] underline underline-offset-2">{isOpen ? '접기' : '연장하기'}</span>
+                <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 text-xs font-black shrink-0">
+                    <span className="text-xs underline underline-offset-2">{isOpen ? '접기' : '연장하기'}</span>
                     <span className={`text-[10px] transition-transform duration-200 inline-block ${isOpen ? 'rotate-180' : ''}`}>
                         ▼
                     </span>
                 </div>
-            </button>
+            </div>
 
             {/* 📱 2. 펼쳐졌을 때만 나타나는 세부 폼 */}
             {isOpen && (
-                <div className="p-3 pt-2 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-col gap-2.5">
+                <div className="p-3 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-col gap-3">
 
             {/* 날짜 선택 및 퀵버튼 */}
             <div className="flex flex-col gap-1.5">
@@ -142,7 +149,7 @@ export default function StayExtensionSection({
                         min={getNextDays(currentDep, 1)}
                         value={newDeparture}
                         onChange={(e) => setNewDeparture(e.target.value)}
-                        className={`px-2 py-1 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 min-w-[130px] ${
+                        className={`min-h-[38px] px-2.5 py-1.5 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 min-w-[130px] ${
                             hasConflict
                                 ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200'
                                 : 'border-emerald-400 dark:border-emerald-700'
@@ -152,21 +159,21 @@ export default function StayExtensionSection({
                         <button
                             type="button"
                             onClick={() => handleQuickAddDays(1)}
-                            className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
+                            className="min-h-[38px] px-2.5 py-1.5 text-xs font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
                         >
                             +1박
                         </button>
                         <button
                             type="button"
                             onClick={() => handleQuickAddDays(2)}
-                            className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
+                            className="min-h-[38px] px-2.5 py-1.5 text-xs font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
                         >
                             +2박
                         </button>
                         <button
                             type="button"
                             onClick={() => handleQuickAddDays(3)}
-                            className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
+                            className="min-h-[38px] px-2.5 py-1.5 text-xs font-bold bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 rounded transition cursor-pointer"
                         >
                             +3박
                         </button>
@@ -196,8 +203,8 @@ export default function StayExtensionSection({
             )}
 
             {/* 추가 요금 입력 (수수료 0% 직거래) */}
-            <div className="pt-1 border-t border-emerald-200 dark:border-emerald-800/50">
-                <label className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block mb-0.5">
+            <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/50">
+                <label className="text-[11px] font-bold text-gray-700 dark:text-slate-300 block mb-1">
                     연장 추가 수령액 (원): <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px]">(※ 계좌/직접 수령은 플랫폼 수수료 0% 전액 정산)</span>
                 </label>
                 <input
@@ -205,16 +212,16 @@ export default function StayExtensionSection({
                     placeholder="예: 80000"
                     value={addPriceInput}
                     onChange={(e) => setAddPriceInput(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs font-mono font-bold bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md text-gray-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full min-h-[38px] px-3 py-1.5 text-xs font-mono font-bold bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md text-gray-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
             </div>
 
             {/* 정산 미리보기 및 실행 버튼 */}
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-800/50 flex-wrap">
-                <div className="text-[11px] text-gray-600 dark:text-slate-300 font-medium">
-                    최종 총액: <span className="font-extrabold text-emerald-700 dark:text-emerald-400 font-mono text-xs">{finalTotalPrice.toLocaleString()}원</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-emerald-200 dark:border-emerald-800/50">
+                <div className="text-xs text-gray-700 dark:text-slate-300 font-medium">
+                    최종 총액: <span className="font-extrabold text-emerald-700 dark:text-emerald-400 font-mono text-sm">{finalTotalPrice.toLocaleString()}원</span>
                     {additionalPrice > 0 && (
-                        <span className="text-[10px] text-gray-500 dark:text-slate-400 ml-1">
+                        <span className="text-[11px] text-gray-500 dark:text-slate-400 ml-1">
                             (기존 {currentPrice.toLocaleString()} + 추가 {additionalPrice.toLocaleString()})
                         </span>
                     )}
@@ -224,7 +231,7 @@ export default function StayExtensionSection({
                     type="button"
                     disabled={isSubmitting || hasConflict || extensionNights <= 0}
                     onClick={handleSave}
-                    className={`px-3 py-1.5 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1 ${
+                    className={`w-full sm:w-auto min-h-[38px] px-4 py-2 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center justify-center gap-1.5 ${
                         hasConflict
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95'
@@ -237,7 +244,7 @@ export default function StayExtensionSection({
             {/* 처리 결과 메시지 */}
             {resultMsg && (
                 <div
-                    className={`p-1.5 rounded text-xs font-bold ${
+                    className={`p-2 rounded text-xs font-bold ${
                         resultMsg.type === 'success'
                             ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200'
                             : 'bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200'

@@ -451,13 +451,14 @@ export function useDashboard() {
             const result = await res.json();
 
             if (result.success) {
-                // 로컬 예약 목록 상태 즉시 업데이트
+                // 로컬 예약 목록 상태 즉시 업데이트 (unitId가 0이면 undefined로 처리하여 미배정 상태 동기화)
+                const resolvedUnitId = unitId > 0 ? unitId : undefined;
                 setBookings((prev) =>
-                    prev.map((b) => (b.id === bookingId ? { ...b, roomId, unitId } : b))
+                    prev.map((b) => (b.id === bookingId ? { ...b, roomId, unitId: resolvedUnitId } : b))
                 );
                 // 모달 내 activeBooking도 업데이트
                 if (activeBooking && activeBooking.id === bookingId) {
-                    setActiveBooking((prev) => (prev ? { ...prev, roomId, unitId } : null));
+                    setActiveBooking((prev) => (prev ? { ...prev, roomId, unitId: resolvedUnitId } : null));
                 }
                 return { success: true };
             } else {

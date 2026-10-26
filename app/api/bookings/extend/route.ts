@@ -94,7 +94,24 @@ export async function POST(request: Request) {
             notes: updatedNotes,
         });
 
-        console.log(`✅ [Extend Stay] Beds24 API 연장 완료:`, JSON.stringify(beds24Result).slice(0, 200));
+        console.log(`✅ [Extend Stay] Beds24 API 연장 완료:`, JSON.stringify(beds24Result).slice(0, 300));
+
+        // 🛡️ Beds24 API 응답 검증 (Beds24 성공 확인 후 Supabase 반영)
+        const itemResult = Array.isArray(beds24Result) ? beds24Result[0] : beds24Result;
+        if (itemResult && (itemResult.success === false || (itemResult.errors && itemResult.errors.length > 0))) {
+            const errMsg = itemResult.errors && itemResult.errors.length > 0
+                ? (typeof itemResult.errors[0] === 'string' ? itemResult.errors.join(', ') : JSON.stringify(itemResult.errors))
+                : 'Beds24 본사에서 연박 연장 처리를 거부했습니다.';
+            console.error(`❌ [Extend Stay] Beds24 연장 처리 실패:`, errMsg, beds24Result);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: `Beds24 연박 연장 실패: ${errMsg}`,
+                    details: beds24Result,
+                },
+                { status: 400 }
+            );
+        }
 
         // 7. Supabase DB bookings 테이블 업데이트 (notes 포함)
         const { error: dbError } = await supabase
@@ -109,6 +126,14 @@ export async function POST(request: Request) {
 
         if (dbError) {
             console.error('⚠️ [Extend Stay] Supabase DB 업데이트 실패 (Beds24는 성공):', dbError);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Beds24에는 반영되었으나 대시보드 DB 갱신 중 오류가 발생했습니다. 잠시 후 새로고침해 주세요.',
+                    details: dbError.message,
+                },
+                { status: 500 }
+            );
         }
 
         return NextResponse.json({
@@ -125,12 +150,13 @@ export async function POST(request: Request) {
                 beds24Result,
             },
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('❌ [Extend Stay Error]:', err);
+        const errorMessage = err instanceof Error ? err.message : '연박 연장 처리 중 오류가 발생했습니다.';
         return NextResponse.json(
             {
                 success: false,
-                error: err.message || '연박 연장 처리 중 오류가 발생했습니다.',
+                error: errorMessage,
             },
             { status: 500 }
         );
