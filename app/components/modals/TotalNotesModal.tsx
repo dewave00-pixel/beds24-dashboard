@@ -120,7 +120,7 @@ export default function TotalNotesModal({
                                                         key={tagKey}
                                                         className={`text-[9.5px] px-1.5 py-0.5 rounded shadow-2xs ${tagInfo.badgeClass}`}
                                                     >
-                                                        {tagInfo.label}
+                                                        {tagInfo.icon ? `${tagInfo.icon} ` : ''}{tagInfo.label}
                                                     </span>
                                                 );
                                             })}

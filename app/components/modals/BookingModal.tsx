@@ -84,6 +84,7 @@ export default function BookingModal({
 
     const isNoCleaning = selectedTags.includes('no_cleaning');
     const isRepair = selectedTags.includes('repair');
+    const isChicken = selectedTags.includes('chicken');
 
     const handleEarlyToggle = () => {
         if (isEarlyActive) {
@@ -407,6 +408,27 @@ export default function BookingModal({
                                     <span>수리/점검</span>
                                 </span>
                                 <span>{isRepair ? '✅' : '⬜'}</span>
+                            </button>
+
+                            {/* 5. 리뷰 치킨 이벤트 */}
+                            <button
+                                type="button"
+                                onClick={() => onToggleTag('chicken')}
+                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer md:col-span-2 ${isChicken
+                                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 border-2 text-orange-950 dark:text-orange-200 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-1.5 text-left">
+                                    <span>🍗</span>
+                                    <span className="flex flex-col sm:flex-row sm:items-center sm:gap-1.5">
+                                        <span>리뷰 치킨 이벤트</span>
+                                        <span className="text-[10.5px] font-normal text-gray-500 dark:text-slate-400">
+                                            (리뷰 작성 시 치킨 기프티콘 증정)
+                                        </span>
+                                    </span>
+                                </span>
+                                <span>{isChicken ? '✅' : '⬜'}</span>
                             </button>
 
                         </div>
