@@ -208,3 +208,46 @@ export async function updateBeds24Booking(
     const data = await res.json();
     return data;
 }
+
+/**
+ * 🗑️ Beds24 예약 영구 삭제 함수
+ * - Beds24 규칙: 활성 예약은 직접 삭제할 수 없으므로, 먼저 status: 'cancelled', price: 0 으로 전환 후 DELETE 호출
+ */
+export async function deleteBeds24Booking(bookingId: number) {
+    const token = await getValidBeds24Token();
+
+    // 1. 선 취소 및 금액 0원 처리 (Beds24 필수 요구조건)
+    await updateBeds24Booking(bookingId, { status: 'cancelled', price: 0 });
+
+    // 2. Beds24 API V2 DELETE 호출
+    const url = `https://api.beds24.com/v2/bookings?id=${Number(bookingId)}`;
+    let res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            token: token,
+            accept: 'application/json',
+        },
+        cache: 'no-store',
+    });
+
+    if (res.status === 429) {
+        console.warn('⚠️ [Beds24] 예약 삭제 429 감지 -> 2초 대기 후 재시도');
+        await sleep(2000);
+        res = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                token: token,
+                accept: 'application/json',
+            },
+            cache: 'no-store',
+        });
+    }
+
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Beds24 예약 삭제 실패 (${res.status}): ${errText}`);
+    }
+
+    const data = await res.json();
+    return data;
+}

@@ -19,7 +19,7 @@ interface BookingModalProps {
     onClose: () => void;
     onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
     onExtendStay?: (bookingId: number, newDeparture: string, additionalPrice: number, note?: string) => Promise<{ success: boolean; error?: string }>;
-    onCancelBooking?: (bookingId: number) => Promise<{ success: boolean; error?: string }>;
+    onCancelBooking?: (bookingId: number, action: 'noshow_cancel' | 'permanent_delete') => Promise<{ success: boolean; error?: string }>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
 }
 
@@ -57,8 +57,9 @@ export default function BookingModal({
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    // 🚫 예약 취소 모달 상태
+    // 🚫 예약 취소/삭제 모달 상태
     const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+    const [cancelAction, setCancelAction] = useState<'noshow_cancel' | 'permanent_delete'>('noshow_cancel');
     const [isCancelling, setIsCancelling] = useState<boolean>(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
 
@@ -441,12 +442,13 @@ export default function BookingModal({
                                 type="button"
                                 onClick={() => {
                                     setCancelError(null);
+                                    setCancelAction('noshow_cancel');
                                     setShowCancelConfirm(true);
                                 }}
                                 className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-rose-300 dark:border-rose-900/60 transition cursor-pointer flex items-center gap-1"
                             >
                                 <span>🚫</span>
-                                <span>예약 취소</span>
+                                <span>예약 취소 / 삭제</span>
                             </button>
                         )}
                     </div>
@@ -468,38 +470,80 @@ export default function BookingModal({
                     </div>
                 </div>
 
-                {/* 🚫 예약 취소 안전 확인 모달 오버레이 */}
+                {/* 🚫 예약 취소 / 영구 삭제 선택 모달 오버레이 */}
                 {showCancelConfirm && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-                        <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900 rounded-xl p-5 max-w-sm w-full shadow-2xl flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-extrabold text-base">
-                                <span>⚠️</span>
-                                <span>Beds24 예약 취소 확인</span>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl p-4 sm:p-5 max-w-md w-full shadow-2xl flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-2 text-gray-900 dark:text-slate-100 font-extrabold text-base border-b border-gray-200 dark:border-slate-800 pb-2.5">
+                                <span className="text-lg">⚠️</span>
+                                <span>Beds24 예약 취소 / 삭제 방식 선택</span>
                             </div>
-                            <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed space-y-2">
+
+                            <div className="text-xs text-gray-600 dark:text-slate-300">
                                 <p>
-                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id})을 <strong>cancelled</strong> 상태로 전환합니다.
+                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id}, 결제금액: <strong className="text-blue-600 dark:text-blue-400">{Number(booking.price || 0).toLocaleString()}원</strong>)
                                 </p>
-                                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg text-rose-800 dark:text-rose-200 text-xs">
-                                    <p className="font-semibold">💡 처리 안내:</p>
-                                    <ul className="list-disc list-inside mt-1 space-y-1">
-                                        <li>Beds24 및 타임라인에서 취소되어 객실 재고가 공실로 반환됩니다.</li>
-                                        {Number(booking.price) > 0 ? (
-                                            <li>
-                                                결제/위약금 <strong>{Number(booking.price).toLocaleString()}원</strong>은 매출 통계에 계속 안전하게 보존됩니다.
-                                            </li>
-                                        ) : (
-                                            <li>결제 금액이 0원이므로 타임라인 및 통계에서 제외됩니다.</li>
-                                        )}
-                                    </ul>
-                                </div>
-                                {cancelError && (
-                                    <p className="text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-100 dark:bg-rose-900/50 p-2 rounded">
-                                        ❌ {cancelError}
-                                    </p>
-                                )}
+                                <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                    목적에 맞는 처리 방식을 선택해 주세요:
+                                </p>
                             </div>
-                            <div className="flex justify-end gap-2 mt-2">
+
+                            {/* 2가지 선택 옵션 카드 */}
+                            <div className="flex flex-col gap-2.5">
+                                {/* 옵션 1: 노쇼 취소 (위약금 매출 보존) */}
+                                <div
+                                    onClick={() => setCancelAction('noshow_cancel')}
+                                    className={`p-3 rounded-lg border text-xs cursor-pointer flex flex-col gap-1 transition ${
+                                        cancelAction === 'noshow_cancel'
+                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 border-2 text-amber-950 dark:text-amber-100 shadow-xs'
+                                            : 'bg-white dark:bg-slate-800/60 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                                        <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                                            <span>🚫</span>
+                                            <span>노쇼 / 취소 처리 (위약금 매출 보존)</span>
+                                        </span>
+                                        <span className="text-sm">{cancelAction === 'noshow_cancel' ? '🟢' : '⚪'}</span>
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
+                                        <p>• Beds24 상태를 <strong>cancelled</strong>로 변경하여 방을 즉시 <strong>공실로 반환</strong>합니다.</p>
+                                        <p>• 결제/위약금 <strong>{Number(booking.price || 0).toLocaleString()}원</strong>은 <strong>매출 통계에 그대로 보존</strong>됩니다.</p>
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold pt-0.5">💡 추천 대상: 투숙 당일 노쇼, 위약금이 부과된 정상 취소 건</p>
+                                    </div>
+                                </div>
+
+                                {/* 옵션 2: 영구 삭제 (매출 제외 / 테스트 예약) */}
+                                <div
+                                    onClick={() => setCancelAction('permanent_delete')}
+                                    className={`p-3 rounded-lg border text-xs cursor-pointer flex flex-col gap-1 transition ${
+                                        cancelAction === 'permanent_delete'
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 border-2 text-rose-950 dark:text-rose-100 shadow-xs'
+                                            : 'bg-white dark:bg-slate-800/60 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                                        <span className="flex items-center gap-1.5 text-rose-900 dark:text-rose-200">
+                                            <span>🗑️</span>
+                                            <span>영구 삭제 (매출 제외 / 테스트 예약)</span>
+                                        </span>
+                                        <span className="text-sm">{cancelAction === 'permanent_delete' ? '🔴' : '⚪'}</span>
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
+                                        <p>• Beds24 및 대시보드 DB에서 <strong>예약을 완전히 삭제</strong>합니다.</p>
+                                        <p>• 매출 통계에서도 0원으로 처리되어 <strong>완전히 제외</strong>됩니다.</p>
+                                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold pt-0.5">⚠️ 주의 대상: 테스트 예약, 오등록 예약, 전액 환불 건 전용</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {cancelError && (
+                                <p className="text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-100 dark:bg-rose-900/50 p-2 rounded">
+                                    ❌ {cancelError}
+                                </p>
+                            )}
+
+                            <div className="flex justify-end gap-2 mt-1 border-t border-gray-200 dark:border-slate-800 pt-3">
                                 <button
                                     type="button"
                                     disabled={isCancelling}
@@ -516,20 +560,25 @@ export default function BookingModal({
                                         setIsCancelling(true);
                                         setCancelError(null);
                                         try {
-                                            const res = await onCancelBooking(booking.id);
+                                            const res = await onCancelBooking(booking.id, cancelAction);
                                             if (res.success) {
                                                 setShowCancelConfirm(false);
                                                 onClose();
                                             } else {
-                                                setCancelError(res.error || '취소 처리에 실패했습니다.');
+                                                setCancelError(res.error || '처리에 실패했습니다.');
                                             }
-                                        } catch (err: any) {
-                                            setCancelError(err?.message || '네트워크 오류가 발생했습니다.');
+                                        } catch (err: unknown) {
+                                            const errorMsg = err instanceof Error ? err.message : '네트워크 오류가 발생했습니다.';
+                                            setCancelError(errorMsg);
                                         } finally {
                                             setIsCancelling(false);
                                         }
                                     }}
-                                    className="px-4 py-1.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 rounded-lg shadow transition cursor-pointer flex items-center gap-1.5"
+                                    className={`px-4 py-1.5 text-xs font-extrabold text-white rounded-lg shadow transition cursor-pointer flex items-center gap-1.5 ${
+                                        cancelAction === 'permanent_delete'
+                                            ? 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400'
+                                            : 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400'
+                                    }`}
                                 >
                                     {isCancelling ? (
                                         <>
@@ -537,7 +586,9 @@ export default function BookingModal({
                                             <span>처리 중...</span>
                                         </>
                                     ) : (
-                                        <span>예약 취소 확정</span>
+                                        <span>
+                                            {cancelAction === 'permanent_delete' ? '🗑️ 예약 영구 삭제 실행' : '🚫 노쇼 취소(위약금 보존) 확정'}
+                                        </span>
                                     )}
                                 </button>
                             </div>
