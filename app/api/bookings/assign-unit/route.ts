@@ -84,9 +84,9 @@ export async function POST(request: Request) {
         }
 
         // 3. Beds24 본사 API로 배정/미배정 정보 전송
-        // ⚠️ Beds24 API V2 스펙: unitId 미배정 해제 시 null 전송
-        const targetUnitIdForBeds24 = uId > 0 ? uId : null;
-        const beds24Payload: { roomId?: number; unitId: number | null } = {
+        // ⚠️ Beds24 API V2 검증 완료: 미배정(호실 해제) 시 반드시 unitId: 0 을 전달해야 Beds24에서 정상 해제됨 (null은 무시됨)
+        const targetUnitIdForBeds24 = uId; // 0이면 Beds24에 0 전달하여 미배정 처리
+        const beds24Payload: { roomId?: number; unitId: number } = {
             unitId: targetUnitIdForBeds24,
         };
         if (rId > 0) {
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
             .from('bookings')
             .update({
                 room_id: rId,
-                unit_id: targetUnitIdForBeds24,
+                unit_id: uId > 0 ? uId : null,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', bId);
