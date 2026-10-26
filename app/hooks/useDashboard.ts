@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Booking, CleaningAssignment } from '../types';
+import { Booking, CleaningAssignment, InventoryIssueItem } from '../types';
 import { ALL_UNITS } from '../config';
-import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
+import { isValidBooking, isUnallocatedBooking, getBookedUnitDateSet, getUnitsByRoomIdMap, getVacantUnitInventoryStatus } from '../utils/bookingUtils';
 import { getCleaningHistoryDates, getUnitCleaningStatus } from '../utils/cleaningStatus';
 import {
     getKSTTodayStr,
@@ -56,6 +56,7 @@ export function useDashboard() {
     const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
     const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
     const [isUnallocatedModalOpen, setIsUnallocatedModalOpen] = useState<boolean>(false);
+    const [isInventoryIssuesModalOpen, setIsInventoryIssuesModalOpen] = useState<boolean>(false);
 
     // 날짜 계산 기준 (기본값: 한국 시간 오늘 기준 이틀 전부터)
     const [startDate, setStartDate] = useState<Date>(() => getKSTDateOffset(-2));
@@ -376,6 +377,67 @@ export function useDashboard() {
         timelineDates.push(formatKSTDate(d));
     }
 
+    // 🔒 Beds24 재고 마감/초과 이슈 실시간 추출 (오늘 이후 날짜 대상)
+    const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(bookings, ALL_UNITS), [bookings]);
+    const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
+
+    const inventoryIssues = useMemo<InventoryIssueItem[]>(() => {
+        if (!inventoryMap || Object.keys(inventoryMap).length === 0) return [];
+        const list: InventoryIssueItem[] = [];
+
+        for (const dStr of timelineDates) {
+            if (dStr < todayStr) continue; // 과거 날짜 제외
+
+            for (const unit of ALL_UNITS) {
+                if (bookedUnitDateSet.has(`${unit.key}_${dStr}`)) continue; // 정상 투숙 예약 제외
+
+                const inv = inventoryMap[`${unit.roomId}_${dStr}`];
+                if (!inv) continue;
+
+                const status = getVacantUnitInventoryStatus(unit, dStr, bookedUnitDateSet, unitsByRoomId, inv);
+
+                if (status.isOverbooked) {
+                    list.push({
+                        id: `${unit.key}_${dStr}`,
+                        dateStr: dStr,
+                        unitKey: unit.key,
+                        propName: unit.propName || '',
+                        displayName: unit.displayName,
+                        subName: unit.subName,
+                        roomId: unit.roomId,
+                        unitId: unit.unitId,
+                        themeClass: unit.themeClass || '',
+                        numAvail: inv.numAvail,
+                        price: inv.price,
+                        issueType: 'overbooked',
+                        vacantIndex: status.vacantIndex,
+                        vacantCount: status.vacantCount,
+                        totalUnits: status.totalUnits,
+                    });
+                } else if (status.isClosed) {
+                    list.push({
+                        id: `${unit.key}_${dStr}`,
+                        dateStr: dStr,
+                        unitKey: unit.key,
+                        propName: unit.propName || '',
+                        displayName: unit.displayName,
+                        subName: unit.subName,
+                        roomId: unit.roomId,
+                        unitId: unit.unitId,
+                        themeClass: unit.themeClass || '',
+                        numAvail: inv.numAvail,
+                        price: inv.price,
+                        issueType: inv.numAvail === 0 ? 'zero_inventory' : 'reduced_inventory',
+                        vacantIndex: status.vacantIndex,
+                        vacantCount: status.vacantCount,
+                        totalUnits: status.totalUnits,
+                    });
+                }
+            }
+        }
+        return list;
+    }, [timelineDates, todayStr, inventoryMap, bookedUnitDateSet, unitsByRoomId]);
+
     const moveDays = (days: number) => {
         const next = new Date(startDate);
         next.setDate(next.getDate() + days);
@@ -642,5 +704,8 @@ export function useDashboard() {
         handleCancelBooking,
         isRealtimeConnected,
         inventoryMap,
+        inventoryIssues,
+        isInventoryIssuesModalOpen,
+        setIsInventoryIssuesModalOpen,
     };
 }

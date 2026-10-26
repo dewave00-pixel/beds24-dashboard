@@ -70,3 +70,22 @@ export interface OtaAdCharge {
     note: string;
     createdAt: string;
 }
+
+// 🔒 Beds24 재고 마감/초과 점검 항목 인터페이스
+export interface InventoryIssueItem {
+    id: string; // `${unit.key}_${dStr}`
+    dateStr: string;
+    unitKey: string;
+    propName: string;
+    displayName: string;
+    subName?: string;
+    roomId: number;
+    unitId?: number;
+    themeClass: string;
+    numAvail: number;
+    price: number;
+    issueType: 'overbooked' | 'zero_inventory' | 'reduced_inventory';
+    vacantIndex: number;
+    vacantCount: number;
+    totalUnits: number;
+}
