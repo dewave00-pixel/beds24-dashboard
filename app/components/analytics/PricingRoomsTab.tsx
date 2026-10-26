@@ -23,6 +23,7 @@ import CountryRevenueSection from './CountryRevenueSection';
 import LeadTimeStaySection from './LeadTimeStaySection';
 import DailyPickupReportSection from './DailyPickupReportSection';
 import OtaAdCostManager from './OtaAdCostManager';
+import ChickenEventDeductionSection from './ChickenEventDeductionSection';
 import { useOtaAdCosts } from '../../hooks/useOtaAdCosts';
 import { calculateRevenueAfterAdSpend, calculateTripAdSpend } from '../../utils/adCostCalculations';
 
@@ -73,9 +74,10 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     };
 
     // 🎛️ 커스텀 분석 뷰 위젯 설정 (사용자가 보고 싶은 모듈만 다중 체크, 순서대로 리스트 나열)
-    type WidgetKey = 'trend' | 'pickup' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
+    type WidgetKey = 'trend' | 'chicken' | 'pickup' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
     const WIDGET_CONFIG: { key: WidgetKey; label: string; icon: string; desc: string }[] = [
         { key: 'trend', label: '총매출 & 추이', icon: '💰', desc: 'KPI 카드 + 시계열 차트' },
+        { key: 'chicken', label: '리뷰 치킨 차감', icon: '🍗', desc: '치킨 이벤트 정산 차감(-21,000원) 내역 및 대상 예약 모아보기' },
         { key: 'pickup', label: '일일 예약 유입 (Pick-up)', icon: '⚡', desc: '하루 동안 늘어난 매출·박수·가동률 리포트' },
         { key: 'comparison', label: '기간 분석 (호실별 성과표)', icon: '⚖️', desc: '직전 기간 비교 + 호실별 실적 & 플랫폼' },
         { key: 'channels', label: '채널 & 플랫폼 점유율', icon: '🌐', desc: 'OTA 도넛 + 상세 정산 내역' },
@@ -85,7 +87,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         { key: 'country', label: '게스트 국적 분석', icon: '🌍', desc: '국가별 유입 비중' },
     ];
 
-    // 기본 선택: 총매출&추이 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
+    // 기본 선택: 총매출&추이 + 치킨 차감 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
     const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -94,12 +96,15 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                     const parsed = JSON.parse(saved);
                     if (Array.isArray(parsed)) {
                         const migrated = parsed.map((k) => (k === 'table' ? 'comparison' : k)).filter((k) => k !== 'table') as WidgetKey[];
+                        if (!migrated.includes('chicken')) {
+                            migrated.push('chicken');
+                        }
                         return new Set<WidgetKey>(migrated);
                     }
                 }
             } catch {}
         }
-        return new Set<WidgetKey>(['trend', 'pickup', 'comparison', 'channels']);
+        return new Set<WidgetKey>(['trend', 'chicken', 'pickup', 'comparison', 'channels']);
     });
 
     // 위젯 토글 (0개 선택 가능하도록 최소 제한 해제)
@@ -199,6 +204,26 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const isOverallRevenueView = selectedProperty === 'all' && selectedUnitKey === 'all';
     const canApplyAdSpend = isOverallRevenueView && !adCosts.loading && !adCosts.error;
     const displayedRevenue = canApplyAdSpend ? overallRevenueAfterAdSpend : summary.totalRevenue;
+
+    // 🍗 리뷰 치킨 이벤트 집계 (조회 기간 내 체크아웃 기준)
+    const chickenBookingsCount = useMemo(() => {
+        return bookings.filter((b) => {
+            if (!b.isChicken) return false;
+            if (b.status === 'cancelled') return false;
+            if (b.departure < startDate || b.departure > endDate) return false;
+            if (selectedProperty !== 'all') {
+                const matchedUnit = getUnitForBooking(b);
+                if (matchedUnit?.propName !== selectedProperty) return false;
+            }
+            if (selectedUnitKey !== 'all') {
+                const matchedUnit = getUnitForBooking(b);
+                const uKey = matchedUnit?.key || `${b.roomId}-${b.unitId || 1}`;
+                if (uKey !== selectedUnitKey) return false;
+            }
+            return true;
+        }).length;
+    }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
+    const chickenDeductionTotal = chickenBookingsCount * 21000;
     // 6. 사업장별 성과 통계 (추이 차트 지점 비교용)
     const allPropertyStats: PropertyStats[] = useMemo(() => {
         const stats = calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
@@ -722,8 +747,16 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                             <>
                                                 <span>정산 ₩{summary.totalRevenue.toLocaleString()}</span>
                                                 <span className="text-rose-500">Trip 충전 -₩{tripAdSpend.toLocaleString()}</span>
+                                                {chickenDeductionTotal > 0 && (
+                                                    <span className="text-orange-600 dark:text-orange-400 font-bold">🍗 치킨 차감 -₩{chickenDeductionTotal.toLocaleString()} ({chickenBookingsCount}건)</span>
+                                                )}
                                             </>
                                         )}
+                                    </div>
+                                )}
+                                {!isOverallRevenueView && chickenDeductionTotal > 0 && (
+                                    <div className="text-[10px] font-bold text-orange-600 dark:text-orange-400 mt-0.5">
+                                        🍗 치킨 차감 -₩{chickenDeductionTotal.toLocaleString()} ({chickenBookingsCount}건) 포함
                                     </div>
                                 )}
                             </div>
@@ -1013,6 +1046,17 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 </div>
             </div>
         </div>
+    )}
+
+    {/* 🍗 리뷰 치킨 이벤트 정산 차감 모아보기 위젯 */}
+    {selectedWidgets.has('chicken') && (
+        <ChickenEventDeductionSection
+            bookings={bookings}
+            startDate={startDate}
+            endDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
     )}
 
     {/* 1-2) ⚡ 일일 예약 유입 & 가동률 증분 리포트 (Daily Pick-up) */}
