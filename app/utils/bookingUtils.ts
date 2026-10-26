@@ -92,21 +92,29 @@ export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string,
 /**
  * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
  * ⚠️ 호스트가 계좌 등으로 직접 수령한 연박 추가 요금(directAdditionalPrice)은 플랫폼 수수료 0%로 100% 실수령 합산
+ * 🍗 리뷰 치킨 이벤트 참여 시 정산금에서 21,000원 차감
  */
 export function calculateNetPayout(
     price: number,
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
     bookingTime?: string,
-    roomId?: number
+    roomId?: number,
+    isChicken: boolean = false
 ): number {
     const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
 
-    if (rate <= 0) return Math.round(price);
-    const otaNet = Math.round(otaBasePrice * (1 - rate));
-    return otaNet + directPrice;
+    let baseNet = Math.round(price);
+    if (rate > 0) {
+        baseNet = Math.round(otaBasePrice * (1 - rate)) + directPrice;
+    } else {
+        baseNet = price;
+    }
+
+    const chickenDeduction = isChicken ? 21000 : 0;
+    return Math.max(0, baseNet - chickenDeduction);
 }
 
 /**
@@ -117,13 +125,15 @@ export function getCommissionInfo(
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
     bookingTime?: string,
-    roomId?: number
+    roomId?: number,
+    isChicken: boolean = false
 ) {
     const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
-    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime, roomId);
+    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime, roomId, isChicken);
     const hasDeduction = rate > 0;
+    const chickenDeduction = isChicken ? 21000 : 0;
     return {
         grossPrice: price,
         netPayout,
@@ -131,6 +141,8 @@ export function getCommissionInfo(
         feeAmount: Math.round(otaBasePrice * rate),
         hasDeduction,
         directPrice,
+        isChicken,
+        chickenDeduction,
     };
 }
 

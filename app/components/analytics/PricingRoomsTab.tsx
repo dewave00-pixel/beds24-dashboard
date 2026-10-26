@@ -388,7 +388,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 let rev = 0;
                 let nights = 0;
                 matchedBookings.forEach((b) => {
-                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
                     rev += payout;
                     if (b.status !== 'cancelled') {
                         const arr = new Date(b.arrival);

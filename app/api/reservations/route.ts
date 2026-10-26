@@ -117,6 +117,24 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, isAnalytics
         return [];
     }
 
+    // 🍗 리뷰 치킨 이벤트 태그 조회 (정산금 21,000원 차감 반영용)
+    const chickenBookingIds = new Set<number>();
+    try {
+        const { data: notesData } = await supabase
+            .from('booking_notes')
+            .select('booking_id, tags');
+
+        if (notesData) {
+            for (const row of notesData) {
+                if (Array.isArray(row.tags) && row.tags.includes('chicken')) {
+                    chickenBookingIds.add(Number(row.booking_id));
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ [Reservations] 치킨 태그 조회 실패 (무시 후 계속 진행):', e);
+    }
+
     const formatted = dbBookings.map((row) => ({
         id: row.id,
         propertyId: row.property_id,
@@ -138,6 +156,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, isAnalytics
         lang: row.raw_data?.lang || row.raw_data?.language || '',
         phone: row.raw_data?.phone || row.raw_data?.mobile || '',
         mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
+        isChicken: chickenBookingIds.has(Number(row.id)),
     }));
 
     if (isAnalytics) {

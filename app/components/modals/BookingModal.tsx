@@ -46,7 +46,15 @@ export default function BookingModal({
 
     const currentUnit = getUnitForBooking(booking);
     const directPrice = getDirectExtensionPrice(booking.notes);
-    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId, directPrice, booking.bookingTime, booking.roomId);
+    const isChicken = selectedTags.includes('chicken');
+    const commInfo = getCommissionInfo(
+        Number(booking.price) || 0,
+        booking.apiSourceId,
+        directPrice,
+        booking.bookingTime,
+        booking.roomId,
+        isChicken
+    );
 
     // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
     const currentKey = Number(booking.unitId) > 0 && booking.roomId
@@ -84,7 +92,6 @@ export default function BookingModal({
 
     const isNoCleaning = selectedTags.includes('no_cleaning');
     const isRepair = selectedTags.includes('repair');
-    const isChicken = selectedTags.includes('chicken');
 
     const handleEarlyToggle = () => {
         if (isEarlyActive) {
@@ -198,6 +205,11 @@ export default function BookingModal({
                                 <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm md:text-base font-mono">
                                     {commInfo.netPayout.toLocaleString()}원
                                 </span>
+                                {commInfo.chickenDeduction > 0 && (
+                                    <span className="text-[11px] text-orange-600 dark:text-orange-400 font-bold">
+                                        (🍗 치킨 -21,000원)
+                                    </span>
+                                )}
                                 {commInfo.directPrice > 0 ? (
                                     <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
                                         (연박계좌 {commInfo.directPrice.toLocaleString()}원 수수료0% 포함)
@@ -419,14 +431,9 @@ export default function BookingModal({
                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <span className="flex items-center gap-1.5 text-left">
+                                <span className="flex items-center gap-1.5">
                                     <span>🍗</span>
-                                    <span className="flex flex-col sm:flex-row sm:items-center sm:gap-1.5">
-                                        <span>리뷰 치킨 이벤트</span>
-                                        <span className="text-[10.5px] font-normal text-gray-500 dark:text-slate-400">
-                                            (리뷰 작성 시 치킨 기프티콘 증정)
-                                        </span>
-                                    </span>
+                                    <span>리뷰 치킨 이벤트</span>
                                 </span>
                                 <span>{isChicken ? '✅' : '⬜'}</span>
                             </button>

@@ -193,7 +193,7 @@ export function calculateOverallSummary(
     let checkoutNights = 0;
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
         // 취소된 예약은 실제 투숙하지 않았으므로 투숙 박수(checkoutNights)에서 제외하여 ADR 왜곡 방지
@@ -327,7 +327,7 @@ export function calculatePropertyStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -379,7 +379,7 @@ export function calculatePropertyStats(
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken)) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         propMap[propName].weekdayRev += dailyRate;
@@ -533,7 +533,7 @@ export function calculateRoomStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -627,7 +627,7 @@ export function calculateRoomStats(
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken)) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         roomMap[rId].weekdayRev += dailyRate;
@@ -780,7 +780,7 @@ export function calculateChannelStats(
     const channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; bookings: Booking[] }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -906,7 +906,7 @@ export function calculateDailyChannelTrends(
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-            const fullPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+            const fullPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
             const dayPortionPrice = (mode === 'stay' && b.status !== 'cancelled') ? Math.round(fullPrice / nights) : fullPrice;
 
             const ch = getChannelStyle(b.apiSourceId);
@@ -1009,7 +1009,7 @@ export function calculateCountryStats(
     }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -1117,7 +1117,7 @@ export function calculateCountryRoomPreferences(
     const roomMap: Record<string, { roomName: string; propName: string; count: number; nights: number; revenue: number }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1275,7 +1275,7 @@ function calculateMetricsForPeriod(
             if (!isMatched) return;
         }
 
-        const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const totalBookingNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1521,7 +1521,7 @@ export function calculateRoomChannelCrossMatrix(
             const bUnit = getUnitForBooking(b);
             if (!bUnit || bUnit.key !== targetUnit.key) return;
 
-            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1644,7 +1644,7 @@ export function calculateRoomChannelCrossMatrix(
             const uKey = matchedUnit?.key || String(b.roomId);
             if (uKey !== room.unitKey && b.roomId !== room.roomId) return;
 
-            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));

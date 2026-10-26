@@ -20,6 +20,7 @@ export interface Booking {
     lang?: string;
     phone?: string;
     mobile?: string;
+    isChicken?: boolean;
 }
 
 // 세부 호실/유닛 정보 구조 정의
