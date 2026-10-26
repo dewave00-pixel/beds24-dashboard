@@ -407,3 +407,75 @@ export function getBookedUnitDateSet(bookings: Booking[], units: UnitConfig[]): 
     return bookedSet;
 }
 
+/**
+ * 🏢 roomId별 UnitConfig 매핑 맵 생성
+ */
+export function getUnitsByRoomIdMap(units: UnitConfig[]): Map<number, UnitConfig[]> {
+    const map = new Map<number, UnitConfig[]>();
+    for (const u of units) {
+        const list = map.get(u.roomId) || [];
+        list.push(u);
+        map.set(u.roomId, list);
+    }
+    return map;
+}
+
+export interface VacantUnitInventoryStatus {
+    isAvailable: boolean;
+    isClosed: boolean;
+    isOverbooked: boolean;
+    vacantIndex: number;
+    vacantCount: number;
+    totalUnits: number;
+}
+
+/**
+ * 🏢 다객실 룸타입(예: 403호/503호)의 Beds24 잔여 재고(numAvail) 비례 가용 여부 계산
+ * - 동일 roomId의 빈 객실 목록 중 vacantIndex < numAvail 인 호실만 '예약 가능' 처리
+ * - numAvail을 초과하는 빈 객실은 Beds24 재고 축소/마감에 의해 '마감' 빗금 처리
+ */
+export function getVacantUnitInventoryStatus(
+    unit: UnitConfig,
+    dStr: string,
+    bookedUnitDateSet: Set<string>,
+    unitsByRoomId: Map<number, UnitConfig[]>,
+    inv?: { numAvail: number; price: number }
+): VacantUnitInventoryStatus {
+    const sameRoomUnits = unitsByRoomId.get(unit.roomId) || [unit];
+    let vacantIndex = 0;
+    let vacantCount = 0;
+
+    for (const u of sameRoomUnits) {
+        if (!bookedUnitDateSet.has(`${u.key}_${dStr}`)) {
+            if (u.key === unit.key) {
+                vacantIndex = vacantCount;
+            }
+            vacantCount++;
+        }
+    }
+
+    if (!inv) {
+        return {
+            isAvailable: true,
+            isClosed: false,
+            isOverbooked: false,
+            vacantIndex,
+            vacantCount,
+            totalUnits: sameRoomUnits.length,
+        };
+    }
+
+    const isOverbooked = inv.numAvail < 0;
+    const isAvailable = inv.numAvail > 0 && vacantIndex < inv.numAvail;
+    const isClosed = !isOverbooked && !isAvailable;
+
+    return {
+        isAvailable,
+        isClosed,
+        isOverbooked,
+        vacantIndex,
+        vacantCount,
+        totalUnits: sameRoomUnits.length,
+    };
+}
+

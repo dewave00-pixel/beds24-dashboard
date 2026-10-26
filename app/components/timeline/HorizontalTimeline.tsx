@@ -3,7 +3,7 @@
 import React, { useRef, useMemo } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS, getChannelStyle, getDayType, parseBookingTag } from '../../config';
-import { isValidBooking, isUnallocatedBooking, formatCompactPrice, getBookedUnitDateSet } from '../../utils/bookingUtils';
+import { isValidBooking, isUnallocatedBooking, formatCompactPrice, getBookedUnitDateSet, getUnitsByRoomIdMap, getVacantUnitInventoryStatus } from '../../utils/bookingUtils';
 
 interface BookingNoteData {
     note: string;
@@ -39,6 +39,7 @@ export default function HorizontalTimeline({
 }: HorizontalTimelineProps) {
     const isTriggeringRef = useRef<boolean>(false);
     const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(bookings, ALL_UNITS), [bookings]);
+    const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
 
     // 📜 우측으로 스크롤 시 끝 300px 전 다음 날짜 자동 확장 (무한 스크롤)
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -150,11 +151,12 @@ export default function HorizontalTimeline({
 
                                                 const isBooked = bookedUnitDateSet.has(`${unit.key}_${dStr}`);
                                                 const inv = !isBooked ? inventoryMap?.[`${unit.roomId}_${dStr}`] : undefined;
+                                                const invStatus = !isBooked ? getVacantUnitInventoryStatus(unit, dStr, bookedUnitDateSet, unitsByRoomId, inv) : undefined;
 
                                                 let cellBg = '';
-                                                if (inv && inv.numAvail < 0) {
+                                                if (invStatus?.isOverbooked) {
                                                     cellBg = 'bg-[repeating-linear-gradient(45deg,rgba(239,68,68,0.14)_0px,rgba(239,68,68,0.14)_6px,transparent_6px,transparent_12px)] bg-red-50/20 dark:bg-red-950/20';
-                                                } else if (inv && inv.numAvail === 0) {
+                                                } else if (invStatus?.isClosed) {
                                                     cellBg = 'bg-[repeating-linear-gradient(45deg,rgba(148,163,184,0.18)_0px,rgba(148,163,184,0.18)_6px,transparent_6px,transparent_12px)] dark:bg-[repeating-linear-gradient(45deg,rgba(71,85,105,0.22)_0px,rgba(71,85,105,0.22)_6px,transparent_6px,transparent_12px)]';
                                                 } else if (isSelected) {
                                                     cellBg = 'bg-amber-100/60 dark:bg-amber-950/30';
@@ -177,43 +179,43 @@ export default function HorizontalTimeline({
                                                         className={`h-full cursor-pointer flex flex-col items-center justify-center gap-0.5 transition-colors select-none ${cellBg}`}
                                                         title={
                                                             inv
-                                                                ? inv.numAvail < 0
+                                                                ? invStatus?.isOverbooked
                                                                     ? `[🚨 초과 예약] Beds24 잔여: ${inv.numAvail}실 | 당일 최저가: ₩${inv.price?.toLocaleString()}`
-                                                                    : inv.numAvail === 0
-                                                                        ? `[🔒 예약 마감] Beds24 잔여: 0실 | 당일 최저가: ₩${inv.price?.toLocaleString()}`
+                                                                    : invStatus?.isClosed
+                                                                        ? `[🔒 예약 마감] Beds24 잔여: ${inv.numAvail}/${invStatus.totalUnits}실 (재고 마감) | 당일 최저가: ₩${inv.price?.toLocaleString()}`
                                                                         : `[예약 가능] Beds24 잔여: ${inv.numAvail}실 | 당일 최저가: ₩${inv.price?.toLocaleString()}`
                                                                 : undefined
                                                         }
                                                     >
-                                                        {inv && inv.numAvail < 0 && (
-                                                            <>
-                                                                <span className="px-1 py-0.5 rounded text-[8.5px] font-black bg-red-500 text-white shadow-xs leading-none">
-                                                                    🚨 초과({inv.numAvail})
-                                                                </span>
-                                                                {priceStr && (
-                                                                    <span className="text-[10px] font-black text-red-600 dark:text-red-400 tracking-tight leading-none">
-                                                                        {priceStr}
-                                                                    </span>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        {inv && inv.numAvail === 0 && (
-                                                            <>
-                                                                <span className="px-1 py-0.5 rounded text-[8.5px] font-bold bg-slate-200/90 text-slate-700 dark:bg-slate-700 dark:text-slate-200 leading-none border border-slate-300 dark:border-slate-600">
-                                                                    🔒 마감
-                                                                </span>
-                                                                {priceStr && (
-                                                                    <span className="text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 tracking-tight leading-none">
-                                                                        {priceStr}
-                                                                    </span>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        {inv && inv.numAvail > 0 && priceStr && (
-                                                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors tracking-tight leading-none">
-                                                                {priceStr}
-                                                            </span>
-                                                        )}
+                                                        {invStatus?.isOverbooked && (
+                                                             <>
+                                                                 <span className="px-1 py-0.5 rounded text-[8.5px] font-black bg-red-500 text-white shadow-xs leading-none">
+                                                                     🚨 초과({inv?.numAvail})
+                                                                 </span>
+                                                                 {priceStr && (
+                                                                     <span className="text-[10px] font-black text-red-600 dark:text-red-400 tracking-tight leading-none">
+                                                                         {priceStr}
+                                                                     </span>
+                                                                 )}
+                                                             </>
+                                                         )}
+                                                         {invStatus?.isClosed && (
+                                                             <>
+                                                                 <span className="px-1 py-0.5 rounded text-[8.5px] font-bold bg-slate-200/90 text-slate-700 dark:bg-slate-700 dark:text-slate-200 leading-none border border-slate-300 dark:border-slate-600">
+                                                                     🔒 마감
+                                                                 </span>
+                                                                 {priceStr && (
+                                                                     <span className="text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 tracking-tight leading-none">
+                                                                         {priceStr}
+                                                                     </span>
+                                                                 )}
+                                                             </>
+                                                         )}
+                                                         {invStatus?.isAvailable && priceStr && (
+                                                             <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors tracking-tight leading-none">
+                                                                 {priceStr}
+                                                             </span>
+                                                         )}
                                                     </div>
                                                 );
                                             })}
