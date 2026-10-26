@@ -328,66 +328,74 @@ export default function BookingModal({
 
                             {/* 1. 얼리체크인 */}
                             <div
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isEarlyActive
+                                onClick={handleEarlyToggle}
+                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isEarlyActive
                                     ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 border-2 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <button
-                                    type="button"
-                                    onClick={handleEarlyToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300 grow text-left cursor-pointer"
-                                >
-                                    <span>🕒</span>
-                                    <span>얼리체크인</span>
-                                    <span>{isEarlyActive ? '✅' : '⬜'}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300">
+                                        <span>🕒</span>
+                                        <span>얼리체크인</span>
+                                    </span>
 
-                                {isEarlyActive && (
-                                    <select
-                                        value={earlyTime}
-                                        onChange={(e) => handleEarlyTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer"
-                                    >
-                                        {EARLY_CHECKIN_HOURS.map((h) => (
-                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
+                                    {isEarlyActive && (
+                                        <select
+                                            value={earlyTime}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleEarlyTimeChange(e.target.value);
+                                            }}
+                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer shadow-xs"
+                                        >
+                                            {EARLY_CHECKIN_HOURS.map((h) => (
+                                                <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+
+                                <span className="text-xs shrink-0">{isEarlyActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 2. 레이트체크아웃 */}
                             <div
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isLateActive
+                                onClick={handleLateToggle}
+                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isLateActive
                                     ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 border-2 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <button
-                                    type="button"
-                                    onClick={handleLateToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300 grow text-left cursor-pointer"
-                                >
-                                    <span>⏱️</span>
-                                    <span>레이트체크아웃</span>
-                                    <span>{isLateActive ? '✅' : '⬜'}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300">
+                                        <span>⏱️</span>
+                                        <span>레이트체크아웃</span>
+                                    </span>
 
-                                {isLateActive && (
-                                    <select
-                                        value={lateTime}
-                                        onChange={(e) => handleLateTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer"
-                                    >
-                                        {LATE_CHECKOUT_HOURS.map((h) => (
-                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
+                                    {isLateActive && (
+                                        <select
+                                            value={lateTime}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleLateTimeChange(e.target.value);
+                                            }}
+                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer shadow-xs"
+                                        >
+                                            {LATE_CHECKOUT_HOURS.map((h) => (
+                                                <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+
+                                <span className="text-xs shrink-0">{isLateActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 3. 청소안함 */}
