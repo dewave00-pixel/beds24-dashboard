@@ -133,8 +133,8 @@ export default function BookingModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 md:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[95vh] border border-gray-300 dark:border-slate-700">
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
 
                 {/* 상단 헤더 */}
                 <div
@@ -162,7 +162,7 @@ export default function BookingModal({
 
                 {/* 본문 정보 */}
                 <div className="p-3 md:p-5 overflow-y-auto flex flex-col gap-3.5 text-sm text-gray-800 dark:text-slate-200">
-                    <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-gray-300 dark:border-slate-700">
+                    <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-gray-300 dark:border-slate-700 shrink-0">
                         <div>
                             <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">게스트 이름</span>
                             <span className="font-extrabold text-gray-900 dark:text-slate-100 text-sm md:text-base">{guestName}</span>
@@ -203,7 +203,7 @@ export default function BookingModal({
                     </div>
 
                     {/* 🏠 호실 배정 관리 섹션 (전체 건물 및 모든 호실 이동 가능) */}
-                    <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-300 dark:border-amber-800/80 flex flex-col gap-2">
+                    <div className="bg-amber-50/60 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-300 dark:border-amber-800/80 flex flex-col gap-2 shrink-0">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1">
                                 <span>🏠</span> 호실 배정 상태:
@@ -216,14 +216,14 @@ export default function BookingModal({
                         </div>
 
                         {onAssignUnit && (
-                            <div className="flex flex-col gap-1.5 pt-1 border-t border-amber-200 dark:border-amber-800/50">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1 flex-1">
-                                        <span className="text-[11px] font-bold text-gray-700 dark:text-slate-300 shrink-0">변경 호실:</span>
+                            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-amber-200 dark:border-amber-800/50">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                        <span className="text-xs font-bold text-gray-700 dark:text-slate-300 shrink-0">변경 호실:</span>
                                         <select
                                             value={selectedUnitKey}
                                             onChange={(e) => setSelectedUnitKey(e.target.value)}
-                                            className={`px-2 py-1 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200' : 'border-gray-300 dark:border-slate-600'}`}
+                                            className={`min-h-[38px] px-2.5 py-1.5 text-xs font-black bg-white dark:bg-slate-800 border rounded-md text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer flex-1 min-w-0 ${hasConflictOnSelectedUnit ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200' : 'border-gray-300 dark:border-slate-600'}`}
                                         >
                                             {/* ⚠️ 미배정 상태로 되돌리기 옵션 */}
                                             <option value="0-0" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">⚠️ [미배정 상태로 변경 (호실 해제)]</option>
@@ -251,7 +251,7 @@ export default function BookingModal({
                                         type="button"
                                         disabled={isAssigning || selectedUnitKey === currentKey}
                                         onClick={handleAssignUnitClick}
-                                        className={`px-3 py-1 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1 ${
+                                        className={`w-full sm:w-auto min-h-[38px] px-4 py-1.5 text-white font-black text-xs rounded-md transition shadow-xs disabled:opacity-40 cursor-pointer shrink-0 flex items-center justify-center gap-1 ${
                                             targetUnitId === 0
                                                 ? 'bg-amber-600 hover:bg-amber-700'
                                                 : hasConflictOnSelectedUnit
@@ -298,7 +298,7 @@ export default function BookingModal({
                     )}
 
                     {/* 🏷️ 빠른 상태 옵션 */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 shrink-0">
                         <label className="font-extrabold text-xs text-gray-800 dark:text-slate-200 flex items-center gap-1">
                             <span>🏷️ 빠른 상태 옵션 (시간 설정 및 다중 선택)</span>
                         </label>
@@ -405,7 +405,7 @@ export default function BookingModal({
                     </div>
 
                     {/* 🔥 고대비 특이사항 메모 입력창 */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 shrink-0">
                         <label className="font-extrabold text-xs text-gray-900 dark:text-slate-100 flex items-center gap-1">
                             <span>🔥 특이사항 및 메모 (선명한 고대비)</span>
                         </label>
