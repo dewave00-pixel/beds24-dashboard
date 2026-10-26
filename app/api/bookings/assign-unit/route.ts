@@ -84,22 +84,14 @@ export async function POST(request: Request) {
         }
 
         // 3. Beds24 본사 API로 배정/미배정 정보 전송
-        // ⚠️ Beds24 API V2 검증 완료:
-        // 1) 미배정(호실 해제) 시 반드시 unitId: 0 을 전달해야 Beds24에서 정상 해제됨 (null은 무시됨)
-        // 2) 미배정 시 allowAutoAction: 'disable' 및 LOCKUNIT infoCode를 함께 전달하여 Beds24 엔진의 빈 방 자동 재배정(Auto Assign) 차단
+        // ⚠️ Beds24 API V2 검증 완료: 미배정(호실 해제) 시 반드시 unitId: 0 을 전달해야 Beds24에서 정상 해제됨 (null은 무시됨)
         const targetUnitIdForBeds24 = uId; // 0이면 Beds24에 0 전달하여 미배정 처리
         const beds24Payload: {
             roomId?: number;
             unitId: number;
-            allowAutoAction?: 'enable' | 'disable';
-            infoItems?: Array<{ code: string; text?: string }>;
         } = {
             unitId: targetUnitIdForBeds24,
-            allowAutoAction: uId === 0 ? 'disable' : 'enable',
         };
-        if (uId === 0) {
-            beds24Payload.infoItems = [{ code: 'LOCKUNIT', text: '1' }];
-        }
         if (rId > 0) {
             beds24Payload.roomId = rId;
         }
