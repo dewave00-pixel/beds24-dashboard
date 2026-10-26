@@ -9,22 +9,42 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { bookingId, roomId, unitId, force } = body;
 
-        if (!bookingId || !roomId || unitId === undefined || unitId === null) {
+        if (!bookingId || unitId === undefined || unitId === null) {
             return NextResponse.json(
-                { success: false, error: '필수 파라미터(bookingId, roomId, unitId)가 누락되었습니다.' },
+                { success: false, error: '필수 파라미터(bookingId, unitId)가 누락되었습니다.' },
                 { status: 400 }
             );
         }
 
         const bId = Number(bookingId);
-        const rId = Number(roomId);
+        let rId = Number(roomId) || 0;
         const uId = Number(unitId);
 
-        console.log(`🏠 [Assign Unit] 예약 #${bId} ➔ roomId: ${rId}, unitId: ${uId} 배정 요청 시작...`);
+        // 🛡️ roomId가 누락되거나 0인 경우 기존 DB 예약에서 room_id fallback 조회
+        if (rId <= 0) {
+            const { data: cur } = await supabase
+                .from('bookings')
+                .select('room_id')
+                .eq('id', bId)
+                .single();
+            if (cur?.room_id) {
+                rId = Number(cur.room_id);
+            }
+        }
+
+        if (rId <= 0) {
+            return NextResponse.json(
+                { success: false, error: '유효한 roomId(객실 타입)를 찾을 수 없습니다.' },
+                { status: 400 }
+            );
+        }
+
+        const actionText = uId > 0 ? `호실 배정 (Unit ${uId})` : '호실 배정 해제 (미배정 상태)';
+        console.log(`🏠 [Assign Unit] 예약 #${bId} ➔ roomId: ${rId}, unitId: ${uId} (${actionText}) 요청 시작...`);
 
         // 🛡️ 1. uId > 0 인 경우에만 더블 부킹 충돌 검사 (uId === 0 은 미배정 상태이므로 충돌 없음)
         if (uId > 0 && !force) {
-            const { data: currentBooking, error: fetchErr } = await supabase
+            const { data: currentBooking } = await supabase
                 .from('bookings')
                 .select('id, arrival, departure, first_name, last_name')
                 .eq('id', bId)
@@ -63,31 +83,61 @@ export async function POST(request: Request) {
             }
         }
 
-        // 3. Beds24 본사 API로 배정 정보 전송
-        const beds24Result = await updateBeds24Booking(bId, {
-            roomId: rId,
-            unitId: uId,
-        });
+        // 3. Beds24 본사 API로 배정/미배정 정보 전송
+        // ⚠️ Beds24 API V2 스펙: unitId 미배정 해제 시 null 전송
+        const targetUnitIdForBeds24 = uId > 0 ? uId : null;
+        const beds24Payload: { roomId?: number; unitId: number | null } = {
+            unitId: targetUnitIdForBeds24,
+        };
+        if (rId > 0) {
+            beds24Payload.roomId = rId;
+        }
 
-        console.log(`✅ [Assign Unit] Beds24 API 응답 완료:`, JSON.stringify(beds24Result).slice(0, 200));
+        const beds24Result = await updateBeds24Booking(bId, beds24Payload);
+        console.log(`✅ [Assign Unit] Beds24 API 응답 완료:`, JSON.stringify(beds24Result).slice(0, 300));
+
+        // 🛡️ Beds24 API 응답 검증 (AGENTS.md 4.1 불변조건: Beds24 성공 확인 후 Supabase 반영)
+        const itemResult = Array.isArray(beds24Result) ? beds24Result[0] : beds24Result;
+        if (itemResult && (itemResult.success === false || (itemResult.errors && itemResult.errors.length > 0))) {
+            const errMsg = itemResult.errors && itemResult.errors.length > 0
+                ? (typeof itemResult.errors[0] === 'string' ? itemResult.errors.join(', ') : JSON.stringify(itemResult.errors))
+                : 'Beds24 본사에서 배정 변경 처리를 거부했습니다.';
+            console.error(`❌ [Assign Unit] Beds24 배정 처리 실패:`, errMsg, beds24Result);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: `Beds24 배정 실패: ${errMsg}`,
+                    details: beds24Result,
+                },
+                { status: 400 }
+            );
+        }
 
         // 4. Supabase DB bookings 테이블 동기 업데이트 (uId === 0 이면 unit_id를 null로 설정)
         const { error: dbError } = await supabase
             .from('bookings')
             .update({
                 room_id: rId,
-                unit_id: uId === 0 ? null : uId,
+                unit_id: targetUnitIdForBeds24,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', bId);
 
         if (dbError) {
             console.error('⚠️ [Assign Unit] Supabase DB 업데이트 실패 (Beds24는 성공):', dbError);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Beds24에는 반영되었으나 대시보드 DB 갱신 중 오류가 발생했습니다. 잠시 후 새로고침해 주세요.',
+                    details: dbError.message,
+                },
+                { status: 500 }
+            );
         }
 
         return NextResponse.json({
             success: true,
-            message: `성공적으로 Beds24 및 DB에 호실 배정(Unit ${uId})을 완료했습니다.`,
+            message: `성공적으로 Beds24 및 DB에 ${actionText}을(를) 완료했습니다.`,
             data: {
                 bookingId: bId,
                 roomId: rId,
@@ -95,12 +145,13 @@ export async function POST(request: Request) {
                 beds24Result,
             },
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('❌ [Assign Unit Error]:', err);
+        const errorMessage = err instanceof Error ? err.message : '호실 배정 처리 중 오류가 발생했습니다.';
         return NextResponse.json(
             {
                 success: false,
-                error: err.message || '호실 배정 처리 중 오류가 발생했습니다.',
+                error: errorMessage,
             },
             { status: 500 }
         );
