@@ -364,3 +364,46 @@ export function sortBookingsByEarlyCheckin(
     });
 }
 
+/**
+ * 🏷️ 타임라인 빈 객실 셀에 표기할 컴팩트 요금 포맷터
+ * 예: 145,725원 -> "14.6만", 100,000원 -> "10만", 35,000원 -> "3.5만"
+ */
+export function formatCompactPrice(price?: number | null): string {
+    if (!price || price <= 0) return '';
+    if (price >= 10000) {
+        const val = Math.round((price / 10000) * 10) / 10;
+        return `${val}만`;
+    }
+    return `₩${Math.round(price).toLocaleString()}`;
+}
+
+/**
+ * 🗺️ 예약 목록을 기반으로 호실별(unit.key) 예약된 날짜 집합 생성
+ * Set key format: `${unit.key}_${YYYY-MM-DD}`
+ */
+export function getBookedUnitDateSet(bookings: Booking[], units: UnitConfig[]): Set<string> {
+    const bookedSet = new Set<string>();
+    for (const b of bookings) {
+        if (!isValidBooking(b) || isUnallocatedBooking(b)) continue;
+        const bRoomId = Number(b.roomId);
+        const bUnitId = b.unitId !== undefined && b.unitId !== null ? Number(b.unitId) : null;
+
+        for (const unit of units) {
+            const isRoomMatch = unit.roomId === bRoomId;
+            const isUnitMatch = unit.unitId ? unit.unitId === bUnitId : true;
+            if (!isRoomMatch || !isUnitMatch) continue;
+
+            const curr = new Date(b.arrival + 'T00:00:00');
+            const end = new Date(b.departure + 'T00:00:00');
+            while (curr < end) {
+                const y = curr.getFullYear();
+                const m = String(curr.getMonth() + 1).padStart(2, '0');
+                const d = String(curr.getDate()).padStart(2, '0');
+                bookedSet.add(`${unit.key}_${y}-${m}-${d}`);
+                curr.setDate(curr.getDate() + 1);
+            }
+        }
+    }
+    return bookedSet;
+}
+

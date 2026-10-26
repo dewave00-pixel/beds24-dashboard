@@ -95,6 +95,7 @@ export default function DashboardPage() {
                 selectedDate={d.selectedDate}
                 bookings={d.bookings}
                 bookingNotes={d.bookingNotes}
+                inventoryMap={d.inventoryMap}
                 ROW_HEIGHT={ROW_HEIGHT}
                 displayDaysCount={d.displayDaysCount}
                 onDateClick={d.handleDateClick}
@@ -108,6 +109,7 @@ export default function DashboardPage() {
                 selectedDate={d.selectedDate}
                 bookings={d.bookings}
                 bookingNotes={d.bookingNotes}
+                inventoryMap={d.inventoryMap}
                 COL_WIDTH={COL_WIDTH_HORIZ}
                 ROW_HEIGHT={ROW_HEIGHT}
                 onDateClick={d.handleDateClick}

@@ -47,6 +47,10 @@ export function useDashboard() {
     // 🔑 숙소 호실별 비밀번호/정보 상태
     const [propertiesInfo, setPropertiesInfo] = useState<Record<string, UnitPropertyInfo>>({});
 
+    // 📅 Beds24 일자별 객실 잔여 재고(numAvail) 및 최저가(price) 맵: key = `${roomId}_${YYYY-MM-DD}`
+    const [inventoryMap, setInventoryMap] = useState<Record<string, { numAvail: number; price: number }>>({});
+    const isFetchingInventoryRef = useRef<boolean>(false);
+
     // 팝업 모달 상태
     const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
     const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
@@ -112,9 +116,32 @@ export function useDashboard() {
         }
     };
 
+    // 4. Beds24 잔여 재고(numAvail) 및 최저가(price) 불러오기 (서버 캐시 5분)
+    const fetchInventory = async (forceRefresh: boolean = false) => {
+        if (isFetchingInventoryRef.current && !forceRefresh) return;
+        isFetchingInventoryRef.current = true;
+        try {
+            const start = formatKSTDate(startDate);
+            const endDateObj = new Date(startDate);
+            endDateObj.setDate(endDateObj.getDate() + displayDaysCount - 1);
+            const end = formatKSTDate(endDateObj);
+
+            const url = `/api/beds24/calendar?startDate=${start}&endDate=${end}${forceRefresh ? '&refresh=true' : ''}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            const data = await res.json();
+            if (data.success && data.data) {
+                setInventoryMap((prev) => ({ ...prev, ...data.data }));
+            }
+        } catch (e) {
+            console.error('Beds24 재고/요금 캘린더 불러오기 실패:', e);
+        } finally {
+            isFetchingInventoryRef.current = false;
+        }
+    };
+
     // 일반 새로고침 (DB 캐시 기반 빠른 재조회)
     const reloadAll = async () => {
-        await Promise.all([fetchReservations(false), fetchNotes(), fetchPropertiesInfo()]);
+        await Promise.all([fetchReservations(false), fetchNotes(), fetchPropertiesInfo(), fetchInventory(false)]);
     };
 
     // 🔄 Beds24 실시간 강제 동기화 (버튼 클릭 시 Beds24 본사 직접 긁어와 Supabase 정합성 맞추기)
@@ -122,13 +149,18 @@ export function useDashboard() {
         if (isSyncing) return;
         setIsSyncing(true);
         try {
-            await Promise.all([fetchReservations(true), fetchNotes(), fetchPropertiesInfo()]);
+            await Promise.all([fetchReservations(true), fetchNotes(), fetchPropertiesInfo(), fetchInventory(true)]);
         } catch (e) {
             console.error('Beds24 실시간 동기화 오류:', e);
         } finally {
             setIsSyncing(false);
         }
     };
+
+    // 📅 날짜 범위 변경 또는 확장 시 Beds24 재고/요금 정보 보충 조회
+    useEffect(() => {
+        fetchInventory(false);
+    }, [startDate, displayDaysCount]);
 
     // ⚡ Supabase 실시간 웹소켓 구독 (DB 변경 시 화면 자동 갱신)
     const { isConnected: isRealtimeConnected } = useRealtimeBookings({
@@ -609,5 +641,6 @@ export function useDashboard() {
         handleExtendStay,
         handleCancelBooking,
         isRealtimeConnected,
+        inventoryMap,
     };
 }

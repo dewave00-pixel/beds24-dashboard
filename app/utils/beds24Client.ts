@@ -251,3 +251,82 @@ export async function deleteBeds24Booking(bookingId: number) {
     const data = await res.json();
     return data;
 }
+
+export const ALL_BEDS24_PROPERTY_IDS = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
+
+/**
+ * 📅 Beds24 일자별 객실 재고(Availability) 및 최저 요금(Price) 조회
+ * - GET https://api.beds24.com/v2/inventory/rooms/calendar?propertyId={propId}&startDate={start}&endDate={end}&includeNumAvail=true&includePrices=true
+ * - 반환 형식: Record<`${roomId}_${dateStr}`, { numAvail: number; price: number }>
+ */
+export async function fetchBeds24RoomCalendar(
+    propertyIds: number[],
+    startDate: string,
+    endDate: string
+): Promise<Record<string, { numAvail: number; price: number }>> {
+    const token = await getValidBeds24Token();
+    const inventoryMap: Record<string, { numAvail: number; price: number }> = {};
+
+    const promises = propertyIds.map(async (propId) => {
+        try {
+            const url = `https://api.beds24.com/v2/inventory/rooms/calendar?propertyId=${propId}&startDate=${startDate}&endDate=${endDate}&includeNumAvail=true&includePrices=true`;
+            let res = await fetch(url, {
+                headers: { token, accept: 'application/json' },
+                cache: 'no-store',
+            });
+
+            if (res.status === 429) {
+                console.warn(`⚠️ [Beds24 Calendar] 숙소 ${propId} 429 감지 -> 2초 대기 후 재시도`);
+                await sleep(2000);
+                res = await fetch(url, {
+                    headers: { token, accept: 'application/json' },
+                    cache: 'no-store',
+                });
+            }
+
+            if (!res.ok) {
+                console.error(`⚠️ [Beds24 Calendar] 숙소 ${propId} 조회 실패 (${res.status})`);
+                return;
+            }
+
+            interface CalendarEntry {
+                from: string;
+                to: string;
+                numAvail?: number;
+                price1?: number;
+                price?: number;
+            }
+            interface RoomCalendarEntry {
+                roomId: number;
+                calendar?: CalendarEntry[];
+            }
+
+            const json = await res.json();
+            if (json.data && Array.isArray(json.data)) {
+                (json.data as RoomCalendarEntry[]).forEach((r) => {
+                    const roomId = Number(r.roomId);
+                    if (r.calendar && Array.isArray(r.calendar)) {
+                        r.calendar.forEach((cal) => {
+                            const numAvail = cal.numAvail !== undefined ? Number(cal.numAvail) : 1;
+                            const price = Number(cal.price1 || cal.price || 0);
+
+                            // cal.from부터 cal.to까지의 일자별로 매핑 (from~to 범위 전개)
+                            const cur = new Date(cal.from);
+                            const end = new Date(cal.to);
+                            while (cur <= end) {
+                                const dStr = cur.toISOString().split('T')[0];
+                                inventoryMap[`${roomId}_${dStr}`] = { numAvail, price };
+                                cur.setDate(cur.getDate() + 1);
+                            }
+                        });
+                    }
+                });
+            }
+        } catch (err: unknown) {
+            console.error(`❌ [Beds24 Calendar Error] 숙소 ${propId}:`, err);
+        }
+    });
+
+    await Promise.all(promises);
+    return inventoryMap;
+}
