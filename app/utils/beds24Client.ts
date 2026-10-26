@@ -157,7 +157,7 @@ export async function updateBeds24Booking(
     bookingId: number,
     updateFields: {
         roomId?: number;
-        unitId?: number;
+        unitId?: number | null;
         notes?: string;
         departure?: string;
         arrival?: string;
