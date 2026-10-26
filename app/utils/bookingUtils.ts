@@ -92,21 +92,29 @@ export function getOtaCommissionRate(apiSourceId?: number, bookingTime?: string,
 /**
  * 💰 예약의 실수령 예상 정산금 계산 (단일 책임 엔진)
  * ⚠️ 호스트가 계좌 등으로 직접 수령한 연박 추가 요금(directAdditionalPrice)은 플랫폼 수수료 0%로 100% 실수령 합산
+ * 🍗 리뷰 치킨 이벤트 참여 시 정산금에서 21,000원 차감
  */
 export function calculateNetPayout(
     price: number,
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
     bookingTime?: string,
-    roomId?: number
+    roomId?: number,
+    isChicken: boolean = false
 ): number {
     const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
 
-    if (rate <= 0) return Math.round(price);
-    const otaNet = Math.round(otaBasePrice * (1 - rate));
-    return otaNet + directPrice;
+    let baseNet = Math.round(price);
+    if (rate > 0) {
+        baseNet = Math.round(otaBasePrice * (1 - rate)) + directPrice;
+    } else {
+        baseNet = price;
+    }
+
+    const chickenDeduction = isChicken ? 21000 : 0;
+    return Math.max(0, baseNet - chickenDeduction);
 }
 
 /**
@@ -117,13 +125,15 @@ export function getCommissionInfo(
     apiSourceId?: number,
     directAdditionalPrice: number = 0,
     bookingTime?: string,
-    roomId?: number
+    roomId?: number,
+    isChicken: boolean = false
 ) {
     const rate = getOtaCommissionRate(apiSourceId, bookingTime, roomId);
     const directPrice = Math.max(0, directAdditionalPrice);
     const otaBasePrice = Math.max(0, price - directPrice);
-    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime, roomId);
+    const netPayout = calculateNetPayout(price, apiSourceId, directPrice, bookingTime, roomId, isChicken);
     const hasDeduction = rate > 0;
+    const chickenDeduction = isChicken ? 21000 : 0;
     return {
         grossPrice: price,
         netPayout,
@@ -131,17 +141,32 @@ export function getCommissionInfo(
         feeAmount: Math.round(otaBasePrice * rate),
         hasDeduction,
         directPrice,
+        isChicken,
+        chickenDeduction,
     };
 }
 
 /**
- * 🛡️ 유효한 활성 예약인지 검증 (취소, 삭제, 단순 숙소 문의 필터링)
+ * 🛡️ 유효한 활성 예약인지 검증 (취소, 삭제, 단순 숙소 문의 필터링 - 타임라인/청소/체크인용)
  */
 export function isValidBooking(booking?: Booking | null): boolean {
     if (!booking) return false;
     const status = (booking.status || '').toLowerCase().trim();
     if (status === 'cancelled' || status === 'deleted' || status === 'inquiry') {
         return false;
+    }
+    return true;
+}
+
+/**
+ * 💰 통계/매출 집계용 예약 검증 (활성 투숙 예약 + 위약금이 발생한 취소 예약 포함)
+ */
+export function isRevenueBooking(booking?: Booking | null): boolean {
+    if (!booking) return false;
+    const status = (booking.status || '').toLowerCase().trim();
+    if (status === 'deleted' || status === 'inquiry') return false;
+    if (status === 'cancelled') {
+        return (Number(booking.price) || 0) > 0;
     }
     return true;
 }
@@ -349,5 +374,120 @@ export function sortBookingsByEarlyCheckin(
 
         return Number(a.id) - Number(b.id);
     });
+}
+
+/**
+ * 🏷️ 타임라인 빈 객실 셀에 표기할 컴팩트 요금 포맷터
+ * 예: 145,725원 -> "14.6만", 100,000원 -> "10만", 35,000원 -> "3.5만"
+ */
+export function formatCompactPrice(price?: number | null): string {
+    if (!price || price <= 0) return '';
+    if (price >= 10000) {
+        const val = Math.round((price / 10000) * 10) / 10;
+        return `${val}만`;
+    }
+    return `₩${Math.round(price).toLocaleString()}`;
+}
+
+/**
+ * 🗺️ 예약 목록을 기반으로 호실별(unit.key) 예약된 날짜 집합 생성
+ * Set key format: `${unit.key}_${YYYY-MM-DD}`
+ */
+export function getBookedUnitDateSet(bookings: Booking[], units: UnitConfig[]): Set<string> {
+    const bookedSet = new Set<string>();
+    for (const b of bookings) {
+        if (!isValidBooking(b) || isUnallocatedBooking(b)) continue;
+        const bRoomId = Number(b.roomId);
+        const bUnitId = b.unitId !== undefined && b.unitId !== null ? Number(b.unitId) : null;
+
+        for (const unit of units) {
+            const isRoomMatch = unit.roomId === bRoomId;
+            const isUnitMatch = unit.unitId ? unit.unitId === bUnitId : true;
+            if (!isRoomMatch || !isUnitMatch) continue;
+
+            const curr = new Date(b.arrival + 'T00:00:00');
+            const end = new Date(b.departure + 'T00:00:00');
+            while (curr < end) {
+                const y = curr.getFullYear();
+                const m = String(curr.getMonth() + 1).padStart(2, '0');
+                const d = String(curr.getDate()).padStart(2, '0');
+                bookedSet.add(`${unit.key}_${y}-${m}-${d}`);
+                curr.setDate(curr.getDate() + 1);
+            }
+        }
+    }
+    return bookedSet;
+}
+
+/**
+ * 🏢 roomId별 UnitConfig 매핑 맵 생성
+ */
+export function getUnitsByRoomIdMap(units: UnitConfig[]): Map<number, UnitConfig[]> {
+    const map = new Map<number, UnitConfig[]>();
+    for (const u of units) {
+        const list = map.get(u.roomId) || [];
+        list.push(u);
+        map.set(u.roomId, list);
+    }
+    return map;
+}
+
+export interface VacantUnitInventoryStatus {
+    isAvailable: boolean;
+    isClosed: boolean;
+    isOverbooked: boolean;
+    vacantIndex: number;
+    vacantCount: number;
+    totalUnits: number;
+}
+
+/**
+ * 🏢 다객실 룸타입(예: 403호/503호)의 Beds24 잔여 재고(numAvail) 비례 가용 여부 계산
+ * - 동일 roomId의 빈 객실 목록 중 vacantIndex < numAvail 인 호실만 '예약 가능' 처리
+ * - numAvail을 초과하는 빈 객실은 Beds24 재고 축소/마감에 의해 '마감' 빗금 처리
+ */
+export function getVacantUnitInventoryStatus(
+    unit: UnitConfig,
+    dStr: string,
+    bookedUnitDateSet: Set<string>,
+    unitsByRoomId: Map<number, UnitConfig[]>,
+    inv?: { numAvail: number; price: number }
+): VacantUnitInventoryStatus {
+    const sameRoomUnits = unitsByRoomId.get(unit.roomId) || [unit];
+    let vacantIndex = 0;
+    let vacantCount = 0;
+
+    for (const u of sameRoomUnits) {
+        if (!bookedUnitDateSet.has(`${u.key}_${dStr}`)) {
+            if (u.key === unit.key) {
+                vacantIndex = vacantCount;
+            }
+            vacantCount++;
+        }
+    }
+
+    if (!inv) {
+        return {
+            isAvailable: true,
+            isClosed: false,
+            isOverbooked: false,
+            vacantIndex,
+            vacantCount,
+            totalUnits: sameRoomUnits.length,
+        };
+    }
+
+    const isOverbooked = inv.numAvail < 0;
+    const isAvailable = inv.numAvail > 0 && vacantIndex < inv.numAvail;
+    const isClosed = !isOverbooked && !isAvailable;
+
+    return {
+        isAvailable,
+        isClosed,
+        isOverbooked,
+        vacantIndex,
+        vacantCount,
+        totalUnits: sameRoomUnits.length,
+    };
 }
 

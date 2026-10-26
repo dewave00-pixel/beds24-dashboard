@@ -16,6 +16,7 @@ import DailyStatusModal from './components/modals/DailyStatusModal';
 import TotalNotesModal from './components/modals/TotalNotesModal';
 import SearchModal from './components/modals/SearchModal';
 import UnallocatedBookingsModal from './components/modals/UnallocatedBookingsModal';
+import InventoryIssuesModal from './components/modals/InventoryIssuesModal';
 import ZoomableTimelineWrapper from './components/timeline/ZoomableTimelineWrapper';
 
 const ROW_HEIGHT = 65;
@@ -47,6 +48,9 @@ export default function DashboardPage() {
           unassignedCleaningCount={d.unassignedCleaningCount}
           isCleaningSummaryLoading={d.isTodayCleaningSummaryLoading}
           hasCleaningSummaryError={d.todayCleaningSummaryError}
+          inventoryIssueCount={d.inventoryIssues.length}
+          hasOverbooking={d.inventoryIssues.some((i) => i.issueType === 'overbooked')}
+          onOpenInventoryModal={() => d.setIsInventoryIssuesModalOpen(true)}
           viewMode={d.viewMode}
           loading={d.loading}
           isSyncing={d.isSyncing}
@@ -95,6 +99,7 @@ export default function DashboardPage() {
                 selectedDate={d.selectedDate}
                 bookings={d.bookings}
                 bookingNotes={d.bookingNotes}
+                inventoryMap={d.inventoryMap}
                 ROW_HEIGHT={ROW_HEIGHT}
                 displayDaysCount={d.displayDaysCount}
                 onDateClick={d.handleDateClick}
@@ -108,6 +113,7 @@ export default function DashboardPage() {
                 selectedDate={d.selectedDate}
                 bookings={d.bookings}
                 bookingNotes={d.bookingNotes}
+                inventoryMap={d.inventoryMap}
                 COL_WIDTH={COL_WIDTH_HORIZ}
                 ROW_HEIGHT={ROW_HEIGHT}
                 onDateClick={d.handleDateClick}
@@ -134,6 +140,7 @@ export default function DashboardPage() {
           onClose={() => d.setActiveBooking(null)}
           onAssignUnit={d.handleAssignUnit}
           onExtendStay={d.handleExtendStay}
+          onCancelBooking={auth.isAdmin ? d.handleCancelBooking : undefined}
           propertiesInfo={d.propertiesInfo}
         />
       )}
@@ -186,6 +193,14 @@ export default function DashboardPage() {
           }) : undefined}
         />
       )}
+
+      {/* 🔒 Beds24 재고 마감·초과 점검 모달 */}
+      <InventoryIssuesModal
+        isOpen={d.isInventoryIssuesModalOpen}
+        issues={d.inventoryIssues}
+        onClose={() => d.setIsInventoryIssuesModalOpen(false)}
+        onSelectDate={d.handleDateClick}
+      />
     </div>
   );
 }

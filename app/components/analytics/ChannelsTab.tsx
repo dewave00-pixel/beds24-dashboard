@@ -6,7 +6,7 @@ import {
     calculateChannelStats,
     formatLocalDate,
 } from '../../utils/analyticsCalculations';
-import { getBookingDateKST, calculateNetPayout, isValidBooking } from '../../utils/bookingUtils';
+import { getBookingDateKST, calculateNetPayout, isRevenueBooking } from '../../utils/bookingUtils';
 import ChannelRevenueSection from './ChannelRevenueSection';
 import CountryRevenueSection from './CountryRevenueSection';
 import DateRangeToolbar from './DateRangeToolbar';
@@ -190,7 +190,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
     }, [startDate, endDate, inflowUnit]);
 
     // 4. 버킷별 채널 유입량(건수 및 금액) 계산 - O(N) 1-Pass 사전 집계 최적화
-    const validBookings = useMemo(() => bookings.filter(isValidBooking), [bookings]);
+    const validBookings = useMemo(() => bookings.filter(isRevenueBooking), [bookings]);
 
     const inflowChartData = useMemo(() => {
         if (!inflowBuckets.length) return [];
@@ -219,7 +219,7 @@ export default function ChannelsTab({ bookings }: ChannelsTabProps) {
                 }
 
                 const apiId = Number(b.apiSourceId) || 0;
-                const payout = calculateNetPayout(Number(b.price) || 0, apiId, 0, b.bookingTime, b.roomId);
+                const payout = calculateNetPayout(Number(b.price) || 0, apiId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
 
                 let chKey = 'other';
                 if (apiId === 53) chKey = 'trip';

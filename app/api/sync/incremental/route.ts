@@ -100,16 +100,18 @@ export async function GET(request: Request) {
 
         for (const item of modifiedBookings) {
             const bookingId = Number(item.id || item.bookId);
-            const isCancelledOrDeleted =
-                item.status === 'cancelled' ||
-                item.status === 'deleted' ||
-                item.status === 'inquiry' ||
-                item.action === 'delete';
+            const status = (item.status || '').toLowerCase().trim();
+            const price = Number(item.price) || 0;
+            const isDeleteAction = item.action === 'delete';
 
-            if (isCancelledOrDeleted && bookingId) {
-                await deleteBookingFromSupabase(bookingId);
-                deleteCount++;
+            // 삭제(deleted), 문의(inquiry)이거나 금액이 0원 이하인 무료 취소 건은 DB에서 삭제
+            if (isDeleteAction || status === 'deleted' || status === 'inquiry' || (status === 'cancelled' && price <= 0)) {
+                if (bookingId) {
+                    await deleteBookingFromSupabase(bookingId);
+                    deleteCount++;
+                }
             } else {
+                // 활성 예약 및 위약금이 발생한 취소 건(price > 0)은 Supabase에 upsert 보존
                 activeToUpsert.push(item);
             }
         }

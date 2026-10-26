@@ -13,7 +13,7 @@ import {
     PropertyStats,
     OverallSummary,
 } from '../../utils/analyticsCalculations';
-import { calculateNetPayout, getUnitForBooking, isValidBooking } from '../../utils/bookingUtils';
+import { calculateNetPayout, getUnitForBooking, isRevenueBooking } from '../../utils/bookingUtils';
 import DateRangeToolbar from './DateRangeToolbar';
 import PeriodComparisonSection from './PeriodComparisonSection';
 import RoomChannelMatrixSection from './RoomChannelMatrixSection';
@@ -355,7 +355,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     }, [selectedProperty, selectedUnitKey]);
 
     // 10. 버킷별 지표 계산
-    const validBookings = useMemo(() => bookings.filter(isValidBooking), [bookings]);
+    const validBookings = useMemo(() => bookings.filter(isRevenueBooking), [bookings]);
 
     const chartData = useMemo(() => {
         return timeBuckets.map((bucket) => {
@@ -388,12 +388,14 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 let rev = 0;
                 let nights = 0;
                 matchedBookings.forEach((b) => {
-                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+                    const payout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
                     rev += payout;
-                    const arr = new Date(b.arrival);
-                    const dep = new Date(b.departure);
-                    const n = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    nights += n;
+                    if (b.status !== 'cancelled') {
+                        const arr = new Date(b.arrival);
+                        const dep = new Date(b.departure);
+                        const n = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+                        nights += n;
+                    }
                 });
 
                 const adr = nights > 0 ? Math.round(rev / nights) : 0;

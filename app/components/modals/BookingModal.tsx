@@ -19,6 +19,7 @@ interface BookingModalProps {
     onClose: () => void;
     onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
     onExtendStay?: (bookingId: number, newDeparture: string, additionalPrice: number, note?: string) => Promise<{ success: boolean; error?: string }>;
+    onCancelBooking?: (bookingId: number, action: 'noshow_cancel' | 'permanent_delete') => Promise<{ success: boolean; error?: string }>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
 }
 
@@ -34,6 +35,7 @@ export default function BookingModal({
     onClose,
     onAssignUnit,
     onExtendStay,
+    onCancelBooking,
     propertiesInfo,
 }: BookingModalProps) {
     const ch = getChannelStyle(booking.apiSourceId);
@@ -44,7 +46,15 @@ export default function BookingModal({
 
     const currentUnit = getUnitForBooking(booking);
     const directPrice = getDirectExtensionPrice(booking.notes);
-    const commInfo = getCommissionInfo(Number(booking.price) || 0, booking.apiSourceId, directPrice, booking.bookingTime, booking.roomId);
+    const isChicken = selectedTags.includes('chicken');
+    const commInfo = getCommissionInfo(
+        Number(booking.price) || 0,
+        booking.apiSourceId,
+        directPrice,
+        booking.bookingTime,
+        booking.roomId,
+        isChicken
+    );
 
     // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
     const currentKey = Number(booking.unitId) > 0 && booking.roomId
@@ -54,6 +64,12 @@ export default function BookingModal({
     const [selectedUnitKey, setSelectedUnitKey] = useState<string>(currentKey);
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // 🚫 예약 취소/삭제 모달 상태
+    const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+    const [cancelAction, setCancelAction] = useState<'noshow_cancel' | 'permanent_delete'>('noshow_cancel');
+    const [isCancelling, setIsCancelling] = useState<boolean>(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
 
     // 파싱된 선택 호실 정보
     const [targetRoomId, targetUnitId] = selectedUnitKey === '0-0'
@@ -134,7 +150,7 @@ export default function BookingModal({
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
+            <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
 
                 {/* 상단 헤더 */}
                 <div
@@ -189,6 +205,11 @@ export default function BookingModal({
                                 <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm md:text-base font-mono">
                                     {commInfo.netPayout.toLocaleString()}원
                                 </span>
+                                {commInfo.chickenDeduction > 0 && (
+                                    <span className="text-[11px] text-orange-600 dark:text-orange-400 font-bold">
+                                        (🍗 치킨 -21,000원)
+                                    </span>
+                                )}
                                 {commInfo.directPrice > 0 ? (
                                     <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
                                         (연박계좌 {commInfo.directPrice.toLocaleString()}원 수수료0% 포함)
@@ -307,66 +328,74 @@ export default function BookingModal({
 
                             {/* 1. 얼리체크인 */}
                             <div
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isEarlyActive
+                                onClick={handleEarlyToggle}
+                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isEarlyActive
                                     ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 border-2 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <button
-                                    type="button"
-                                    onClick={handleEarlyToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300 grow text-left cursor-pointer"
-                                >
-                                    <span>🕒</span>
-                                    <span>얼리체크인</span>
-                                    <span>{isEarlyActive ? '✅' : '⬜'}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300">
+                                        <span>🕒</span>
+                                        <span>얼리체크인</span>
+                                    </span>
 
-                                {isEarlyActive && (
-                                    <select
-                                        value={earlyTime}
-                                        onChange={(e) => handleEarlyTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer"
-                                    >
-                                        {EARLY_CHECKIN_HOURS.map((h) => (
-                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
+                                    {isEarlyActive && (
+                                        <select
+                                            value={earlyTime}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleEarlyTimeChange(e.target.value);
+                                            }}
+                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer shadow-xs"
+                                        >
+                                            {EARLY_CHECKIN_HOURS.map((h) => (
+                                                <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+
+                                <span className="text-xs shrink-0">{isEarlyActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 2. 레이트체크아웃 */}
                             <div
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all ${isLateActive
+                                onClick={handleLateToggle}
+                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isLateActive
                                     ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 border-2 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <button
-                                    type="button"
-                                    onClick={handleLateToggle}
-                                    className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300 grow text-left cursor-pointer"
-                                >
-                                    <span>⏱️</span>
-                                    <span>레이트체크아웃</span>
-                                    <span>{isLateActive ? '✅' : '⬜'}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300">
+                                        <span>⏱️</span>
+                                        <span>레이트체크아웃</span>
+                                    </span>
 
-                                {isLateActive && (
-                                    <select
-                                        value={lateTime}
-                                        onChange={(e) => handleLateTimeChange(e.target.value)}
-                                        className="p-1 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer"
-                                    >
-                                        {LATE_CHECKOUT_HOURS.map((h) => (
-                                            <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
+                                    {isLateActive && (
+                                        <select
+                                            value={lateTime}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleLateTimeChange(e.target.value);
+                                            }}
+                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer shadow-xs"
+                                        >
+                                            {LATE_CHECKOUT_HOURS.map((h) => (
+                                                <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+
+                                <span className="text-xs shrink-0">{isLateActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 3. 청소안함 */}
@@ -401,6 +430,22 @@ export default function BookingModal({
                                 <span>{isRepair ? '✅' : '⬜'}</span>
                             </button>
 
+                            {/* 5. 리뷰 치킨 이벤트 */}
+                            <button
+                                type="button"
+                                onClick={() => onToggleTag('chicken')}
+                                className={`p-2 rounded-lg border text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer md:col-span-2 ${isChicken
+                                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 border-2 text-orange-950 dark:text-orange-200 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-1.5">
+                                    <span>🍗</span>
+                                    <span>리뷰 치킨 이벤트</span>
+                                </span>
+                                <span>{isChicken ? '✅' : '⬜'}</span>
+                            </button>
+
                         </div>
                     </div>
 
@@ -421,27 +466,172 @@ export default function BookingModal({
 
                 {/* 하단 버튼 바 */}
                 <div className="p-3 md:p-4 bg-gray-100 dark:bg-slate-950 border-t border-gray-300 dark:border-slate-800 flex justify-between items-center shrink-0">
-                    <button
-                        onClick={onDelete}
-                        className="px-3 py-2 text-xs font-extrabold text-red-700 dark:text-rose-400 hover:bg-red-100 dark:hover:bg-rose-950/50 rounded-lg border border-red-300 dark:border-rose-900/60 transition cursor-pointer"
-                    >
-                        초기화/삭제
-                    </button>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                        >
+                            초기화/삭제
+                        </button>
+                        {onCancelBooking && booking.status !== 'cancelled' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCancelError(null);
+                                    setCancelAction('noshow_cancel');
+                                    setShowCancelConfirm(true);
+                                }}
+                                className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-rose-300 dark:border-rose-900/60 transition cursor-pointer flex items-center gap-1"
+                            >
+                                <span>🚫</span>
+                                <span>예약 취소 / 삭제</span>
+                            </button>
+                        )}
+                    </div>
                     <div className="flex gap-2">
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                            className="px-3.5 sm:px-4 py-2 text-xs font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
                         >
                             닫기
                         </button>
                         <button
+                            type="button"
                             onClick={onSave}
-                            className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition cursor-pointer"
+                            className="px-4 sm:px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition cursor-pointer"
                         >
                             저장하기
                         </button>
                     </div>
                 </div>
+
+                {/* 🚫 예약 취소 / 영구 삭제 선택 모달 오버레이 */}
+                {showCancelConfirm && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl p-4 sm:p-5 max-w-md w-full shadow-2xl flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-2 text-gray-900 dark:text-slate-100 font-extrabold text-base border-b border-gray-200 dark:border-slate-800 pb-2.5">
+                                <span className="text-lg">⚠️</span>
+                                <span>Beds24 예약 취소 / 삭제 방식 선택</span>
+                            </div>
+
+                            <div className="text-xs text-gray-600 dark:text-slate-300">
+                                <p>
+                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id}, 결제금액: <strong className="text-blue-600 dark:text-blue-400">{Number(booking.price || 0).toLocaleString()}원</strong>)
+                                </p>
+                                <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                    목적에 맞는 처리 방식을 선택해 주세요:
+                                </p>
+                            </div>
+
+                            {/* 2가지 선택 옵션 카드 */}
+                            <div className="flex flex-col gap-2.5">
+                                {/* 옵션 1: 노쇼 취소 (위약금 매출 보존) */}
+                                <div
+                                    onClick={() => setCancelAction('noshow_cancel')}
+                                    className={`p-3 rounded-lg border text-xs cursor-pointer flex flex-col gap-1 transition ${
+                                        cancelAction === 'noshow_cancel'
+                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 border-2 text-amber-950 dark:text-amber-100 shadow-xs'
+                                            : 'bg-white dark:bg-slate-800/60 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                                        <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                                            <span>🚫</span>
+                                            <span>노쇼 / 취소 처리 (위약금 매출 보존)</span>
+                                        </span>
+                                        <span className="text-sm">{cancelAction === 'noshow_cancel' ? '🟢' : '⚪'}</span>
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
+                                        <p>• Beds24 상태를 <strong>cancelled</strong>로 변경하여 방을 즉시 <strong>공실로 반환</strong>합니다.</p>
+                                        <p>• 결제/위약금 <strong>{Number(booking.price || 0).toLocaleString()}원</strong>은 <strong>매출 통계에 그대로 보존</strong>됩니다.</p>
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold pt-0.5">💡 추천 대상: 투숙 당일 노쇼, 위약금이 부과된 정상 취소 건</p>
+                                    </div>
+                                </div>
+
+                                {/* 옵션 2: 영구 삭제 (매출 제외 / 테스트 예약) */}
+                                <div
+                                    onClick={() => setCancelAction('permanent_delete')}
+                                    className={`p-3 rounded-lg border text-xs cursor-pointer flex flex-col gap-1 transition ${
+                                        cancelAction === 'permanent_delete'
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 border-2 text-rose-950 dark:text-rose-100 shadow-xs'
+                                            : 'bg-white dark:bg-slate-800/60 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                                        <span className="flex items-center gap-1.5 text-rose-900 dark:text-rose-200">
+                                            <span>🗑️</span>
+                                            <span>영구 삭제 (매출 제외 / 테스트 예약)</span>
+                                        </span>
+                                        <span className="text-sm">{cancelAction === 'permanent_delete' ? '🔴' : '⚪'}</span>
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
+                                        <p>• Beds24 및 대시보드 DB에서 <strong>예약을 완전히 삭제</strong>합니다.</p>
+                                        <p>• 매출 통계에서도 0원으로 처리되어 <strong>완전히 제외</strong>됩니다.</p>
+                                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold pt-0.5">⚠️ 주의 대상: 테스트 예약, 오등록 예약, 전액 환불 건 전용</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {cancelError && (
+                                <p className="text-rose-600 dark:text-rose-400 font-bold text-xs bg-rose-100 dark:bg-rose-900/50 p-2 rounded">
+                                    ❌ {cancelError}
+                                </p>
+                            )}
+
+                            <div className="flex justify-end gap-2 mt-1 border-t border-gray-200 dark:border-slate-800 pt-3">
+                                <button
+                                    type="button"
+                                    disabled={isCancelling}
+                                    onClick={() => setShowCancelConfirm(false)}
+                                    className="px-3.5 py-1.5 text-xs font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg border border-gray-300 dark:border-slate-700 transition cursor-pointer"
+                                >
+                                    돌아가기
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isCancelling}
+                                    onClick={async () => {
+                                        if (!onCancelBooking) return;
+                                        setIsCancelling(true);
+                                        setCancelError(null);
+                                        try {
+                                            const res = await onCancelBooking(booking.id, cancelAction);
+                                            if (res.success) {
+                                                setShowCancelConfirm(false);
+                                                onClose();
+                                            } else {
+                                                setCancelError(res.error || '처리에 실패했습니다.');
+                                            }
+                                        } catch (err: unknown) {
+                                            const errorMsg = err instanceof Error ? err.message : '네트워크 오류가 발생했습니다.';
+                                            setCancelError(errorMsg);
+                                        } finally {
+                                            setIsCancelling(false);
+                                        }
+                                    }}
+                                    className={`px-4 py-1.5 text-xs font-extrabold text-white rounded-lg shadow transition cursor-pointer flex items-center gap-1.5 ${
+                                        cancelAction === 'permanent_delete'
+                                            ? 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400'
+                                            : 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400'
+                                    }`}
+                                >
+                                    {isCancelling ? (
+                                        <>
+                                            <span className="animate-spin text-xs">⏳</span>
+                                            <span>처리 중...</span>
+                                        </>
+                                    ) : (
+                                        <span>
+                                            {cancelAction === 'permanent_delete' ? '🗑️ 예약 영구 삭제 실행' : '🚫 노쇼 취소(위약금 보존) 확정'}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>

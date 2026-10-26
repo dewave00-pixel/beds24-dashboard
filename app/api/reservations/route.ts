@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getValidBeds24Token } from '../../utils/beds24Client';
 import { upsertBookingsToSupabase, syncAllBookingsWithSupabase } from '../../utils/bookingSync';
-import { isValidBooking } from '../../utils/bookingUtils';
+import { isValidBooking, isRevenueBooking } from '../../utils/bookingUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,15 +88,19 @@ async function syncFromBeds24(): Promise<any[]> {
 }
 
 // Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼
-async function fetchFormattedBookingsFromSupabase(pastDays?: number) {
+async function fetchFormattedBookingsFromSupabase(pastDays?: number, isAnalytics: boolean = false) {
     let query = supabase
         .from('bookings')
         .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data')
-        .neq('status', 'cancelled')
         .neq('status', 'deleted')
         .neq('status', 'inquiry')
         .order('arrival', { ascending: true })
         .limit(10000);
+
+    // 일반 대시보드(타임라인, 청소, 체크인)는 취소 건을 원천 제외하여 빈 방/업무 제외 보장
+    if (!isAnalytics) {
+        query = query.neq('status', 'cancelled');
+    }
 
     // pastDays가 지정된 경우에만 체크아웃 날짜(departure) 필터 적용
     if (pastDays !== undefined && pastDays > 0) {
@@ -111,6 +115,24 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number) {
 
     if (error || !dbBookings) {
         return [];
+    }
+
+    // 🍗 리뷰 치킨 이벤트 태그 조회 (정산금 21,000원 차감 반영용)
+    const chickenBookingIds = new Set<number>();
+    try {
+        const { data: notesData } = await supabase
+            .from('booking_notes')
+            .select('booking_id, tags');
+
+        if (notesData) {
+            for (const row of notesData) {
+                if (Array.isArray(row.tags) && row.tags.includes('chicken')) {
+                    chickenBookingIds.add(Number(row.booking_id));
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ [Reservations] 치킨 태그 조회 실패 (무시 후 계속 진행):', e);
     }
 
     const formatted = dbBookings.map((row) => ({
@@ -134,8 +156,14 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number) {
         lang: row.raw_data?.lang || row.raw_data?.language || '',
         phone: row.raw_data?.phone || row.raw_data?.mobile || '',
         mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
+        isChicken: chickenBookingIds.has(Number(row.id)),
     }));
 
+    if (isAnalytics) {
+        // 통계 화면: 활성 예약 + 위약금이 있는 취소 예약(price > 0) 반환
+        return formatted.filter((b) => isRevenueBooking(b));
+    }
+    // 일반 대시보드: 활성 예약만 반환
     return formatted.filter((b) => isValidBooking(b));
 }
 
@@ -145,12 +173,13 @@ export async function GET(request: Request) {
         const forceSync = searchParams.get('sync') === 'true';
         const scope = searchParams.get('scope'); // 'analytics' 등
         const customPastDays = searchParams.get('pastDays');
+        const isAnalytics = scope === 'analytics';
 
         // 통계 페이지는 전체 데이터(과거 제한 없음), 메인 대시보드는 과거 3개월(90일)
         let pastDays: number | undefined = undefined;
         if (customPastDays !== null && !isNaN(Number(customPastDays)) && Number(customPastDays) > 0) {
             pastDays = Number(customPastDays);
-        } else if (scope === 'analytics') {
+        } else if (isAnalytics) {
             pastDays = undefined; // 👈 통계: Supabase 내 모든 과거/현재/미래 예약 전체 로드
         } else {
             pastDays = 90; // 👈 대시보드: 과거 3개월(90일)부터
@@ -160,7 +189,7 @@ export async function GET(request: Request) {
         if (forceSync) {
             console.log('🔄 [Reservations] 수동 동기화 요청 감지 -> Beds24 직접 동기화 실행');
             await syncFromBeds24();
-            const formatted = await fetchFormattedBookingsFromSupabase(pastDays);
+            const formatted = await fetchFormattedBookingsFromSupabase(pastDays, isAnalytics);
             return NextResponse.json({
                 success: true,
                 count: formatted.length,
@@ -170,7 +199,7 @@ export async function GET(request: Request) {
         }
 
         // 2. 평상시: Supabase bookings 테이블에서 슬림 컬럼 초고속 조회! (60KB 초경량)
-        const cachedBookings = await fetchFormattedBookingsFromSupabase(pastDays);
+        const cachedBookings = await fetchFormattedBookingsFromSupabase(pastDays, isAnalytics);
 
         if (cachedBookings.length > 0) {
             return NextResponse.json({
@@ -184,7 +213,7 @@ export async function GET(request: Request) {
         // 3. Supabase DB가 비어있는 경우(초기 상태) 자동 동기화 실행 (Fallback)
         console.log('⚠️ [Reservations] Supabase DB가 비어있음 -> 최초 자동 동기화 실행');
         await syncFromBeds24();
-        const fallbackData = await fetchFormattedBookingsFromSupabase(pastDays);
+        const fallbackData = await fetchFormattedBookingsFromSupabase(pastDays, isAnalytics);
 
         return NextResponse.json({
             success: true,

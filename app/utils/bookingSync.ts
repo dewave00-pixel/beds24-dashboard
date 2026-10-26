@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Booking } from '../types';
 import { isValidBooking } from './bookingUtils';
 
 export interface SupabaseBookingRow {
@@ -56,8 +55,17 @@ export async function upsertBookingsToSupabase(beds24Bookings: any[]): Promise<{
         return { success: true, count: 0 };
     }
 
-    // 🛡️ 유효한 활성 예약만 필터링 (단순 문의 inquiry, 취소, 삭제 제외)
-    const validBookings = beds24Bookings.filter((b) => isValidBooking(b));
+    // 🛡️ 유효한 활성 예약 및 위약금 발생 취소 예약 필터링 (단순 문의 inquiry, 삭제, 무료 취소 제외)
+    const validBookings = beds24Bookings.filter((b) => {
+        if (!b) return false;
+        const status = (b.status || '').toLowerCase().trim();
+        if (status === 'deleted' || status === 'inquiry') return false;
+        if (status === 'cancelled') {
+            // 위약금/정산 금액(price > 0)이 있는 취소 건만 매출 집계를 위해 보존
+            return (Number(b.price) || 0) > 0;
+        }
+        return isValidBooking(b);
+    });
     if (validBookings.length === 0) {
         return { success: true, count: 0 };
     }
@@ -126,21 +134,28 @@ export async function syncAllBookingsWithSupabase(
         // 2. 동기화 날짜 범위가 주어진 경우, 삭제된 유령 예약(Ghost Bookings) 및 취소/문의 데이터 청소
         let deletedGhostCount = 0;
 
-        // DB에 혹시 남아있는 inquiry / cancelled / deleted 상태 데이터 선제적 정리
+        // DB에 혹시 남아있는 inquiry / deleted 상태 및 무료 취소(금액 0원) 데이터 선제적 정리
         const { data: invalidDbRows } = await supabase
             .from('bookings')
-            .select('id')
-            .or('status.eq.inquiry,status.eq.cancelled,status.eq.deleted');
+            .select('id, status, price')
+            .or('status.eq.inquiry,status.eq.deleted,status.eq.cancelled');
 
         if (invalidDbRows && invalidDbRows.length > 0) {
-            const invalidIds = invalidDbRows.map((r) => Number(r.id));
-            const chunkSize = 500;
-            for (let i = 0; i < invalidIds.length; i += chunkSize) {
-                const chunk = invalidIds.slice(i, i + chunkSize);
-                await supabase.from('bookings').delete().in('id', chunk);
-                deletedGhostCount += chunk.length;
+            // 취소 건 중 위약금(price > 0)이 있는 건은 매출 보존을 위해 유지하고,
+            // 나머지(inquiry, deleted, 금액 0원 이하인 cancelled)만 정리
+            const invalidIds = invalidDbRows
+                .filter((r) => r.status !== 'cancelled' || (Number(r.price) || 0) <= 0)
+                .map((r) => Number(r.id));
+
+            if (invalidIds.length > 0) {
+                const chunkSize = 500;
+                for (let i = 0; i < invalidIds.length; i += chunkSize) {
+                    const chunk = invalidIds.slice(i, i + chunkSize);
+                    await supabase.from('bookings').delete().in('id', chunk);
+                    deletedGhostCount += chunk.length;
+                }
+                console.log(`🧹 [Reconciliation] DB 내 문의/삭제/무료취소 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
             }
-            console.log(`🧹 [Reconciliation] DB 내 문의/취소/삭제 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
         }
 
         // 🛡️ Safety Guard 1: Beds24 API 조회 중 1개 숙소라도 통신 에러가 발생한 경우, 삭제 프로세스를 중단하고 Upsert만 보존
@@ -154,16 +169,21 @@ export async function syncAllBookingsWithSupabase(
         }
 
         if (arrivalFrom && arrivalTo) {
-            // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 취소 건 제외
+            // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 삭제, 무료 취소 건 제외
             const beds24ValidIds = new Set(
                 beds24Bookings
-                    .filter((b) => isValidBooking(b))
+                    .filter((b) => {
+                        const status = (b.status || '').toLowerCase().trim();
+                        if (status === 'deleted' || status === 'inquiry') return false;
+                        if (status === 'cancelled') return (Number(b.price) || 0) > 0;
+                        return isValidBooking(b);
+                    })
                     .map((b) => Number(b.id || b.bookId))
                     .filter((id) => id > 0)
             );
 
             // 해당 기간 동안 Supabase DB에 저장되어 있는 모든 예약 ID 조회
-            let query = supabase
+            const query = supabase
                 .from('bookings')
                 .select('id')
                 .gte('arrival', arrivalFrom)

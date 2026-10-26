@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Booking, CleaningAssignment } from '../types';
+import { Booking, CleaningAssignment, InventoryIssueItem } from '../types';
 import { ALL_UNITS } from '../config';
-import { isValidBooking, isUnallocatedBooking } from '../utils/bookingUtils';
+import { isValidBooking, isUnallocatedBooking, getBookedUnitDateSet, getUnitsByRoomIdMap, getVacantUnitInventoryStatus } from '../utils/bookingUtils';
 import { getCleaningHistoryDates, getUnitCleaningStatus } from '../utils/cleaningStatus';
 import {
     getKSTTodayStr,
@@ -47,11 +47,16 @@ export function useDashboard() {
     // 🔑 숙소 호실별 비밀번호/정보 상태
     const [propertiesInfo, setPropertiesInfo] = useState<Record<string, UnitPropertyInfo>>({});
 
+    // 📅 Beds24 일자별 객실 잔여 재고(numAvail) 및 최저가(price) 맵: key = `${roomId}_${YYYY-MM-DD}`
+    const [inventoryMap, setInventoryMap] = useState<Record<string, { numAvail: number; price: number }>>({});
+    const isFetchingInventoryRef = useRef<boolean>(false);
+
     // 팝업 모달 상태
     const [dailyModalType, setDailyModalType] = useState<'today' | 'tomorrow' | null>(null);
     const [isTotalNotesOpen, setIsTotalNotesOpen] = useState<boolean>(false);
     const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
     const [isUnallocatedModalOpen, setIsUnallocatedModalOpen] = useState<boolean>(false);
+    const [isInventoryIssuesModalOpen, setIsInventoryIssuesModalOpen] = useState<boolean>(false);
 
     // 날짜 계산 기준 (기본값: 한국 시간 오늘 기준 이틀 전부터)
     const [startDate, setStartDate] = useState<Date>(() => getKSTDateOffset(-2));
@@ -112,9 +117,32 @@ export function useDashboard() {
         }
     };
 
+    // 4. Beds24 잔여 재고(numAvail) 및 최저가(price) 불러오기 (서버 캐시 5분)
+    const fetchInventory = async (forceRefresh: boolean = false) => {
+        if (isFetchingInventoryRef.current && !forceRefresh) return;
+        isFetchingInventoryRef.current = true;
+        try {
+            const start = formatKSTDate(startDate);
+            const endDateObj = new Date(startDate);
+            endDateObj.setDate(endDateObj.getDate() + displayDaysCount - 1);
+            const end = formatKSTDate(endDateObj);
+
+            const url = `/api/beds24/calendar?startDate=${start}&endDate=${end}${forceRefresh ? '&refresh=true' : ''}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            const data = await res.json();
+            if (data.success && data.data) {
+                setInventoryMap((prev) => ({ ...prev, ...data.data }));
+            }
+        } catch (e) {
+            console.error('Beds24 재고/요금 캘린더 불러오기 실패:', e);
+        } finally {
+            isFetchingInventoryRef.current = false;
+        }
+    };
+
     // 일반 새로고침 (DB 캐시 기반 빠른 재조회)
     const reloadAll = async () => {
-        await Promise.all([fetchReservations(false), fetchNotes(), fetchPropertiesInfo()]);
+        await Promise.all([fetchReservations(false), fetchNotes(), fetchPropertiesInfo(), fetchInventory(false)]);
     };
 
     // 🔄 Beds24 실시간 강제 동기화 (버튼 클릭 시 Beds24 본사 직접 긁어와 Supabase 정합성 맞추기)
@@ -122,13 +150,18 @@ export function useDashboard() {
         if (isSyncing) return;
         setIsSyncing(true);
         try {
-            await Promise.all([fetchReservations(true), fetchNotes(), fetchPropertiesInfo()]);
+            await Promise.all([fetchReservations(true), fetchNotes(), fetchPropertiesInfo(), fetchInventory(true)]);
         } catch (e) {
             console.error('Beds24 실시간 동기화 오류:', e);
         } finally {
             setIsSyncing(false);
         }
     };
+
+    // 📅 날짜 범위 변경 또는 확장 시 Beds24 재고/요금 정보 보충 조회
+    useEffect(() => {
+        fetchInventory(false);
+    }, [startDate, displayDaysCount]);
 
     // ⚡ Supabase 실시간 웹소켓 구독 (DB 변경 시 화면 자동 갱신)
     const { isConnected: isRealtimeConnected } = useRealtimeBookings({
@@ -344,6 +377,67 @@ export function useDashboard() {
         timelineDates.push(formatKSTDate(d));
     }
 
+    // 🔒 Beds24 재고 마감/초과 이슈 실시간 추출 (오늘 이후 날짜 대상)
+    const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(bookings, ALL_UNITS), [bookings]);
+    const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
+
+    const inventoryIssues = useMemo<InventoryIssueItem[]>(() => {
+        if (!inventoryMap || Object.keys(inventoryMap).length === 0) return [];
+        const list: InventoryIssueItem[] = [];
+
+        for (const dStr of timelineDates) {
+            if (dStr < todayStr) continue; // 과거 날짜 제외
+
+            for (const unit of ALL_UNITS) {
+                if (bookedUnitDateSet.has(`${unit.key}_${dStr}`)) continue; // 정상 투숙 예약 제외
+
+                const inv = inventoryMap[`${unit.roomId}_${dStr}`];
+                if (!inv) continue;
+
+                const status = getVacantUnitInventoryStatus(unit, dStr, bookedUnitDateSet, unitsByRoomId, inv);
+
+                if (status.isOverbooked) {
+                    list.push({
+                        id: `${unit.key}_${dStr}`,
+                        dateStr: dStr,
+                        unitKey: unit.key,
+                        propName: unit.propName || '',
+                        displayName: unit.displayName,
+                        subName: unit.subName,
+                        roomId: unit.roomId,
+                        unitId: unit.unitId,
+                        themeClass: unit.themeClass || '',
+                        numAvail: inv.numAvail,
+                        price: inv.price,
+                        issueType: 'overbooked',
+                        vacantIndex: status.vacantIndex,
+                        vacantCount: status.vacantCount,
+                        totalUnits: status.totalUnits,
+                    });
+                } else if (status.isClosed) {
+                    list.push({
+                        id: `${unit.key}_${dStr}`,
+                        dateStr: dStr,
+                        unitKey: unit.key,
+                        propName: unit.propName || '',
+                        displayName: unit.displayName,
+                        subName: unit.subName,
+                        roomId: unit.roomId,
+                        unitId: unit.unitId,
+                        themeClass: unit.themeClass || '',
+                        numAvail: inv.numAvail,
+                        price: inv.price,
+                        issueType: inv.numAvail === 0 ? 'zero_inventory' : 'reduced_inventory',
+                        vacantIndex: status.vacantIndex,
+                        vacantCount: status.vacantCount,
+                        totalUnits: status.totalUnits,
+                    });
+                }
+            }
+        }
+        return list;
+    }, [timelineDates, todayStr, inventoryMap, bookedUnitDateSet, unitsByRoomId]);
+
     const moveDays = (days: number) => {
         const next = new Date(startDate);
         next.setDate(next.getDate() + days);
@@ -526,6 +620,34 @@ export function useDashboard() {
         }
     };
 
+    // 🚫 예약 취소/영구삭제 처리 (Beds24 API + Supabase DB + 로컬 상태 동기화)
+    const handleCancelBooking = async (
+        bookingId: number,
+        action: 'noshow_cancel' | 'permanent_delete' = 'noshow_cancel'
+    ): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const res = await fetch('/api/bookings/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, action }),
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                // 타임라인/대시보드 예약 목록에서 해당 예약을 즉시 제거 (실제 취소/삭제되어 공실로 전환)
+                setBookings((prev) => prev.filter((b) => Number(b.id) !== Number(bookingId)));
+                setActiveBooking(null);
+                return { success: true };
+            } else {
+                return { success: false, error: result.error || '예약 처리 실패' };
+            }
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : '네트워크 오류가 발생했습니다.';
+            console.error('예약 취소/삭제 API 호출 에러:', err);
+            return { success: false, error: errorMsg };
+        }
+    };
+
     return {
         bookings,
         loading,
@@ -579,6 +701,11 @@ export function useDashboard() {
         handleDeleteMemo,
         handleAssignUnit,
         handleExtendStay,
+        handleCancelBooking,
         isRealtimeConnected,
+        inventoryMap,
+        inventoryIssues,
+        isInventoryIssuesModalOpen,
+        setIsInventoryIssuesModalOpen,
     };
 }

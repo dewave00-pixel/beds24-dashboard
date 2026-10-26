@@ -127,11 +127,15 @@ export function getDateRangeByFilter(
 }
 
 /**
- * 헬퍼: 유효 예약 여부 검사
+ * 헬퍼: 통계/매출 집계용 유효 예약 여부 (활성 투숙 건 + 위약금이 발생한 취소 건)
  */
 function isValidBooking(b: Booking): boolean {
     if (!b.arrival || !b.departure) return false;
-    if (b.status === 'cancelled' || b.status === 'deleted' || b.status === 'inquiry') return false;
+    const status = (b.status || '').toLowerCase().trim();
+    if (status === 'deleted' || status === 'inquiry') return false;
+    if (status === 'cancelled') {
+        return (Number(b.price) || 0) > 0;
+    }
     return true;
 }
 
@@ -189,13 +193,16 @@ export function calculateOverallSummary(
     let checkoutNights = 0;
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
-        const arr = new Date(b.arrival);
-        const dep = new Date(b.departure);
-        const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-        checkoutNights += nights;
+        // 취소된 예약은 실제 투숙하지 않았으므로 투숙 박수(checkoutNights)에서 제외하여 ADR 왜곡 방지
+        if (b.status !== 'cancelled') {
+            const arr = new Date(b.arrival);
+            const dep = new Date(b.departure);
+            const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+            checkoutNights += nights;
+        }
     });
 
     const netRevenue = totalRevenue;
@@ -210,8 +217,10 @@ export function calculateOverallSummary(
         if (targetDate > end) break;
 
         // targetDate 밤에 머문 예약 카운트 (arrival <= targetDate && departure > targetDate)
+        // 🛡️ 취소된 예약은 실제 투숙이 아니므로 객실 점유에서 제외
         const activeRoomsOnDate = new Set<string>();
         validBookings.forEach((b) => {
+            if (b.status === 'cancelled') return;
             if (b.arrival <= targetDate && b.departure > targetDate) {
                 const matchedUnit = ALL_UNITS.find(
                     (u) => Number(b.roomId) === u.roomId && (u.unitId ? Number(b.unitId) === u.unitId : true)
@@ -318,7 +327,7 @@ export function calculatePropertyStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -344,8 +353,11 @@ export function calculatePropertyStats(
             };
         }
         propMap[propName].revenue += price;
-        propMap[propName].checkoutNights += nights;
         propMap[propName].checkoutBookings += 1;
+
+        if (b.status !== 'cancelled') {
+            propMap[propName].checkoutNights += nights;
+        }
     });
 
     // 2. 가동률 & 요일별 단가: 일자별 실제 판매 박수 집계
@@ -357,6 +369,7 @@ export function calculatePropertyStats(
         const dayOfWeek = dObj.getDay(); // 0: 일, 1~4: 월~목, 5~6: 금~토
 
         validBookings.forEach((b) => {
+            if (b.status === 'cancelled') return;
             if (b.arrival <= targetDate && b.departure > targetDate) {
                 const matchedUnit = getUnitForBooking(b);
                 const propName = matchedUnit?.propName || '기타 숙소';
@@ -366,7 +379,7 @@ export function calculatePropertyStats(
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken)) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         propMap[propName].weekdayRev += dailyRate;
@@ -520,7 +533,7 @@ export function calculateRoomStats(
     const checkoutBookings = validBookings.filter((b) => b.departure >= start && b.departure <= end);
 
     checkoutBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         overallTotalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -537,9 +550,11 @@ export function calculateRoomStats(
         const rId = Number(b.roomId);
         if (roomMap[rId]) {
             roomMap[rId].revenue += price;
-            roomMap[rId].checkoutNights += nights;
             roomMap[rId].checkoutBookings += 1;
-            roomMap[rId].leadDaysSum += diffDays;
+            if (b.status !== 'cancelled') {
+                roomMap[rId].checkoutNights += nights;
+                roomMap[rId].leadDaysSum += diffDays;
+            }
 
             // 플랫폼(채널)별 통계 누적
             const ch = getChannelStyle(b.apiSourceId);
@@ -586,7 +601,9 @@ export function calculateRoomStats(
                 };
             }
             roomMap[rId].channelMap[channelName].count += 1;
-            roomMap[rId].channelMap[channelName].nights += nights;
+            if (b.status !== 'cancelled') {
+                roomMap[rId].channelMap[channelName].nights += nights;
+            }
             roomMap[rId].channelMap[channelName].revenue += price;
             roomMap[rId].channelMap[channelName].bookings.push(b);
         }
@@ -601,6 +618,7 @@ export function calculateRoomStats(
         const dayOfWeek = dObj.getDay(); // 0: 일, 1~4: 월~목, 5~6: 금~토
 
         validBookings.forEach((b) => {
+            if (b.status === 'cancelled') return;
             if (b.arrival <= targetDate && b.departure > targetDate) {
                 const rId = Number(b.roomId);
                 if (roomMap[rId]) {
@@ -609,7 +627,7 @@ export function calculateRoomStats(
                     const arr = new Date(b.arrival);
                     const dep = new Date(b.departure);
                     const totalN = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId) / totalN;
+                    const dailyRate = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken)) / totalN;
 
                     if (dayOfWeek >= 1 && dayOfWeek <= 4) {
                         roomMap[rId].weekdayRev += dailyRate;
@@ -762,7 +780,7 @@ export function calculateChannelStats(
     const channelMap: Record<string, { count: number; nights: number; revenue: number; color: string; bookings: Booking[] }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -777,7 +795,9 @@ export function calculateChannelStats(
             channelMap[chName] = { count: 0, nights: 0, revenue: 0, color: chColor, bookings: [] };
         }
         channelMap[chName].count += 1;
-        channelMap[chName].nights += nights;
+        if (b.status !== 'cancelled') {
+            channelMap[chName].nights += nights;
+        }
         channelMap[chName].revenue += price;
         channelMap[chName].bookings.push(b);
     });
@@ -871,6 +891,10 @@ export function calculateDailyChannelTrends(
                 const bDateStr = getBookingDateKST(b.bookingTime, b.arrival);
                 return bDateStr === curDateStr;
             } else {
+                // 체크아웃/정산 기준: 취소 건은 체크아웃 날짜(departure)에 위약금 반영
+                if (b.status === 'cancelled') {
+                    return b.departure === curDateStr;
+                }
                 return b.arrival <= curDateStr && b.departure > curDateStr;
             }
         });
@@ -882,8 +906,8 @@ export function calculateDailyChannelTrends(
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
-            const fullPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
-            const dayPortionPrice = mode === 'stay' ? Math.round(fullPrice / nights) : fullPrice;
+            const fullPrice = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
+            const dayPortionPrice = (mode === 'stay' && b.status !== 'cancelled') ? Math.round(fullPrice / nights) : fullPrice;
 
             const ch = getChannelStyle(b.apiSourceId);
             const chName = ch.name || '기타';
@@ -985,7 +1009,7 @@ export function calculateCountryStats(
     }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         totalRevenue += price;
 
         const arr = new Date(b.arrival);
@@ -1006,7 +1030,9 @@ export function calculateCountryStats(
             };
         }
         countryMap[cKey].count += 1;
-        countryMap[cKey].nights += nights;
+        if (b.status !== 'cancelled') {
+            countryMap[cKey].nights += nights;
+        }
         countryMap[cKey].revenue += price;
     });
 
@@ -1091,7 +1117,7 @@ export function calculateCountryRoomPreferences(
     const roomMap: Record<string, { roomName: string; propName: string; count: number; nights: number; revenue: number }> = {};
 
     targetBookings.forEach((b) => {
-        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const price = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1105,7 +1131,9 @@ export function calculateCountryRoomPreferences(
             roomMap[uKey] = { roomName: rName, propName: pName, count: 0, nights: 0, revenue: 0 };
         }
         roomMap[uKey].count += 1;
-        roomMap[uKey].nights += nights;
+        if (b.status !== 'cancelled') {
+            roomMap[uKey].nights += nights;
+        }
         roomMap[uKey].revenue += price;
     });
 
@@ -1220,6 +1248,7 @@ function calculateMetricsForPeriod(
     let totalLeadDays = 0;
     let leadBookingCount = 0;
     let stayNightsSum = 0;
+    let completedBookingCount = 0;
 
     validBookings.forEach((b) => {
         // 선택 기간(startStr ~ endStr) 내에 체크아웃(departure)한 예약만 집계
@@ -1246,7 +1275,7 @@ function calculateMetricsForPeriod(
             if (!isMatched) return;
         }
 
-        const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+        const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
         const arr = new Date(b.arrival);
         const dep = new Date(b.departure);
         const totalBookingNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1263,7 +1292,10 @@ function calculateMetricsForPeriod(
         }
 
         totalRevenue += netPayout;
-        stayNightsSum += totalBookingNights;
+        if (b.status !== 'cancelled') {
+            stayNightsSum += totalBookingNights;
+            completedBookingCount += 1;
+        }
         totalBookings += 1;
     });
 
@@ -1276,6 +1308,7 @@ function calculateMetricsForPeriod(
 
         const activeRoomsOnDate = new Set<string>();
         validBookings.forEach((b) => {
+            if (b.status === 'cancelled') return;
             if (b.arrival <= targetDate && b.departure > targetDate) {
                 const matchedUnit = getUnitForBooking(b);
                 if (matchedUnit && targetUnitKeys.has(matchedUnit.key)) {
@@ -1299,7 +1332,7 @@ function calculateMetricsForPeriod(
     const occupancyRate = Math.min(100, Math.round(rawOcc * 10) / 10);
     const adr = totalStayNights > 0 ? Math.round(totalRevenue / totalStayNights) : 0;
     const avgLeadDays = leadBookingCount > 0 ? Math.round((totalLeadDays / leadBookingCount) * 10) / 10 : 0;
-    const avgStayNights = totalBookings > 0 ? Math.round((stayNightsSum / totalBookings) * 10) / 10 : 0;
+    const avgStayNights = completedBookingCount > 0 ? Math.round((stayNightsSum / completedBookingCount) * 10) / 10 : 0;
 
     return {
         periodStart: startStr,
@@ -1488,29 +1521,31 @@ export function calculateRoomChannelCrossMatrix(
             const bUnit = getUnitForBooking(b);
             if (!bUnit || bUnit.key !== targetUnit.key) return;
 
-            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
             unitTotalRevenue += netPayout;
-            unitTotalNights += nights;
+            if (b.status !== 'cancelled') {
+                unitTotalNights += nights;
+            }
 
             const srcId = Number(b.apiSourceId);
             if (srcId === 46) {
-                otaData.airbnb.nights += nights;
+                if (b.status !== 'cancelled') otaData.airbnb.nights += nights;
                 otaData.airbnb.revenue += netPayout;
             } else if (srcId === 19) {
-                otaData.booking.nights += nights;
+                if (b.status !== 'cancelled') otaData.booking.nights += nights;
                 otaData.booking.revenue += netPayout;
             } else if (srcId === 17) {
-                otaData.agoda.nights += nights;
+                if (b.status !== 'cancelled') otaData.agoda.nights += nights;
                 otaData.agoda.revenue += netPayout;
             } else if (srcId === 53) {
-                otaData.trip.nights += nights;
+                if (b.status !== 'cancelled') otaData.trip.nights += nights;
                 otaData.trip.revenue += netPayout;
             } else {
-                otaData.other.nights += nights;
+                if (b.status !== 'cancelled') otaData.other.nights += nights;
                 otaData.other.revenue += netPayout;
             }
         });
@@ -1609,27 +1644,26 @@ export function calculateRoomChannelCrossMatrix(
             const uKey = matchedUnit?.key || String(b.roomId);
             if (uKey !== room.unitKey && b.roomId !== room.roomId) return;
 
-            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId);
+            const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
             const nights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
 
             const srcId = Number(b.apiSourceId);
-
             if (srcId === 46) {
-                otaData.airbnb.nights += nights;
+                if (b.status !== 'cancelled') otaData.airbnb.nights += nights;
                 otaData.airbnb.revenue += netPayout;
             } else if (srcId === 19) {
-                otaData.booking.nights += nights;
+                if (b.status !== 'cancelled') otaData.booking.nights += nights;
                 otaData.booking.revenue += netPayout;
             } else if (srcId === 17) {
-                otaData.agoda.nights += nights;
+                if (b.status !== 'cancelled') otaData.agoda.nights += nights;
                 otaData.agoda.revenue += netPayout;
             } else if (srcId === 53) {
-                otaData.trip.nights += nights;
+                if (b.status !== 'cancelled') otaData.trip.nights += nights;
                 otaData.trip.revenue += netPayout;
             } else {
-                otaData.other.nights += nights;
+                if (b.status !== 'cancelled') otaData.other.nights += nights;
                 otaData.other.revenue += netPayout;
             }
         });
@@ -1752,6 +1786,7 @@ export function calculateFutureOccupancyAndVacancies(
         const bookedUnitList: DailyOccupancyInfo['bookedUnitList'] = [];
 
         validBookings.forEach((b) => {
+            if (b.status === 'cancelled') return;
             if (b.arrival <= curStr && b.departure > curStr) {
                 const matchedUnit = getUnitForBooking(b);
                 if (matchedUnit) {
@@ -1851,8 +1886,9 @@ export function calculateLeadTimeAndStayStats(
     const { start, end } = getDateRangeByFilter(filter, customStart, customEnd, bookings);
     const validBookings = bookings.filter(isValidBooking);
 
-    // 대상 예약 필터링 (기간 내 체크아웃 + 지점/호실 필터)
+    // 대상 예약 필터링 (기간 내 체크아웃 + 지점/호실 필터 + 취소 건 제외)
     const targetBookings = validBookings.filter((b) => {
+        if (b.status === 'cancelled') return false;
         if (b.departure < start || b.departure > end) return false;
         if (unitFilter && unitFilter !== 'all') {
             const u = getUnitForBooking(b);

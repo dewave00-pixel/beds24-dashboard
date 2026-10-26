@@ -274,6 +274,18 @@ export function parseBookingTag(tagKey: string): BookingTagBadgeInfo | null {
         };
     }
 
+    // 5. 리뷰 치킨 이벤트 ➔ Orange
+    if (tagKey === 'chicken') {
+        return {
+            icon: '🍗',
+            label: '치킨',
+            bgClass: 'bg-orange-500',
+            textClass: 'text-orange-950',
+            borderClass: 'border-orange-500',
+            badgeClass: 'bg-orange-50 dark:bg-orange-950/60 text-orange-900 dark:text-orange-200 border border-orange-300 dark:border-orange-800/80 font-black',
+        };
+    }
+
     return null;
 }
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Booking } from '../../types';
-import { PROPERTY_GROUPS, VERTICAL_GRID_COLUMNS, getDayType } from '../../config';
-import { isValidBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
+import { PROPERTY_GROUPS, ALL_UNITS, VERTICAL_GRID_COLUMNS, getDayType } from '../../config';
+import { isValidBooking, isUnallocatedBooking, formatCompactPrice, getBookedUnitDateSet, getUnitsByRoomIdMap, getVacantUnitInventoryStatus } from '../../utils/bookingUtils';
 import TimelineHeader from './TimelineHeader';
 import BookingBar from './BookingBar';
 import UnallocatedBookingBar from './UnallocatedBookingBar';
@@ -22,6 +22,7 @@ interface VerticalTimelineProps {
     bookingNotes: Record<string | number, BookingNoteData>;
     ROW_HEIGHT: number;
     displayDaysCount: number;
+    inventoryMap?: Record<string, { numAvail: number; price: number }>;
     onDateClick: (dateStr: string) => void;
     onBookingClick?: (e: React.MouseEvent, booking: Booking) => void;
     onLoadMoreDays?: (count?: number) => void;
@@ -35,12 +36,15 @@ export default function VerticalTimeline({
     bookingNotes,
     ROW_HEIGHT,
     displayDaysCount,
+    inventoryMap,
     onDateClick,
     onBookingClick,
     onLoadMoreDays,
 }: VerticalTimelineProps) {
     const [overlapModalData, setOverlapModalData] = useState<{ dateStr: string; bookings: Booking[] } | null>(null);
     const isTriggeringRef = useRef<boolean>(false);
+    const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(bookings, ALL_UNITS), [bookings]);
+    const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
 
     // 📜 아래로 스크롤 시 바닥 300px 전 다음 날짜 자동 확장 (무한 스크롤)
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -141,21 +145,74 @@ export default function VerticalTimeline({
 
                                 {PROPERTY_GROUPS.map((group, idx) => (
                                     <div key={`row-${dStr}-${group.name}`} className="contents">
-                                        {group.units.map((col) => (
-                                            <div
-                                                key={`${dStr}-${col.key}`}
-                                                className={`h-full ${isSelected
-                                                    ? 'bg-amber-100/30 dark:bg-amber-950/20'
-                                                    : isToday
-                                                        ? 'bg-blue-50/30 dark:bg-blue-950/20'
-                                                        : dayInfo.type === 'saturday'
-                                                            ? 'bg-blue-50/10 dark:bg-blue-950/10'
-                                                            : dayInfo.type === 'sunday' || dayInfo.type === 'holiday'
-                                                                ? 'bg-red-50/10 dark:bg-red-950/10'
-                                                                : ''
-                                                    }`}
-                                            />
-                                        ))}
+                                        {group.units.map((col) => {
+                                            const isBooked = bookedUnitDateSet.has(`${col.key}_${dStr}`);
+                                            const inv = !isBooked ? inventoryMap?.[`${col.roomId}_${dStr}`] : undefined;
+                                            const invStatus = !isBooked ? getVacantUnitInventoryStatus(col, dStr, bookedUnitDateSet, unitsByRoomId, inv) : undefined;
+
+                                            let cellBg = '';
+                                            if (invStatus?.isOverbooked) {
+                                                cellBg = 'bg-[repeating-linear-gradient(45deg,rgba(239,68,68,0.14)_0px,rgba(239,68,68,0.14)_6px,transparent_6px,transparent_12px)] bg-red-50/20 dark:bg-red-950/20';
+                                            } else if (invStatus?.isClosed) {
+                                                cellBg = 'bg-[repeating-linear-gradient(45deg,rgba(148,163,184,0.18)_0px,rgba(148,163,184,0.18)_6px,transparent_6px,transparent_12px)] dark:bg-[repeating-linear-gradient(45deg,rgba(71,85,105,0.22)_0px,rgba(71,85,105,0.22)_6px,transparent_6px,transparent_12px)]';
+                                            } else if (isSelected) {
+                                                cellBg = 'bg-amber-100/30 dark:bg-amber-950/20';
+                                            } else if (isToday) {
+                                                cellBg = 'bg-blue-50/30 dark:bg-blue-950/20';
+                                            } else if (dayInfo.type === 'saturday') {
+                                                cellBg = 'bg-blue-50/10 dark:bg-blue-950/10';
+                                            } else if (dayInfo.type === 'sunday' || dayInfo.type === 'holiday') {
+                                                cellBg = 'bg-red-50/10 dark:bg-red-950/10';
+                                            }
+
+                                            const priceStr = inv ? formatCompactPrice(inv.price) : '';
+
+                                            return (
+                                                <div
+                                                    key={`${dStr}-${col.key}`}
+                                                    className={`h-full flex flex-col items-center justify-center gap-0.5 transition-colors select-none ${cellBg}`}
+                                                    title={
+                                                        inv
+                                                            ? invStatus?.isOverbooked
+                                                                ? `[🚨 초과 예약] Beds24 잔여: ${inv.numAvail}실 | 당일 최저가: ₩${inv.price?.toLocaleString()}`
+                                                                : invStatus?.isClosed
+                                                                    ? `[🔒 예약 마감] Beds24 잔여: ${inv.numAvail}/${invStatus.totalUnits}실 (재고 마감) | 당일 최저가: ₩${inv.price?.toLocaleString()}`
+                                                                    : `[예약 가능] Beds24 잔여: ${inv.numAvail}실 | 당일 최저가: ₩${inv.price?.toLocaleString()}`
+                                                            : undefined
+                                                    }
+                                                >
+                                                    {invStatus?.isOverbooked && (
+                                                        <>
+                                                            <span className="px-1 py-0.2 rounded text-[8px] font-black bg-red-500 text-white shadow-xs leading-none">
+                                                                🚨 초과
+                                                            </span>
+                                                            {priceStr && (
+                                                                <span className="text-[9.5px] font-black text-red-600 dark:text-red-400 tracking-tight leading-none">
+                                                                    {priceStr}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {invStatus?.isClosed && (
+                                                        <>
+                                                            <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-slate-200/90 text-slate-700 dark:bg-slate-700 dark:text-slate-200 leading-none border border-slate-300 dark:border-slate-600">
+                                                                🔒 마감
+                                                            </span>
+                                                            {priceStr && (
+                                                                <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 tracking-tight leading-none">
+                                                                    {priceStr}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {invStatus?.isAvailable && priceStr && (
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors tracking-tight leading-none">
+                                                            {priceStr}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
 
                                         {idx < PROPERTY_GROUPS.length - 1 && (
                                             <div className="property-divider-pillar" />

@@ -14,6 +14,9 @@ export interface DashboardHeaderProps {
     unassignedCleaningCount?: number;
     isCleaningSummaryLoading?: boolean;
     hasCleaningSummaryError?: boolean;
+    inventoryIssueCount?: number;
+    hasOverbooking?: boolean;
+    onOpenInventoryModal?: () => void;
     viewMode: 'vertical' | 'horizontal';
     loading: boolean;
     isSyncing?: boolean;
@@ -36,6 +39,9 @@ export default function DashboardHeader({
     unassignedCleaningCount = 0,
     isCleaningSummaryLoading = false,
     hasCleaningSummaryError = false,
+    inventoryIssueCount = 0,
+    hasOverbooking = false,
+    onOpenInventoryModal,
     viewMode = 'vertical',
     loading = false,
     isSyncing = false,
@@ -152,6 +158,45 @@ export default function DashboardHeader({
                         </span>
                         <span className="text-xs font-black text-rose-600 dark:text-rose-400">
                             {unallocatedCount}건 배정 필요
+                        </span>
+                    </button>
+                )}
+
+                {/* 🔒 Beds24 재고 점검 알림 버튼 (마감/축소/초과 이슈가 있거나 클릭 시 점검) */}
+                {onOpenInventoryModal && (
+                    <button
+                        type="button"
+                        onClick={onOpenInventoryModal}
+                        title="대시보드상 빈방이지만 Beds24 재고 0 또는 축소 마감된 객실 모아보기"
+                        className={`px-2.5 py-1 md:px-3 border rounded-xl flex flex-col items-start transition cursor-pointer shadow-2xs text-left ${
+                            hasOverbooking
+                                ? 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 border-2 border-rose-500 text-rose-900 dark:text-rose-200 animate-pulse'
+                                : inventoryIssueCount > 0
+                                    ? 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-2 border-amber-400 dark:border-amber-500 text-amber-950 dark:text-amber-200'
+                                    : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                        }`}
+                    >
+                        <span className={`text-[10px] font-black tracking-tight flex items-center gap-0.5 ${
+                            hasOverbooking
+                                ? 'text-rose-600 dark:text-rose-400'
+                                : inventoryIssueCount > 0
+                                    ? 'text-amber-700 dark:text-amber-400'
+                                    : 'text-slate-500 dark:text-slate-400'
+                        }`}>
+                            <span>{hasOverbooking ? '🚨' : '🔒'}</span> 재고 점검
+                        </span>
+                        <span className={`text-xs font-black ${
+                            hasOverbooking
+                                ? 'text-rose-600 dark:text-rose-400'
+                                : inventoryIssueCount > 0
+                                    ? 'text-amber-900 dark:text-amber-200'
+                                    : 'text-slate-700 dark:text-slate-300'
+                        }`}>
+                            {hasOverbooking
+                                ? `초과 포함 ${inventoryIssueCount}건`
+                                : inventoryIssueCount > 0
+                                    ? `마감/축소 ${inventoryIssueCount}건`
+                                    : '정상 (0건)'}
                         </span>
                     </button>
                 )}

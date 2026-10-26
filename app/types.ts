@@ -20,6 +20,7 @@ export interface Booking {
     lang?: string;
     phone?: string;
     mobile?: string;
+    isChicken?: boolean;
 }
 
 // 세부 호실/유닛 정보 구조 정의
@@ -69,4 +70,23 @@ export interface OtaAdCharge {
     amount: number;
     note: string;
     createdAt: string;
+}
+
+// 🔒 Beds24 재고 마감/초과 점검 항목 인터페이스
+export interface InventoryIssueItem {
+    id: string; // `${unit.key}_${dStr}`
+    dateStr: string;
+    unitKey: string;
+    propName: string;
+    displayName: string;
+    subName?: string;
+    roomId: number;
+    unitId?: number;
+    themeClass: string;
+    numAvail: number;
+    price: number;
+    issueType: 'overbooked' | 'zero_inventory' | 'reduced_inventory';
+    vacantIndex: number;
+    vacantCount: number;
+    totalUnits: number;
 }
