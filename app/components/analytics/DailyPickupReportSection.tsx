@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import { ALL_UNITS, getChannelStyle } from '../../config';
-import { getUnitForBooking, calculateNetPayout, isValidBooking } from '../../utils/bookingUtils';
+import { getUnitForBooking, calculateNetPayout, isRevenueBooking } from '../../utils/bookingUtils';
 import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface DailyPickupReportSectionProps {
@@ -90,7 +90,7 @@ export default function DailyPickupReportSection({
     // 🎯 필터에 부합하는 모든 유효 예약
     const matchingValidBookings = useMemo(() => {
         return bookings.filter((b) => {
-            if (!isValidBooking(b)) return false;
+            if (!isRevenueBooking(b)) return false;
             const matchedUnit = getUnitForBooking(b);
             if (!matchedUnit) return false;
 
@@ -110,53 +110,51 @@ export default function DailyPickupReportSection({
         const getBookingDate = (b: Booking) => (b.bookingTime ? b.bookingTime.slice(0, 10) : b.arrival);
 
         // 사전 확보 예약 (bookingDate < asOfDateStr, 즉 기준 시점 00:00 이전 선확보)
-        const preBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
+        const preBookings: { booking: Booking; overlapNights: number; netPayout: number; revenue: number }[] = [];
         // 사후 유입 예약 (bookingDate >= asOfDateStr, 즉 기준 시점부터 신규 유입)
-        const postBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
+        const postBookings: { booking: Booking; overlapNights: number; netPayout: number; revenue: number }[] = [];
+
+        let preStayNights = 0;
+        let preRevenue = 0;
+        let postPickupNights = 0;
+        let postRevenue = 0;
 
         matchingValidBookings.forEach((b) => {
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
-            const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
             const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
 
+            // 1) 투숙일 기준 일치 박수 (가동률 계산용 - 취소건은 투숙 제외)
             let overlapNights = 0;
-            const cur = new Date(b.arrival);
-            while (cur < dep) {
-                const dateStr = formatLocalDate(cur);
-                if (dateStr >= startDate && dateStr <= endDate) {
-                    overlapNights++;
+            if (b.status !== 'cancelled') {
+                const cur = new Date(b.arrival);
+                while (cur < dep) {
+                    const dateStr = formatLocalDate(cur);
+                    if (dateStr >= startDate && dateStr <= endDate) {
+                        overlapNights++;
+                    }
+                    cur.setDate(cur.getDate() + 1);
                 }
-                cur.setDate(cur.getDate() + 1);
             }
 
-            if (overlapNights > 0) {
-                const proportionalRev = totalStayNights > 0 ? (netPayout / totalStayNights) * overlapNights : 0;
+            // 2) 체크아웃 기준 정산 매출 (총매출 탭과 100% 일치)
+            const isCheckoutInPeriod = b.departure >= startDate && b.departure <= endDate;
+            const revenue = isCheckoutInPeriod ? netPayout : 0;
+
+            if (overlapNights > 0 || isCheckoutInPeriod) {
                 const bDate = getBookingDate(b);
-                const item = { booking: b, overlapNights, netPayout, proportionalRev };
+                const item = { booking: b, overlapNights, netPayout, revenue };
 
                 if (bDate < asOfDateStr) {
                     preBookings.push(item);
+                    preStayNights += overlapNights;
+                    preRevenue += revenue;
                 } else {
                     postBookings.push(item);
+                    postPickupNights += overlapNights;
+                    postRevenue += revenue;
                 }
             }
-        });
-
-        // 1) 사전 확보(OTB) 가동률 (물리적 객실 중복 방지 Set 적용)
-        let preStayNights = 0;
-        let preRevenue = 0;
-        preBookings.forEach((item) => {
-            preStayNights += item.overlapNights;
-            preRevenue += item.proportionalRev;
-        });
-
-        // 2) 사후 유입(Pickup) 가동률
-        let postPickupNights = 0;
-        let postRevenue = 0;
-        postBookings.forEach((item) => {
-            postPickupNights += item.overlapNights;
-            postRevenue += item.proportionalRev;
         });
 
         const totalStayNights = preStayNights + postPickupNights;
@@ -248,24 +246,28 @@ export default function DailyPickupReportSection({
                 const bDate = b.bookingTime ? b.bookingTime.slice(0, 10) : b.arrival;
                 if (bDate !== dateStr) return;
 
-                const arr = new Date(b.arrival);
-                const dep = new Date(b.departure);
-                const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+                const isCheckoutInPeriod = b.departure >= startDate && b.departure <= endDate;
                 const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
 
                 let overlap = 0;
-                const cDate = new Date(b.arrival);
-                while (cDate < dep) {
-                    const s = formatLocalDate(cDate);
-                    if (s >= startDate && s <= endDate) {
-                        overlap++;
+                if (b.status !== 'cancelled') {
+                    const arr = new Date(b.arrival);
+                    const dep = new Date(b.departure);
+                    const cDate = new Date(b.arrival);
+                    while (cDate < dep) {
+                        const s = formatLocalDate(cDate);
+                        if (s >= startDate && s <= endDate) {
+                            overlap++;
+                        }
+                        cDate.setDate(cDate.getDate() + 1);
                     }
-                    cDate.setDate(cDate.getDate() + 1);
                 }
 
-                if (overlap > 0) {
+                if (overlap > 0 || isCheckoutInPeriod) {
                     dayNights += overlap;
-                    dayRev += totalStayNights > 0 ? (netPayout / totalStayNights) * overlap : 0;
+                    if (isCheckoutInPeriod) {
+                        dayRev += netPayout;
+                    }
                     dayCount++;
                 }
             });
@@ -733,7 +735,7 @@ export default function DailyPickupReportSection({
                                     const b = item.booking;
                                     const unit = getUnitForBooking(b);
                                     const chStyle = getChannelStyle(b.apiSourceId);
-                                    const adr = item.overlapNights > 0 ? item.proportionalRev / item.overlapNights : 0;
+                                    const adr = item.overlapNights > 0 && item.revenue > 0 ? item.revenue / item.overlapNights : (item.revenue > 0 ? item.revenue : 0);
                                     const guestFullName = [b.lastName, b.firstName].filter(Boolean).join(' ') || '고객명 미기재';
 
                                     return (
@@ -782,7 +784,13 @@ export default function DailyPickupReportSection({
 
                                             {/* 해당기간 순정산액 */}
                                             <td className="py-2.5 px-3 whitespace-nowrap text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                ₩{Math.round(item.proportionalRev).toLocaleString()}
+                                                {item.revenue > 0 ? (
+                                                    `₩${Math.round(item.revenue).toLocaleString()}`
+                                                ) : (
+                                                    <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500" title={`체크아웃일(${b.departure}) 기준 익월 정산`}>
+                                                        익월 정산
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* 체결 ADR */}
