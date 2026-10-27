@@ -4,13 +4,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS } from '../../config';
 import {
-    calculateRoomStats,
-    calculatePropertyStats,
     calculateOverallSummary,
     calculateChannelStats,
     formatLocalDate,
-    RoomStats,
-    PropertyStats,
     OverallSummary,
 } from '../../utils/analyticsCalculations';
 import { calculateNetPayout, getUnitForBooking, isRevenueBooking } from '../../utils/bookingUtils';
@@ -224,24 +220,6 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         }).length;
     }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
     const chickenDeductionTotal = chickenBookingsCount * 21000;
-    // 6. 사업장별 성과 통계 (추이 차트 지점 비교용)
-    const allPropertyStats: PropertyStats[] = useMemo(() => {
-        const stats = calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
-        if (selectedProperty === 'all') return stats;
-        return stats.filter((p) => p.propName === selectedProperty);
-    }, [bookings, startDate, endDate, selectedProperty]);
-    // 7. 호실별 가격 & 공실 매트릭스 데이터 (지점 및 호실 필터 반영)
-    const allRoomStats: RoomStats[] = useMemo(() => {
-        const stats = calculateRoomStats(bookings, 'custom', startDate, endDate, 'stay');
-        let list = stats;
-        if (selectedProperty !== 'all') {
-            list = list.filter((r) => r.propName === selectedProperty);
-        }
-        if (selectedUnitKey !== 'all') {
-            list = list.filter((r) => r.unitKey === selectedUnitKey);
-        }
-        return list;
-    }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
 
     // 8. 🎯 상단 조회 기간과 100% 동기화되는 시계열 시간 버킷 생성
     const diffDays = useMemo(() => {
@@ -449,24 +427,24 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const overallTargetStats = useMemo(() => {
         return compareTargets.map((target) => {
             if (target.type === 'property') {
-                const propStat = allPropertyStats.find((p) => p.propName === target.id);
+                const sum = calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', target.id, undefined);
                 return {
                     target,
-                    totalRev: propStat ? propStat.totalRevenue : 0,
-                    avgOcc: propStat ? propStat.occupancyRate : 0,
-                    avgAdr: propStat ? propStat.adr : 0,
+                    totalRev: sum.totalRevenue,
+                    avgOcc: sum.occupancyRate,
+                    avgAdr: sum.adr,
                 };
             } else {
-                const roomStat = allRoomStats.find((r) => r.unitKey === target.id);
+                const sum = calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', undefined, target.id);
                 return {
                     target,
-                    totalRev: roomStat ? roomStat.totalRevenue : 0,
-                    avgOcc: roomStat ? roomStat.occupancyRate : 0,
-                    avgAdr: roomStat ? roomStat.adr : 0,
+                    totalRev: sum.totalRevenue,
+                    avgOcc: sum.occupancyRate,
+                    avgAdr: sum.adr,
                 };
             }
         });
-    }, [compareTargets, allPropertyStats, allRoomStats]);
+    }, [compareTargets, bookings, startDate, endDate]);
 
     // 현재 활성화된 메트릭의 최댓값
     const maxVal = useMemo(() => {
@@ -891,7 +869,11 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                     ) : (
                         <>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                선택 기간 매출:
+                                {activeMetric === 'revenue'
+                                    ? '선택 기간 매출:'
+                                    : activeMetric === 'occupancy'
+                                    ? '선택 기간 평균 가동률:'
+                                    : '선택 기간 평균 ADR:'}
                             </span>
                             <div className="flex flex-wrap items-center gap-2.5">
                                 {overallTargetStats.map(({ target, totalRev, avgOcc, avgAdr }) => {
