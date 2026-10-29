@@ -4,13 +4,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../../types';
 import { PROPERTY_GROUPS, ALL_UNITS } from '../../config';
 import {
-    calculateRoomStats,
-    calculatePropertyStats,
     calculateOverallSummary,
     calculateChannelStats,
     formatLocalDate,
-    RoomStats,
-    PropertyStats,
     OverallSummary,
 } from '../../utils/analyticsCalculations';
 import { calculateNetPayout, getUnitForBooking, isRevenueBooking } from '../../utils/bookingUtils';
@@ -23,8 +19,9 @@ import CountryRevenueSection from './CountryRevenueSection';
 import LeadTimeStaySection from './LeadTimeStaySection';
 import DailyPickupReportSection from './DailyPickupReportSection';
 import OtaAdCostManager from './OtaAdCostManager';
+import ChickenEventDeductionSection from './ChickenEventDeductionSection';
 import { useOtaAdCosts } from '../../hooks/useOtaAdCosts';
-import { calculateRevenueAfterAdSpend, calculateTripAdSpend } from '../../utils/adCostCalculations';
+import { calculateRevenueAfterAdSpend, calculateTripAdSpend, calculateAdSpendBreakdown } from '../../utils/adCostCalculations';
 
 interface PricingRoomsTabProps {
     bookings: Booking[];
@@ -73,9 +70,10 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     };
 
     // 🎛️ 커스텀 분석 뷰 위젯 설정 (사용자가 보고 싶은 모듈만 다중 체크, 순서대로 리스트 나열)
-    type WidgetKey = 'trend' | 'pickup' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
+    type WidgetKey = 'trend' | 'chicken' | 'pickup' | 'comparison' | 'channels' | 'leadTime' | 'matrix' | 'radar' | 'country';
     const WIDGET_CONFIG: { key: WidgetKey; label: string; icon: string; desc: string }[] = [
         { key: 'trend', label: '총매출 & 추이', icon: '💰', desc: 'KPI 카드 + 시계열 차트' },
+        { key: 'chicken', label: '리뷰 치킨 차감', icon: '🍗', desc: '치킨 이벤트 정산 차감(-21,000원) 내역 및 대상 예약 모아보기' },
         { key: 'pickup', label: '일일 예약 유입 (Pick-up)', icon: '⚡', desc: '하루 동안 늘어난 매출·박수·가동률 리포트' },
         { key: 'comparison', label: '기간 분석 (호실별 성과표)', icon: '⚖️', desc: '직전 기간 비교 + 호실별 실적 & 플랫폼' },
         { key: 'channels', label: '채널 & 플랫폼 점유율', icon: '🌐', desc: 'OTA 도넛 + 상세 정산 내역' },
@@ -85,7 +83,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         { key: 'country', label: '게스트 국적 분석', icon: '🌍', desc: '국가별 유입 비중' },
     ];
 
-    // 기본 선택: 총매출&추이 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
+    // 기본 선택: 총매출&추이 + 치킨 차감 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
     const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -94,12 +92,15 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                     const parsed = JSON.parse(saved);
                     if (Array.isArray(parsed)) {
                         const migrated = parsed.map((k) => (k === 'table' ? 'comparison' : k)).filter((k) => k !== 'table') as WidgetKey[];
+                        if (!migrated.includes('chicken')) {
+                            migrated.push('chicken');
+                        }
                         return new Set<WidgetKey>(migrated);
                     }
                 }
             } catch {}
         }
-        return new Set<WidgetKey>(['trend', 'pickup', 'comparison', 'channels']);
+        return new Set<WidgetKey>(['trend', 'chicken', 'pickup', 'comparison', 'channels']);
     });
 
     // 위젯 토글 (0개 선택 가능하도록 최소 제한 해제)
@@ -183,13 +184,14 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const overallSettlementSummary: OverallSummary = useMemo(() => {
         return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay');
     }, [bookings, startDate, endDate]);
-    const tripAdSpend = useMemo(
-        () => calculateTripAdSpend(adCosts.charges, startDate, endDate),
+    const overallAdSpendBreakdown = useMemo(
+        () => calculateAdSpendBreakdown(adCosts.charges, startDate, endDate),
         [adCosts.charges, startDate, endDate]
     );
+    const tripAdSpend = overallAdSpendBreakdown.byChannel[53]?.settlementDeductedSpend || 0;
     const overallRevenueAfterAdSpend = calculateRevenueAfterAdSpend(
         overallSettlementSummary.totalRevenue,
-        tripAdSpend
+        overallAdSpendBreakdown.settlementDeductedSpend
     );
     const tripSettlementRevenue = useMemo(() => {
         const result = calculateChannelStats(bookings, 'custom', startDate, endDate, 'stay');
@@ -199,24 +201,26 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const isOverallRevenueView = selectedProperty === 'all' && selectedUnitKey === 'all';
     const canApplyAdSpend = isOverallRevenueView && !adCosts.loading && !adCosts.error;
     const displayedRevenue = canApplyAdSpend ? overallRevenueAfterAdSpend : summary.totalRevenue;
-    // 6. 사업장별 성과 통계 (추이 차트 지점 비교용)
-    const allPropertyStats: PropertyStats[] = useMemo(() => {
-        const stats = calculatePropertyStats(bookings, 'custom', startDate, endDate, 'stay');
-        if (selectedProperty === 'all') return stats;
-        return stats.filter((p) => p.propName === selectedProperty);
-    }, [bookings, startDate, endDate, selectedProperty]);
-    // 7. 호실별 가격 & 공실 매트릭스 데이터 (지점 및 호실 필터 반영)
-    const allRoomStats: RoomStats[] = useMemo(() => {
-        const stats = calculateRoomStats(bookings, 'custom', startDate, endDate, 'stay');
-        let list = stats;
-        if (selectedProperty !== 'all') {
-            list = list.filter((r) => r.propName === selectedProperty);
-        }
-        if (selectedUnitKey !== 'all') {
-            list = list.filter((r) => r.unitKey === selectedUnitKey);
-        }
-        return list;
+
+    // 🍗 리뷰 치킨 이벤트 집계 (조회 기간 내 체크아웃 기준)
+    const chickenBookingsCount = useMemo(() => {
+        return bookings.filter((b) => {
+            if (!b.isChicken) return false;
+            if (b.status === 'cancelled') return false;
+            if (b.departure < startDate || b.departure > endDate) return false;
+            if (selectedProperty !== 'all') {
+                const matchedUnit = getUnitForBooking(b);
+                if (matchedUnit?.propName !== selectedProperty) return false;
+            }
+            if (selectedUnitKey !== 'all') {
+                const matchedUnit = getUnitForBooking(b);
+                const uKey = matchedUnit?.key || `${b.roomId}-${b.unitId || 1}`;
+                if (uKey !== selectedUnitKey) return false;
+            }
+            return true;
+        }).length;
     }, [bookings, startDate, endDate, selectedProperty, selectedUnitKey]);
+    const chickenDeductionTotal = chickenBookingsCount * 21000;
 
     // 8. 🎯 상단 조회 기간과 100% 동기화되는 시계열 시간 버킷 생성
     const diffDays = useMemo(() => {
@@ -424,24 +428,24 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const overallTargetStats = useMemo(() => {
         return compareTargets.map((target) => {
             if (target.type === 'property') {
-                const propStat = allPropertyStats.find((p) => p.propName === target.id);
+                const sum = calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', target.id, undefined);
                 return {
                     target,
-                    totalRev: propStat ? propStat.totalRevenue : 0,
-                    avgOcc: propStat ? propStat.occupancyRate : 0,
-                    avgAdr: propStat ? propStat.adr : 0,
+                    totalRev: sum.totalRevenue,
+                    avgOcc: sum.occupancyRate,
+                    avgAdr: sum.adr,
                 };
             } else {
-                const roomStat = allRoomStats.find((r) => r.unitKey === target.id);
+                const sum = calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay', undefined, target.id);
                 return {
                     target,
-                    totalRev: roomStat ? roomStat.totalRevenue : 0,
-                    avgOcc: roomStat ? roomStat.occupancyRate : 0,
-                    avgAdr: roomStat ? roomStat.adr : 0,
+                    totalRev: sum.totalRevenue,
+                    avgOcc: sum.occupancyRate,
+                    avgAdr: sum.adr,
                 };
             }
         });
-    }, [compareTargets, allPropertyStats, allRoomStats]);
+    }, [compareTargets, bookings, startDate, endDate]);
 
     // 현재 활성화된 메트릭의 최댓값
     const maxVal = useMemo(() => {
@@ -715,15 +719,32 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                 {isOverallRevenueView && (
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold text-gray-400 dark:text-slate-500">
                                         {adCosts.loading ? (
-                                            <span>Trip 광고비 확인 중…</span>
+                                            <span>광고비 확인 중…</span>
                                         ) : adCosts.error ? (
                                             <span className="text-rose-500">광고비 반영 실패 · 정산 매출 표시 중</span>
                                         ) : (
                                             <>
                                                 <span>정산 ₩{summary.totalRevenue.toLocaleString()}</span>
-                                                <span className="text-rose-500">Trip 충전 -₩{tripAdSpend.toLocaleString()}</span>
+                                                {overallAdSpendBreakdown.settlementDeductedSpend > 0 && (
+                                                    <span className="text-rose-500">
+                                                        광고 차감 -₩{overallAdSpendBreakdown.settlementDeductedSpend.toLocaleString()}
+                                                    </span>
+                                                )}
+                                                {overallAdSpendBreakdown.cardSpend > 0 && (
+                                                    <span className="text-blue-500 dark:text-blue-400">
+                                                        카드 충전 ₩{overallAdSpendBreakdown.cardSpend.toLocaleString()}
+                                                    </span>
+                                                )}
+                                                {chickenDeductionTotal > 0 && (
+                                                    <span className="text-orange-600 dark:text-orange-400 font-bold">🍗 치킨 차감 -₩{chickenDeductionTotal.toLocaleString()} ({chickenBookingsCount}건)</span>
+                                                )}
                                             </>
                                         )}
+                                    </div>
+                                )}
+                                {!isOverallRevenueView && chickenDeductionTotal > 0 && (
+                                    <div className="text-[10px] font-bold text-orange-600 dark:text-orange-400 mt-0.5">
+                                        🍗 치킨 차감 -₩{chickenDeductionTotal.toLocaleString()} ({chickenBookingsCount}건) 포함
                                     </div>
                                 )}
                             </div>
@@ -858,7 +879,11 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                     ) : (
                         <>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                선택 기간 매출:
+                                {activeMetric === 'revenue'
+                                    ? '선택 기간 매출:'
+                                    : activeMetric === 'occupancy'
+                                    ? '선택 기간 평균 가동률:'
+                                    : '선택 기간 평균 ADR:'}
                             </span>
                             <div className="flex flex-wrap items-center gap-2.5">
                                 {overallTargetStats.map(({ target, totalRev, avgOcc, avgAdr }) => {
@@ -1015,6 +1040,17 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         </div>
     )}
 
+    {/* 🍗 리뷰 치킨 이벤트 정산 차감 모아보기 위젯 */}
+    {selectedWidgets.has('chicken') && (
+        <ChickenEventDeductionSection
+            bookings={bookings}
+            startDate={startDate}
+            endDate={endDate}
+            selectedProperty={selectedProperty}
+            selectedUnitKey={selectedUnitKey}
+        />
+    )}
+
     {/* 1-2) ⚡ 일일 예약 유입 & 가동률 증분 리포트 (Daily Pick-up) */}
     {selectedWidgets.has('pickup') && (
         <DailyPickupReportSection
@@ -1066,11 +1102,12 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     {selectedWidgets.has('matrix') && (
         <>
             <OtaAdCostManager
-                key={`${startDate}-${endDate}`}
+                key={`${startDate}-${endDate}-${selectedProperty}`}
                 settings={adCosts.settings}
                 charges={adCosts.charges}
                 startDate={startDate}
                 endDate={endDate}
+                selectedProperty={selectedProperty}
                 settlementRevenue={overallSettlementSummary.totalRevenue}
                 revenueAfterAdSpend={overallRevenueAfterAdSpend}
                 tripSettlementRevenue={tripSettlementRevenue}
@@ -1080,6 +1117,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 saving={adCosts.saving}
                 error={adCosts.error}
                 onSaveSetting={adCosts.saveSetting}
+                onAddCharge={adCosts.addCharge}
+                onDeleteCharge={adCosts.deleteCharge}
                 onAddTripCharge={adCosts.addTripCharge}
                 onDeleteTripCharge={adCosts.deleteTripCharge}
             />
@@ -1090,6 +1129,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 endDate={endDate}
                 selectedProperty={selectedProperty}
                 selectedUnitKey={selectedUnitKey}
+                adSettings={adCosts.settings}
             />
         </>
     )}

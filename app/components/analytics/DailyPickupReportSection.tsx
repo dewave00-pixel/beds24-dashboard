@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import { ALL_UNITS, getChannelStyle } from '../../config';
-import { getUnitForBooking, calculateNetPayout, isValidBooking } from '../../utils/bookingUtils';
+import { getUnitForBooking, calculateNetPayout, isRevenueBooking } from '../../utils/bookingUtils';
 import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface DailyPickupReportSectionProps {
@@ -25,26 +25,40 @@ export default function DailyPickupReportSection({
     currentOccupancyRate,
     onSelectBooking,
 }: DailyPickupReportSectionProps) {
-    // 📅 오늘 및 어제 날짜 (기준일 퀵 옵션용)
-    const { todayStr, yesterdayStr } = useMemo(() => {
+    // 📅 오늘, 어제, 현재 월 시작일 (기준일 퀵 옵션 및 미래 월 판별용)
+    const { todayStr, yesterdayStr, currentMonthStart } = useMemo(() => {
         const now = new Date();
         const y = new Date(now);
         y.setDate(y.getDate() - 1);
+        const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
         return {
             todayStr: formatLocalDate(now),
             yesterdayStr: formatLocalDate(y),
+            currentMonthStart: formatLocalDate(mStart),
         };
     }, []);
 
-    // 🎯 기준 시점 (As-of Date) 상태 (기본값: 분석 대상 기간의 시작일, 예: 9월 조회 시 9/1)
-    const [asOfDateStr, setAsOfDateStr] = useState<string>(startDate || todayStr);
+    // 대상 기간이 현재 월 이후(익월/미래 월)인지 판별 (예: 현재 10월인데 11월, 12월 조회 시)
+    const isFutureMonth = useMemo(() => {
+        if (!startDate) return false;
+        return startDate.slice(0, 7) > currentMonthStart.slice(0, 7);
+    }, [startDate, currentMonthStart]);
 
-    // 상단 마스터바 startDate가 변경될 때 기준 시점이 마스터 기간 이전/이후로 크게 벗어나면 시작일로 자동 갱신
+    // 🎯 기준 시점 (As-of Date) 상태:
+    // - 10월 등 현재/과거 월: 해당 기간 시작일(startDate) 기준 (예: 10월은 10/1, 9월은 9/1)
+    // - 11월 등 미래 월: 미래 시작일은 아직 유입이 없으므로 '현재 월의 첫날(currentMonthStart)' 기준
+    const [asOfDateStr, setAsOfDateStr] = useState<string>(() => {
+        if (!startDate) return todayStr;
+        return startDate.slice(0, 7) > currentMonthStart.slice(0, 7) ? currentMonthStart : startDate;
+    });
+
+    // 상단 마스터바 startDate가 변경될 때 기준 시점 자동 갱신
     React.useEffect(() => {
         if (startDate) {
-            setAsOfDateStr(startDate);
+            const isFuture = startDate.slice(0, 7) > currentMonthStart.slice(0, 7);
+            setAsOfDateStr(isFuture ? currentMonthStart : startDate);
         }
-    }, [startDate]);
+    }, [startDate, currentMonthStart]);
 
     // 기준일 헬퍼 라벨
     const asOfDateLabel = useMemo(() => {
@@ -90,7 +104,7 @@ export default function DailyPickupReportSection({
     // 🎯 필터에 부합하는 모든 유효 예약
     const matchingValidBookings = useMemo(() => {
         return bookings.filter((b) => {
-            if (!isValidBooking(b)) return false;
+            if (!isRevenueBooking(b)) return false;
             const matchedUnit = getUnitForBooking(b);
             if (!matchedUnit) return false;
 
@@ -110,53 +124,51 @@ export default function DailyPickupReportSection({
         const getBookingDate = (b: Booking) => (b.bookingTime ? b.bookingTime.slice(0, 10) : b.arrival);
 
         // 사전 확보 예약 (bookingDate < asOfDateStr, 즉 기준 시점 00:00 이전 선확보)
-        const preBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
+        const preBookings: { booking: Booking; overlapNights: number; netPayout: number; revenue: number }[] = [];
         // 사후 유입 예약 (bookingDate >= asOfDateStr, 즉 기준 시점부터 신규 유입)
-        const postBookings: { booking: Booking; overlapNights: number; netPayout: number; proportionalRev: number }[] = [];
+        const postBookings: { booking: Booking; overlapNights: number; netPayout: number; revenue: number }[] = [];
+
+        let preStayNights = 0;
+        let preRevenue = 0;
+        let postPickupNights = 0;
+        let postRevenue = 0;
 
         matchingValidBookings.forEach((b) => {
             const arr = new Date(b.arrival);
             const dep = new Date(b.departure);
-            const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
             const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
 
+            // 1) 투숙일 기준 일치 박수 (가동률 계산용 - 취소건은 투숙 제외)
             let overlapNights = 0;
-            const cur = new Date(b.arrival);
-            while (cur < dep) {
-                const dateStr = formatLocalDate(cur);
-                if (dateStr >= startDate && dateStr <= endDate) {
-                    overlapNights++;
+            if (b.status !== 'cancelled') {
+                const cur = new Date(b.arrival);
+                while (cur < dep) {
+                    const dateStr = formatLocalDate(cur);
+                    if (dateStr >= startDate && dateStr <= endDate) {
+                        overlapNights++;
+                    }
+                    cur.setDate(cur.getDate() + 1);
                 }
-                cur.setDate(cur.getDate() + 1);
             }
 
-            if (overlapNights > 0) {
-                const proportionalRev = totalStayNights > 0 ? (netPayout / totalStayNights) * overlapNights : 0;
+            // 2) 체크아웃 기준 정산 매출 (총매출 탭과 100% 일치)
+            const isCheckoutInPeriod = b.departure >= startDate && b.departure <= endDate;
+            const revenue = isCheckoutInPeriod ? netPayout : 0;
+
+            if (overlapNights > 0 || isCheckoutInPeriod) {
                 const bDate = getBookingDate(b);
-                const item = { booking: b, overlapNights, netPayout, proportionalRev };
+                const item = { booking: b, overlapNights, netPayout, revenue };
 
                 if (bDate < asOfDateStr) {
                     preBookings.push(item);
+                    preStayNights += overlapNights;
+                    preRevenue += revenue;
                 } else {
                     postBookings.push(item);
+                    postPickupNights += overlapNights;
+                    postRevenue += revenue;
                 }
             }
-        });
-
-        // 1) 사전 확보(OTB) 가동률 (물리적 객실 중복 방지 Set 적용)
-        let preStayNights = 0;
-        let preRevenue = 0;
-        preBookings.forEach((item) => {
-            preStayNights += item.overlapNights;
-            preRevenue += item.proportionalRev;
-        });
-
-        // 2) 사후 유입(Pickup) 가동률
-        let postPickupNights = 0;
-        let postRevenue = 0;
-        postBookings.forEach((item) => {
-            postPickupNights += item.overlapNights;
-            postRevenue += item.proportionalRev;
         });
 
         const totalStayNights = preStayNights + postPickupNights;
@@ -248,24 +260,28 @@ export default function DailyPickupReportSection({
                 const bDate = b.bookingTime ? b.bookingTime.slice(0, 10) : b.arrival;
                 if (bDate !== dateStr) return;
 
-                const arr = new Date(b.arrival);
-                const dep = new Date(b.departure);
-                const totalStayNights = Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)));
+                const isCheckoutInPeriod = b.departure >= startDate && b.departure <= endDate;
                 const netPayout = calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
 
                 let overlap = 0;
-                const cDate = new Date(b.arrival);
-                while (cDate < dep) {
-                    const s = formatLocalDate(cDate);
-                    if (s >= startDate && s <= endDate) {
-                        overlap++;
+                if (b.status !== 'cancelled') {
+                    const arr = new Date(b.arrival);
+                    const dep = new Date(b.departure);
+                    const cDate = new Date(b.arrival);
+                    while (cDate < dep) {
+                        const s = formatLocalDate(cDate);
+                        if (s >= startDate && s <= endDate) {
+                            overlap++;
+                        }
+                        cDate.setDate(cDate.getDate() + 1);
                     }
-                    cDate.setDate(cDate.getDate() + 1);
                 }
 
-                if (overlap > 0) {
+                if (overlap > 0 || isCheckoutInPeriod) {
                     dayNights += overlap;
-                    dayRev += totalStayNights > 0 ? (netPayout / totalStayNights) * overlap : 0;
+                    if (isCheckoutInPeriod) {
+                        dayRev += netPayout;
+                    }
                     dayCount++;
                 }
             });
@@ -294,8 +310,10 @@ export default function DailyPickupReportSection({
     }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, startDate, totalCapacityNights]);
 
     // 기준일 퀵 프리셋 핸들러
-    const handleSetPreset = (type: 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
-        if (type === 'start') {
+    const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
+        if (type === 'currentMonth') {
+            setAsOfDateStr(currentMonthStart);
+        } else if (type === 'start') {
             setAsOfDateStr(startDate);
         } else if (type === 'd7') {
             const d = new Date(startDate);
@@ -337,6 +355,11 @@ export default function DailyPickupReportSection({
                             <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 font-mono">
                                 기준일: {asOfDateStr}
                             </span>
+                            {isFutureMonth && asOfDateStr === currentMonthStart && (
+                                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60">
+                                    익월 분석: 현재월({currentMonthStart.slice(5, 7)}월) 1일 기준
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             선택 기간(
@@ -379,7 +402,22 @@ export default function DailyPickupReportSection({
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 mr-1 hidden sm:inline">
                         원클릭 이동:
                     </span>
+                    {isFutureMonth && (
+                        <button
+                            type="button"
+                            onClick={() => handleSetPreset('currentMonth')}
+                            className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
+                                asOfDateStr === currentMonthStart
+                                    ? 'bg-indigo-600 text-white shadow-xs'
+                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            }`}
+                            title={`현재 운영월(${currentMonthStart.slice(5, 7)}월) 1일부터 들어온 신규 유입 추적`}
+                        >
+                            🎯 현재월 시작일 ({currentMonthStart.slice(5)})
+                        </button>
+                    )}
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('start')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === startDate
@@ -390,18 +428,21 @@ export default function DailyPickupReportSection({
                         🚀 기간 시작일 ({startDate.slice(5)})
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('d7')}
                         className="px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs"
                     >
                         D-7일 전
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('d30')}
                         className="px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs"
                     >
                         D-30일 전
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('yesterday')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === yesterdayStr
@@ -412,6 +453,7 @@ export default function DailyPickupReportSection({
                         어제
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('today')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === todayStr
@@ -733,7 +775,7 @@ export default function DailyPickupReportSection({
                                     const b = item.booking;
                                     const unit = getUnitForBooking(b);
                                     const chStyle = getChannelStyle(b.apiSourceId);
-                                    const adr = item.overlapNights > 0 ? item.proportionalRev / item.overlapNights : 0;
+                                    const adr = item.overlapNights > 0 && item.revenue > 0 ? item.revenue / item.overlapNights : (item.revenue > 0 ? item.revenue : 0);
                                     const guestFullName = [b.lastName, b.firstName].filter(Boolean).join(' ') || '고객명 미기재';
 
                                     return (
@@ -782,7 +824,13 @@ export default function DailyPickupReportSection({
 
                                             {/* 해당기간 순정산액 */}
                                             <td className="py-2.5 px-3 whitespace-nowrap text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                ₩{Math.round(item.proportionalRev).toLocaleString()}
+                                                {item.revenue > 0 ? (
+                                                    `₩${Math.round(item.revenue).toLocaleString()}`
+                                                ) : (
+                                                    <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500" title={`체크아웃일(${b.departure}) 기준 익월 정산`}>
+                                                        익월 정산
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* 체결 ADR */}

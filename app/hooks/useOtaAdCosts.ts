@@ -17,9 +17,12 @@ interface SaveSettingInput {
     note: string;
 }
 
-interface AddChargeInput {
+export interface AddChargeInput {
+    apiSourceId: number;
     chargeDate: string;
     amount: number;
+    paymentMethod: 'settlement_deduction' | 'card';
+    targetProperty: string;
     note: string;
 }
 
@@ -98,13 +101,13 @@ export function useOtaAdCosts(startDate: string, endDate: string) {
         }
     };
 
-    const addTripCharge = async (input: AddChargeInput) => {
+    const addCharge = async (input: AddChargeInput) => {
         setSaving(true);
         try {
-            await postAction({ action: 'add-charge', apiSourceId: 53, ...input });
+            await postAction({ action: 'add-charge', ...input });
             await refresh();
         } catch (saveError: unknown) {
-            const message = saveError instanceof Error ? saveError.message : 'Trip 충전 내역을 저장하지 못했습니다.';
+            const message = saveError instanceof Error ? saveError.message : '광고 충전 내역을 저장하지 못했습니다.';
             setError(message);
             throw saveError;
         } finally {
@@ -112,23 +115,35 @@ export function useOtaAdCosts(startDate: string, endDate: string) {
         }
     };
 
-    const deleteTripCharge = async (id: string) => {
+    const deleteCharge = async (id: string) => {
         setSaving(true);
         try {
             const response = await fetch(`/api/analytics/ads?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
             const result = await response.json() as AdsApiResponse;
             if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Trip 충전 내역을 삭제하지 못했습니다.');
+                throw new Error(result.error || '광고 충전 내역을 삭제하지 못했습니다.');
             }
             await refresh();
         } catch (deleteError: unknown) {
-            const message = deleteError instanceof Error ? deleteError.message : 'Trip 충전 내역을 삭제하지 못했습니다.';
+            const message = deleteError instanceof Error ? deleteError.message : '광고 충전 내역을 삭제하지 못했습니다.';
             setError(message);
             throw deleteError;
         } finally {
             setSaving(false);
         }
     };
+
+    // 하위 호환성 래퍼
+    const addTripCharge = (input: { chargeDate: string; amount: number; note: string }) =>
+        addCharge({
+            apiSourceId: 53,
+            chargeDate: input.chargeDate,
+            amount: input.amount,
+            paymentMethod: 'settlement_deduction',
+            targetProperty: 'all',
+            note: input.note,
+        });
+    const deleteTripCharge = (id: string) => deleteCharge(id);
 
     return {
         settings,
@@ -137,6 +152,8 @@ export function useOtaAdCosts(startDate: string, endDate: string) {
         saving,
         error,
         saveSetting,
+        addCharge,
+        deleteCharge,
         addTripCharge,
         deleteTripCharge,
         refresh,
