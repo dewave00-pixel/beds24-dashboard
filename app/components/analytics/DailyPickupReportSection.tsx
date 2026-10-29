@@ -25,26 +25,40 @@ export default function DailyPickupReportSection({
     currentOccupancyRate,
     onSelectBooking,
 }: DailyPickupReportSectionProps) {
-    // 📅 오늘 및 어제 날짜 (기준일 퀵 옵션용)
-    const { todayStr, yesterdayStr } = useMemo(() => {
+    // 📅 오늘, 어제, 현재 월 시작일 (기준일 퀵 옵션 및 미래 월 판별용)
+    const { todayStr, yesterdayStr, currentMonthStart } = useMemo(() => {
         const now = new Date();
         const y = new Date(now);
         y.setDate(y.getDate() - 1);
+        const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
         return {
             todayStr: formatLocalDate(now),
             yesterdayStr: formatLocalDate(y),
+            currentMonthStart: formatLocalDate(mStart),
         };
     }, []);
 
-    // 🎯 기준 시점 (As-of Date) 상태 (기본값: 분석 대상 기간의 시작일, 예: 9월 조회 시 9/1)
-    const [asOfDateStr, setAsOfDateStr] = useState<string>(startDate || todayStr);
+    // 대상 기간이 현재 월 이후(익월/미래 월)인지 판별 (예: 현재 10월인데 11월, 12월 조회 시)
+    const isFutureMonth = useMemo(() => {
+        if (!startDate) return false;
+        return startDate.slice(0, 7) > currentMonthStart.slice(0, 7);
+    }, [startDate, currentMonthStart]);
 
-    // 상단 마스터바 startDate가 변경될 때 기준 시점이 마스터 기간 이전/이후로 크게 벗어나면 시작일로 자동 갱신
+    // 🎯 기준 시점 (As-of Date) 상태:
+    // - 10월 등 현재/과거 월: 해당 기간 시작일(startDate) 기준 (예: 10월은 10/1, 9월은 9/1)
+    // - 11월 등 미래 월: 미래 시작일은 아직 유입이 없으므로 '현재 월의 첫날(currentMonthStart)' 기준
+    const [asOfDateStr, setAsOfDateStr] = useState<string>(() => {
+        if (!startDate) return todayStr;
+        return startDate.slice(0, 7) > currentMonthStart.slice(0, 7) ? currentMonthStart : startDate;
+    });
+
+    // 상단 마스터바 startDate가 변경될 때 기준 시점 자동 갱신
     React.useEffect(() => {
         if (startDate) {
-            setAsOfDateStr(startDate);
+            const isFuture = startDate.slice(0, 7) > currentMonthStart.slice(0, 7);
+            setAsOfDateStr(isFuture ? currentMonthStart : startDate);
         }
-    }, [startDate]);
+    }, [startDate, currentMonthStart]);
 
     // 기준일 헬퍼 라벨
     const asOfDateLabel = useMemo(() => {
@@ -296,8 +310,10 @@ export default function DailyPickupReportSection({
     }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, startDate, totalCapacityNights]);
 
     // 기준일 퀵 프리셋 핸들러
-    const handleSetPreset = (type: 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
-        if (type === 'start') {
+    const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
+        if (type === 'currentMonth') {
+            setAsOfDateStr(currentMonthStart);
+        } else if (type === 'start') {
             setAsOfDateStr(startDate);
         } else if (type === 'd7') {
             const d = new Date(startDate);
@@ -339,6 +355,11 @@ export default function DailyPickupReportSection({
                             <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 font-mono">
                                 기준일: {asOfDateStr}
                             </span>
+                            {isFutureMonth && asOfDateStr === currentMonthStart && (
+                                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60">
+                                    익월 분석: 현재월({currentMonthStart.slice(5, 7)}월) 1일 기준
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             선택 기간(
@@ -381,7 +402,22 @@ export default function DailyPickupReportSection({
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 mr-1 hidden sm:inline">
                         원클릭 이동:
                     </span>
+                    {isFutureMonth && (
+                        <button
+                            type="button"
+                            onClick={() => handleSetPreset('currentMonth')}
+                            className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
+                                asOfDateStr === currentMonthStart
+                                    ? 'bg-indigo-600 text-white shadow-xs'
+                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            }`}
+                            title={`현재 운영월(${currentMonthStart.slice(5, 7)}월) 1일부터 들어온 신규 유입 추적`}
+                        >
+                            🎯 현재월 시작일 ({currentMonthStart.slice(5)})
+                        </button>
+                    )}
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('start')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === startDate
@@ -392,18 +428,21 @@ export default function DailyPickupReportSection({
                         🚀 기간 시작일 ({startDate.slice(5)})
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('d7')}
                         className="px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs"
                     >
                         D-7일 전
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('d30')}
                         className="px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs"
                     >
                         D-30일 전
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('yesterday')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === yesterdayStr
@@ -414,6 +453,7 @@ export default function DailyPickupReportSection({
                         어제
                     </button>
                     <button
+                        type="button"
                         onClick={() => handleSetPreset('today')}
                         className={`px-2.5 py-1 rounded-lg font-bold transition-all shadow-2xs ${
                             asOfDateStr === todayStr

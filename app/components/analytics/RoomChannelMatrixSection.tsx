@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Booking } from '../../types';
+import type { Booking, OtaAdSetting } from '../../types';
 import {
     calculateRoomChannelCrossMatrix,
     RoomChannelCrossRow,
@@ -15,6 +15,7 @@ interface RoomChannelMatrixSectionProps {
     endDate?: string;
     selectedProperty?: string;
     selectedUnitKey?: string;
+    adSettings?: OtaAdSetting[];
 }
 
 type SortMode = 'vacancy' | 'revenue' | 'occupancy' | 'airbnb' | 'booking' | 'agoda' | 'trip';
@@ -35,6 +36,7 @@ export default function RoomChannelMatrixSection({
     endDate,
     selectedProperty = 'all',
     selectedUnitKey = 'all',
+    adSettings = [],
 }: RoomChannelMatrixSectionProps) {
     const [sortMode, setSortMode] = useState<SortMode>('vacancy');
     const [channelFocus, setChannelFocus] = useState<ChannelFocus>('all');
@@ -115,8 +117,9 @@ export default function RoomChannelMatrixSection({
                     </div>
                 </div>
 
-                {/* 빠른 검색 및 정렬 선택 */}
+                {/* 빠른 검색 및 정렬 */}
                 <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+
                     <input
                         type="text"
                         placeholder="호실명 검색..."
@@ -216,22 +219,22 @@ export default function RoomChannelMatrixSection({
                             {/* 4대 주요 OTA 컬럼 */}
                             {(channelFocus === 'all' || channelFocus === 'airbnb') && (
                                 <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-rose-600 dark:text-rose-400">
-                                    에어비앤비 (Airbnb)
+                                    <span>에어비앤비 (Airbnb)</span>
                                 </th>
                             )}
                             {(channelFocus === 'all' || channelFocus === 'booking') && (
                                 <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-blue-700 dark:text-blue-400">
-                                    부킹닷컴 (Booking)
+                                    <span>부킹닷컴 (Booking)</span>
                                 </th>
                             )}
                             {(channelFocus === 'all' || channelFocus === 'agoda') && (
                                 <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-purple-600 dark:text-purple-400">
-                                    아고다 (Agoda)
+                                    <span>아고다 (Agoda)</span>
                                 </th>
                             )}
                             {(channelFocus === 'all' || channelFocus === 'trip') && (
                                 <th className="py-2.5 px-3 text-center min-w-[130px] border-l border-gray-100 dark:border-slate-800 text-amber-600 dark:text-amber-400">
-                                    트립닷컴 (Trip)
+                                    <span>트립닷컴 (Trip)</span>
                                 </th>
                             )}
 
@@ -408,28 +411,43 @@ export default function RoomChannelMatrixSection({
 
                         {/* 4대 OTA 기여 현황 */}
                         <div className="space-y-1.5 pt-1 text-[11px]">
+                            {/* 에어비앤비 */}
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-rose-600 dark:text-rose-400">에어비앤비</span>
+                                <span className="font-bold text-rose-600 dark:text-rose-400">
+                                    에어비앤비
+                                </span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                                    {r.otaMetrics.airbnb.nights}박 ({r.otaMetrics.airbnb.contributionOcc}%)
+                                    {r.otaMetrics.airbnb.nights}박 ({r.otaMetrics.airbnb.contributionOcc}%) · ₩{r.otaMetrics.airbnb.revenue.toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* 부킹닷컴 */}
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-blue-600 dark:text-blue-400">부킹닷컴</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                    부킹닷컴
+                                </span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                                    {r.otaMetrics.booking.nights}박 ({r.otaMetrics.booking.contributionOcc}%)
+                                    {r.otaMetrics.booking.nights}박 ({r.otaMetrics.booking.contributionOcc}%) · ₩{r.otaMetrics.booking.revenue.toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* 아고다 */}
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-purple-600 dark:text-purple-400">아고다</span>
+                                <span className="font-bold text-purple-600 dark:text-purple-400">
+                                    아고다
+                                </span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                                    {r.otaMetrics.agoda.nights}박 ({r.otaMetrics.agoda.contributionOcc}%)
+                                    {r.otaMetrics.agoda.nights}박 ({r.otaMetrics.agoda.contributionOcc}%) · ₩{r.otaMetrics.agoda.revenue.toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* 트립닷컴 */}
                             <div className="flex items-center justify-between">
-                                <span className="font-bold text-amber-600 dark:text-amber-400">트립닷컴</span>
+                                <span className="font-bold text-amber-600 dark:text-amber-400">
+                                    트립닷컴
+                                </span>
                                 <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                                    {r.otaMetrics.trip.nights}박 ({r.otaMetrics.trip.contributionOcc}%)
+                                    {r.otaMetrics.trip.nights}박 ({r.otaMetrics.trip.contributionOcc}%) · ₩{r.otaMetrics.trip.revenue.toLocaleString()}
                                 </span>
                             </div>
                         </div>

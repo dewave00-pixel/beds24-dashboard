@@ -21,7 +21,7 @@ import DailyPickupReportSection from './DailyPickupReportSection';
 import OtaAdCostManager from './OtaAdCostManager';
 import ChickenEventDeductionSection from './ChickenEventDeductionSection';
 import { useOtaAdCosts } from '../../hooks/useOtaAdCosts';
-import { calculateRevenueAfterAdSpend, calculateTripAdSpend } from '../../utils/adCostCalculations';
+import { calculateRevenueAfterAdSpend, calculateTripAdSpend, calculateAdSpendBreakdown } from '../../utils/adCostCalculations';
 
 interface PricingRoomsTabProps {
     bookings: Booking[];
@@ -184,13 +184,14 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const overallSettlementSummary: OverallSummary = useMemo(() => {
         return calculateOverallSummary(bookings, 'custom', startDate, endDate, 'stay');
     }, [bookings, startDate, endDate]);
-    const tripAdSpend = useMemo(
-        () => calculateTripAdSpend(adCosts.charges, startDate, endDate),
+    const overallAdSpendBreakdown = useMemo(
+        () => calculateAdSpendBreakdown(adCosts.charges, startDate, endDate),
         [adCosts.charges, startDate, endDate]
     );
+    const tripAdSpend = overallAdSpendBreakdown.byChannel[53]?.settlementDeductedSpend || 0;
     const overallRevenueAfterAdSpend = calculateRevenueAfterAdSpend(
         overallSettlementSummary.totalRevenue,
-        tripAdSpend
+        overallAdSpendBreakdown.settlementDeductedSpend
     );
     const tripSettlementRevenue = useMemo(() => {
         const result = calculateChannelStats(bookings, 'custom', startDate, endDate, 'stay');
@@ -718,13 +719,22 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                 {isOverallRevenueView && (
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold text-gray-400 dark:text-slate-500">
                                         {adCosts.loading ? (
-                                            <span>Trip 광고비 확인 중…</span>
+                                            <span>광고비 확인 중…</span>
                                         ) : adCosts.error ? (
                                             <span className="text-rose-500">광고비 반영 실패 · 정산 매출 표시 중</span>
                                         ) : (
                                             <>
                                                 <span>정산 ₩{summary.totalRevenue.toLocaleString()}</span>
-                                                <span className="text-rose-500">Trip 충전 -₩{tripAdSpend.toLocaleString()}</span>
+                                                {overallAdSpendBreakdown.settlementDeductedSpend > 0 && (
+                                                    <span className="text-rose-500">
+                                                        광고 차감 -₩{overallAdSpendBreakdown.settlementDeductedSpend.toLocaleString()}
+                                                    </span>
+                                                )}
+                                                {overallAdSpendBreakdown.cardSpend > 0 && (
+                                                    <span className="text-blue-500 dark:text-blue-400">
+                                                        카드 충전 ₩{overallAdSpendBreakdown.cardSpend.toLocaleString()}
+                                                    </span>
+                                                )}
                                                 {chickenDeductionTotal > 0 && (
                                                     <span className="text-orange-600 dark:text-orange-400 font-bold">🍗 치킨 차감 -₩{chickenDeductionTotal.toLocaleString()} ({chickenBookingsCount}건)</span>
                                                 )}
@@ -1092,11 +1102,12 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     {selectedWidgets.has('matrix') && (
         <>
             <OtaAdCostManager
-                key={`${startDate}-${endDate}`}
+                key={`${startDate}-${endDate}-${selectedProperty}`}
                 settings={adCosts.settings}
                 charges={adCosts.charges}
                 startDate={startDate}
                 endDate={endDate}
+                selectedProperty={selectedProperty}
                 settlementRevenue={overallSettlementSummary.totalRevenue}
                 revenueAfterAdSpend={overallRevenueAfterAdSpend}
                 tripSettlementRevenue={tripSettlementRevenue}
@@ -1106,6 +1117,8 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 saving={adCosts.saving}
                 error={adCosts.error}
                 onSaveSetting={adCosts.saveSetting}
+                onAddCharge={adCosts.addCharge}
+                onDeleteCharge={adCosts.deleteCharge}
                 onAddTripCharge={adCosts.addTripCharge}
                 onDeleteTripCharge={adCosts.deleteTripCharge}
             />
@@ -1116,6 +1129,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                 endDate={endDate}
                 selectedProperty={selectedProperty}
                 selectedUnitKey={selectedUnitKey}
+                adSettings={adCosts.settings}
             />
         </>
     )}

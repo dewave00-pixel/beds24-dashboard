@@ -61,16 +61,22 @@ export interface OtaAdSetting {
     updatedAt: string;
 }
 
-// 실제 결제된 OTA 광고비 원장 (현재는 Trip.com 선충전 내역)
+export type AdPaymentMethod = 'settlement_deduction' | 'card';
+export type AdTargetProperty = 'all' | 'YEONNAM' | 'WAVE' | 'Green' | 'Namsun' | string;
+
+// 실제 결제된 OTA 광고비 원장 (정산금 차감 vs 카드 직접 결제)
 export interface OtaAdCharge {
     id: string;
     apiSourceId: number;
     channelName: string;
     chargeDate: string;
     amount: number;
+    paymentMethod: AdPaymentMethod;
+    targetProperty: AdTargetProperty;
     note: string;
     createdAt: string;
 }
+
 
 // 🔒 Beds24 재고 마감/초과 점검 항목 인터페이스
 export interface InventoryIssueItem {
