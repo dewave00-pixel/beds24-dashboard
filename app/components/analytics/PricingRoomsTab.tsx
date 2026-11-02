@@ -34,7 +34,8 @@ const PROPERTY_COLORS: Record<string, { label: string; color: string }> = {
     YEONNAM: { label: '연남', color: '#2563EB' }, // Blue
     WAVE: { label: '웨이브', color: '#EA580C' },   // Orange
     Green: { label: '그린', color: '#059669' },    // Emerald
-    Namsun: { label: '남선', color: '#7C3AED' },   // Purple
+    Horang: { label: '호랑', color: '#7C3AED' },
+    Namsun: { label: '호랑', color: '#7C3AED' },   // Purple
 };
 
 export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
@@ -83,25 +84,18 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
         { key: 'country', label: '게스트 국적 분석', icon: '🌍', desc: '국가별 유입 비중' },
     ];
 
-    // 기본 선택: 총매출&추이 + 치킨 차감 + 일일 픽업 + 양쪽 기간 비교 + 채널 점유율
-    const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(() => {
+    // 🎛️ 커스텀 분석 뷰 위젯 설정: 첫 화면 기본값은 0개 선택 (클린 뷰)
+    // 사용자가 상단 버튼을 클릭해야 해당 위젯이 열리며, 새로고침 시 치킨 등이 강제 노출되지 않도록 빈 Set으로 시작
+    const [selectedWidgets, setSelectedWidgets] = useState<Set<WidgetKey>>(new Set<WidgetKey>());
+
+    // 과거 로컬스토리지에 강제 주입되었던 치킨 등 과거 캐시 정리
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             try {
-                const saved = localStorage.getItem('analytics_custom_widgets');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (Array.isArray(parsed)) {
-                        const migrated = parsed.map((k) => (k === 'table' ? 'comparison' : k)).filter((k) => k !== 'table') as WidgetKey[];
-                        if (!migrated.includes('chicken')) {
-                            migrated.push('chicken');
-                        }
-                        return new Set<WidgetKey>(migrated);
-                    }
-                }
+                localStorage.removeItem('analytics_custom_widgets');
             } catch {}
         }
-        return new Set<WidgetKey>(['trend', 'chicken', 'pickup', 'comparison', 'channels']);
-    });
+    }, []);
 
     // 위젯 토글 (0개 선택 가능하도록 최소 제한 해제)
     const toggleWidget = (key: WidgetKey) => {
@@ -112,11 +106,6 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
             } else {
                 next.add(key);
             }
-            if (typeof window !== 'undefined') {
-                try {
-                    localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(next)));
-                } catch {}
-            }
             return next;
         });
     };
@@ -125,33 +114,16 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
     const selectAllWidgets = () => {
         const allKeys = new Set<WidgetKey>(WIDGET_CONFIG.map((w) => w.key));
         setSelectedWidgets(allKeys);
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(allKeys)));
-            } catch {}
-        }
     };
 
     // 전체 해제 (0개 빈 화면)
     const clearAllWidgets = () => {
-        const emptySet = new Set<WidgetKey>();
-        setSelectedWidgets(emptySet);
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem('analytics_custom_widgets', JSON.stringify([]));
-            } catch {}
-        }
+        setSelectedWidgets(new Set<WidgetKey>());
     };
 
-    // 기본 추천 세트 복원
+    // 기본 추천 세트 복원 (총매출 + 비교 + 채널)
     const resetDefaultWidgets = () => {
-        const defaultKeys = new Set<WidgetKey>(['trend', 'comparison', 'channels']);
-        setSelectedWidgets(defaultKeys);
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem('analytics_custom_widgets', JSON.stringify(Array.from(defaultKeys)));
-            } catch {}
-        }
+        setSelectedWidgets(new Set<WidgetKey>(['trend', 'comparison', 'channels']));
     };
 
     // 선택된 지점에 속하는 가용 호실(Unit) 목록
@@ -540,7 +512,7 @@ export default function PricingRoomsTab({ bookings }: PricingRoomsTabProps) {
                                     전체 지점
                                 </option>
                                 {PROPERTY_GROUPS.map((g) => {
-                                    const propLabel = g.name === 'Namsun' ? '남선' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린';
+                                    const propLabel = (g.name === 'Horang' || g.name === 'Namsun') ? '호랑' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린';
                                     return (
                                         <option
                                             key={g.name}

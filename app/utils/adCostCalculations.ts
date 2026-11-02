@@ -21,7 +21,7 @@ export interface AdSpendBreakdown {
  * 조회 기간 및 대상 숙소에 해당하는 광고 충전액을 계산한다.
  * - payment_method === 'settlement_deduction' (기본값): OTA 정산금에서 차감
  * - payment_method === 'card': 법인/개인 카드 직접 결제 (정산 매출에서 미차감, 별도 비용 집계)
- * - targetProperty: 'all' 또는 특정 숙소명 (YEONNAM, WAVE, Green, Namsun)
+ * - targetProperty: 'all' 또는 특정 숙소명 (YEONNAM, WAVE, Green, Horang/Namsun)
  */
 export function calculateAdSpendBreakdown(
     charges: OtaAdCharge[],
@@ -42,7 +42,8 @@ export function calculateAdSpendBreakdown(
         if (filterProperty && filterProperty !== 'all') {
             const chargeProp = charge.targetProperty || 'all';
             if (chargeProp !== 'all' && chargeProp !== filterProperty) {
-                return;
+                const isNamsunHorangMatch = (chargeProp === 'Namsun' && filterProperty === 'Horang') || (chargeProp === 'Horang' && filterProperty === 'Namsun');
+                if (!isNamsunHorangMatch) return;
             }
         }
 

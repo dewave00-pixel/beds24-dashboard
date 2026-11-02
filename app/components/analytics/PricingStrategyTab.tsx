@@ -51,7 +51,7 @@ export default function PricingStrategyTab({ bookings }: PricingStrategyTabProps
             { key: 'all', label: '전체 지점' },
             ...PROPERTY_GROUPS.map((g) => ({
                 key: g.name,
-                label: g.name === 'Namsun' ? '남선' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린',
+                label: (g.name === 'Horang' || g.name === 'Namsun') ? '호랑' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린',
             })),
         ];
     }, []);
@@ -139,7 +139,7 @@ export default function PricingStrategyTab({ bookings }: PricingStrategyTabProps
                                     key={r.unitKey}
                                     className="bg-white px-2 py-0.5 rounded-md text-[11px] font-bold text-gray-800 border border-blue-200 shadow-2xs"
                                 >
-                                    {r.propName === 'Namsun' ? '남선' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName} {r.roomName} <strong className="text-red-600">({r.vacantNights}박 공실)</strong>
+                                    {r.propName === 'Horang' || r.propName === 'Namsun' ? '호랑' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName} {r.roomName} <strong className="text-red-600">({r.vacantNights}박 공실)</strong>
                                 </span>
                             ))}
                         </div>
@@ -209,7 +209,7 @@ export default function PricingStrategyTab({ bookings }: PricingStrategyTabProps
                                 return (
                                     <tr key={r.unitKey} className="hover:bg-blue-50/40 transition">
                                         <td className="py-3 px-3 font-bold text-gray-700">
-                                            {r.propName === 'Namsun' ? '남선' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName}
+                                            {r.propName === 'Horang' || r.propName === 'Namsun' ? '호랑' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName}
                                         </td>
                                         <td className="py-3 px-3 font-extrabold text-gray-900">
                                             {r.roomName}
@@ -267,7 +267,7 @@ export default function PricingStrategyTab({ bookings }: PricingStrategyTabProps
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-[11px] font-bold text-gray-500 bg-gray-200/60 px-1.5 py-0.5 rounded-sm">
-                                            {r.propName === 'Namsun' ? '남선' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName}
+                                            {r.propName === 'Horang' || r.propName === 'Namsun' ? '호랑' : r.propName === 'YEONNAM' ? '연남' : r.propName === 'WAVE' ? '웨이브' : r.propName}
                                         </span>
                                         <span className="font-extrabold text-sm text-gray-900">{r.roomName}</span>
                                     </div>

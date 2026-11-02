@@ -68,7 +68,7 @@ export default function RoomsPropertiesTab({ bookings }: RoomsPropertiesTabProps
             { key: 'all', label: '전체 지점' },
             ...PROPERTY_GROUPS.map((g) => ({
                 key: g.name,
-                label: g.name === 'Namsun' ? '남선' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린',
+                label: (g.name === 'Horang' || g.name === 'Namsun') ? '호랑' : g.name === 'YEONNAM' ? '연남' : g.name === 'WAVE' ? '웨이브' : '그린',
             })),
         ];
     }, []);

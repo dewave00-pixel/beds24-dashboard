@@ -23,7 +23,8 @@ const PROPERTY_COLORS: Record<string, { label: string; color: string }> = {
     YEONNAM: { label: '연남', color: '#2563EB' },
     WAVE: { label: '웨이브', color: '#EA580C' },
     Green: { label: '그린', color: '#059669' },
-    Namsun: { label: '남선', color: '#7C3AED' },
+    Horang: { label: '호랑', color: '#7C3AED' },
+    Namsun: { label: '호랑', color: '#7C3AED' },
 };
 
 export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTableProps) {
@@ -127,7 +128,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                         { key: 'YEONNAM', label: '연남' },
                         { key: 'WAVE', label: '웨이브' },
                         { key: 'Green', label: '그린' },
-                        { key: 'Namsun', label: '남선' },
+                        { key: 'Horang', label: '호랑' },
                     ].map((item) => {
                         const isActive = selectedProperty === item.key;
                         return (
@@ -229,7 +230,7 @@ export default function RoomRevenueTable({ roomStats = [] }: RoomRevenueTablePro
                         {processedRooms.map((room, idx) => {
                             const weekendAdr = room.dayTypeAdr?.weekendAdr || 0;
                             const weekdayAdr = room.dayTypeAdr?.weekdayAdr || 0;
-                            const propKOR = room.propName === 'Namsun' ? '남선' : room.propName === 'YEONNAM' ? '연남' : room.propName === 'WAVE' ? '웨이브' : room.propName;
+                            const propKOR = (room.propName === 'Horang' || room.propName === 'Namsun') ? '호랑' : room.propName === 'YEONNAM' ? '연남' : room.propName === 'WAVE' ? '웨이브' : room.propName;
                             const colorInfo = PROPERTY_COLORS[room.propName] || { color: '#64748B' };
                             const isExpanded = expandedRooms.has(room.unitKey);
 

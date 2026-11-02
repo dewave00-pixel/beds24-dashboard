@@ -148,7 +148,8 @@ body {
     border-color: #8b5cf6 !important;
 }
 
-.group-theme-namsan {
+.group-theme-namsan,
+.group-theme-horang {
     background-color: #fef3c7 !important;
     color: #111827 !important;
     border-color: #f59e0b !important;
@@ -408,7 +409,8 @@ html.dark .group-theme-yeonnam {
     border-color: #7c3aed !important;
 }
 
-html.dark .group-theme-namsan {
+html.dark .group-theme-namsan,
+html.dark .group-theme-horang {
     background-color: #78350f !important; /* deep amber */
     color: #fffbeb !important;
     border-color: #d97706 !important;
