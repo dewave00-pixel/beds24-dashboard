@@ -121,15 +121,13 @@ export default function AnalyticsPage() {
 
                 {/* 2. 대시보드 본문 */}
                 <div className="p-2.5 md:p-4 flex-1 flex flex-col gap-3 max-w-7xl w-full mx-auto">
-                    {/* 로딩 표시 */}
-                    {loading && (
+                    {/* 데이터 최초 로딩 시에만 전체 스켈레톤 로딩 표시 */}
+                    {loading && bookings.length === 0 ? (
                         <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-gray-200 dark:border-slate-800 text-center text-gray-400 dark:text-slate-500 font-bold text-xs">
                             실시간 예약 및 매출 데이터를 불러오고 있습니다...
                         </div>
-                    )}
-
-                    {/* 통합 분석 대시보드 (매출, 비교, 채널 점유율, 광고 분석, 공실 레이더, 국적 분석, 성과표) */}
-                    {!loading && (
+                    ) : (
+                        /* 통합 분석 대시보드 (매출, 비교, 채널 점유율, 광고 분석, 공실 레이더, 국적 분석, 성과표) */
                         <div className="w-full transition-all duration-200">
                             <PricingRoomsTab bookings={bookings} />
                         </div>

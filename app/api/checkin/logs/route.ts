@@ -38,12 +38,12 @@ export async function GET(request: Request) {
             console.error('Failed to fetch today bookings:', bookingsError);
         }
 
-        const validTodayBookings = (todayBookings || []).filter((b) => {
+        const validTodayBookings = (todayBookings || []).filter((b: any) => {
             const st = (b.status || '').toLowerCase();
             return st !== 'cancelled' && st !== 'deleted' && st !== 'inquiry';
         });
 
-        const todayBookingIds = validTodayBookings.map((b) => b.id);
+        const todayBookingIds = validTodayBookings.map((b: any) => b.id);
 
         // 2. 오늘 입실 예약들과 관련된 로그 및 게스트 케어 조회 (booking_id 매칭)
         let matchedLogs: any[] = [];
@@ -64,6 +64,19 @@ export async function GET(request: Request) {
             }
         });
 
+        // 게스트 여정 / 체크인 세부 정보 매핑
+        const checkinDetailsMap: Record<number, any> = {};
+        matchedLogs.forEach((l) => {
+            if (l.booking_id && l.event_type === 'CHECKIN_INFO_SUBMITTED') {
+                if (!checkinDetailsMap[l.booking_id] || new Date(l.created_at) > new Date(checkinDetailsMap[l.booking_id].submittedAt || 0)) {
+                    checkinDetailsMap[l.booking_id] = {
+                        ...l.metadata,
+                        submittedAt: l.created_at,
+                    };
+                }
+            }
+        });
+
         // 3. 오늘 발생한 'LOOKUP_FAILED' 로그 건수 조회
         const { count: todayFailuresCount } = await supabase
             .from('checkin_logs')
@@ -80,7 +93,7 @@ export async function GET(request: Request) {
             }
         > = {};
 
-        validTodayBookings.forEach((b) => {
+        validTodayBookings.forEach((b: any) => {
             const logs = matchedLogs.filter((l) => l.booking_id === b.id);
             if (logs.length === 0) {
                 bookingStatusMap[b.id] = { status: 'UNCHECKED', lastEventAt: null };
@@ -115,7 +128,7 @@ export async function GET(request: Request) {
         let passwordViewedCount = 0;
         let uncheckedCount = 0;
 
-        validTodayBookings.forEach((b) => {
+        validTodayBookings.forEach((b: any) => {
             const st = bookingStatusMap[b.id]?.status;
             if (st === 'PASSWORD_VIEWED') {
                 passwordViewedCount++;
@@ -130,7 +143,7 @@ export async function GET(request: Request) {
         const rulesAgreedPercent = totalArrivals > 0 ? Math.round((rulesAgreedCount / totalArrivals) * 100) : 0;
 
         // 오늘 입실 명단 데이터 가공
-        const todayArrivalsList = validTodayBookings.map((b) => {
+        const todayArrivalsList = validTodayBookings.map((b: any) => {
             const unitInfo = getUnitDisplayInfo({
                 roomId: b.room_id,
                 unitId: b.unit_id,
@@ -141,6 +154,7 @@ export async function GET(request: Request) {
             const phone = raw.mobile || raw.phone || '';
             const statusInfo = bookingStatusMap[b.id] || { status: 'UNCHECKED', lastEventAt: null };
             const careSurvey = careSurveyMap[b.id] || null;
+            const checkinDetails = checkinDetailsMap[b.id] || null;
 
             return {
                 bookingId: b.id,
@@ -164,6 +178,7 @@ export async function GET(request: Request) {
                           comment: careSurvey.q4_comment || '',
                       }
                     : null,
+                checkinDetails,
             };
         });
 
