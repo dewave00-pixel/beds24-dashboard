@@ -9,6 +9,25 @@ import CleaningStaffPool from '../components/cleaning/CleaningStaffPool';
 import CleaningGroupGrid from '../components/cleaning/CleaningGroupGrid';
 import CleaningBatchSender from '../components/cleaning/CleaningBatchSender';
 
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function getDayOfWeek(dateStr?: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    return DAY_NAMES[d.getDay()] || '';
+}
+
+function getDayColorClass(dateStr?: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    const day = d.getDay();
+    if (day === 0) return 'text-rose-600 dark:text-rose-400';
+    if (day === 6) return 'text-blue-600 dark:text-blue-400';
+    return 'text-gray-700 dark:text-slate-300';
+}
+
 export default function CleaningPage() {
     const c = useCleaningBoard();
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -82,7 +101,7 @@ export default function CleaningPage() {
                                 : 'bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300'
                                 }`}
                         >
-                            오늘 ({c.todayStr})
+                            오늘 ({c.todayStr} {getDayOfWeek(c.todayStr)})
                         </button>
                         <button
                             type="button"
@@ -103,6 +122,9 @@ export default function CleaningPage() {
                             }}
                             className="px-2.5 py-1 text-xs font-black bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-100 cursor-pointer focus:ring-1 focus:ring-blue-500"
                         />
+                        <span className={`text-xs font-black px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 ${getDayColorClass(c.selectedDate)}`}>
+                            {getDayOfWeek(c.selectedDate)}요일
+                        </span>
                     </div>
                 </div>
 
