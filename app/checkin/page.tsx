@@ -42,6 +42,8 @@ export interface CheckinGuestDetails {
     flightNumber?: string;
     departureCity?: string;
     airportArrivalTime?: string;
+    estimatedArrivalTime?: string;
+    estimatedCheckoutTime?: string;
     earlyCheckinTime?: string;
     hasLuggageStorage?: boolean;
     luggageStorageTime?: string;
@@ -888,12 +890,22 @@ export default function CheckinManagementPage() {
                                                                     )}
                                                                     {item.checkinDetails.earlyCheckinTime && (
                                                                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                                            ⏰ 얼리 ${item.checkinDetails.earlyCheckinTime}
+                                                                            ⏰ 얼리 {item.checkinDetails.earlyCheckinTime}
                                                                         </span>
                                                                     )}
                                                                     {item.checkinDetails.hasLuggageStorage && (
                                                                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                                                            🧳 짐보관${item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
+                                                                            🧳 짐보관{item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
+                                                                        </span>
+                                                                    )}
+                                                                    {item.checkinDetails.estimatedArrivalTime && (
+                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                                            🏠 입실예정 {item.checkinDetails.estimatedArrivalTime}
+                                                                        </span>
+                                                                    )}
+                                                                    {item.checkinDetails.estimatedCheckoutTime && (
+                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                                            🚪 퇴실예정 {item.checkinDetails.estimatedCheckoutTime}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1025,12 +1037,22 @@ export default function CheckinManagementPage() {
                                                                 )}
                                                                 {item.checkinDetails.earlyCheckinTime && (
                                                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                                        ⏰ 얼리 ${item.checkinDetails.earlyCheckinTime}
+                                                                        ⏰ 얼리 {item.checkinDetails.earlyCheckinTime}
                                                                     </span>
                                                                 )}
                                                                 {item.checkinDetails.hasLuggageStorage && (
                                                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                                                        🧳 짐보관${item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
+                                                                        🧳 짐보관{item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
+                                                                    </span>
+                                                                )}
+                                                                {item.checkinDetails.estimatedArrivalTime && (
+                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                                        🏠 입실예정 {item.checkinDetails.estimatedArrivalTime}
+                                                                    </span>
+                                                                )}
+                                                                {item.checkinDetails.estimatedCheckoutTime && (
+                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                                        🚪 퇴실예정 {item.checkinDetails.estimatedCheckoutTime}
                                                                     </span>
                                                                 )}
                                                             </div>
