@@ -144,8 +144,8 @@ export async function syncAllBookingsWithSupabase(
             // 취소 건 중 위약금(price > 0)이 있는 건은 매출 보존을 위해 유지하고,
             // 나머지(inquiry, deleted, 금액 0원 이하인 cancelled)만 정리
             const invalidIds = invalidDbRows
-                .filter((r) => r.status !== 'cancelled' || (Number(r.price) || 0) <= 0)
-                .map((r) => Number(r.id));
+                .filter((r: any) => r.status !== 'cancelled' || (Number(r.price) || 0) <= 0)
+                .map((r: any) => Number(r.id));
 
             if (invalidIds.length > 0) {
                 const chunkSize = 500;
@@ -196,8 +196,8 @@ export async function syncAllBookingsWithSupabase(
             } else if (dbRows && dbRows.length > 0) {
                 // DB에는 있지만 유효 예약 목록에는 없는 유령 ID 추출
                 const ghostIds = dbRows
-                    .map((r) => Number(r.id))
-                    .filter((id) => !beds24ValidIds.has(id));
+                    .map((r: any) => Number(r.id))
+                    .filter((id: number) => !beds24ValidIds.has(id));
 
                 if (ghostIds.length > 0) {
                     // 🛡️ Safety Guard 2: 비정상적인 대량 삭제 감지 방어

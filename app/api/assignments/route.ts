@@ -34,7 +34,7 @@ export async function GET(request: Request) {
         const historyMap: Record<string, Record<string, any>> = {};
 
         if (data) {
-            data.forEach((row) => {
+            data.forEach((row: any) => {
                 const item = {
                     unitKey: row.unit_key,
                     staffName: row.staff_name,

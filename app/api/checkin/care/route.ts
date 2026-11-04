@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         let facilityIssues = 0;
         let environmentIssues = 0;
 
-        (allSurveys || []).forEach((row) => {
+        (allSurveys || []).forEach((row: any) => {
             const prop = row.property_name || '기타';
             propertyCounts[prop] = (propertyCounts[prop] || 0) + 1;
 
