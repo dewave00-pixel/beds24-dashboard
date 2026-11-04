@@ -135,7 +135,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, isAnalytics
         console.warn('⚠️ [Reservations] 치킨 태그 조회 실패 (무시 후 계속 진행):', e);
     }
 
-    const formatted = dbBookings.map((row) => ({
+    const formatted = dbBookings.map((row: any) => ({
         id: row.id,
         propertyId: row.property_id,
         propId: row.property_id,
@@ -161,10 +161,10 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, isAnalytics
 
     if (isAnalytics) {
         // 통계 화면: 활성 예약 + 위약금이 있는 취소 예약(price > 0) 반환
-        return formatted.filter((b) => isRevenueBooking(b));
+        return formatted.filter((b: any) => isRevenueBooking(b));
     }
     // 일반 대시보드: 활성 예약만 반환
-    return formatted.filter((b) => isValidBooking(b));
+    return formatted.filter((b: any) => isValidBooking(b));
 }
 
 export async function GET(request: Request) {

@@ -25,7 +25,7 @@ export async function GET() {
         const staffMap: Record<string, string> = { ...DEFAULT_STAFF_MAP };
 
         if (data && data.length > 0) {
-            data.forEach((row) => {
+            data.forEach((row: any) => {
                 if (row.role && row.name && row.name.trim() !== '') {
                     // 기본 계정 ID(예: 'staff_2')가 아닌 실제 변경된 이름이 저장되어 있으면 반영
                     if (row.name !== row.role) {
