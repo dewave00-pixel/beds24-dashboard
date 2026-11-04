@@ -260,15 +260,24 @@ export function findConflictingBookings(
 
     if (!arrival || !departure) return [];
 
+    // 🛡️ 대상이 '미배정(targetUnitId === 0)'으로의 변경인 경우 호실 충돌 없음
+    if (Number(targetUnitId) === 0) return [];
+
     return allBookings.filter((b) => {
-        // 자기 자신이거나 취소/문의인 건 제외
+        // 자기 자신이거나 취소/삭제/문의인 건 제외
         if (Number(b.id) === bId || !isValidBooking(b)) return false;
+
+        // 🛡️ 미배정(호실 해제 상태)인 예약은 특정 호실을 점유하지 않으므로 충돌 검사에서 완전 제외
+        if (isUnallocatedBooking(b)) return false;
 
         // 호실 매칭
         const bRoomId = Number(b.roomId);
-        // 단독 유닛 호실(유닛ID가 0/null이지만 해당 룸에 배정된 경우)은 unitId=1로 간주
-        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : 1;
-        const tUnitId = targetUnitId > 0 ? targetUnitId : 1;
+        // 단독 유닛 호실(해당 룸타입에 소속된 전체 유닛이 1개뿐인 방)인 경우에만 unitId 미지정 시 1로 간주
+        const roomUnits = getUnitsForRoomId(bRoomId);
+        const isSingleUnitRoom = roomUnits.length <= 1;
+
+        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : (isSingleUnitRoom ? 1 : 0);
+        const tUnitId = targetUnitId > 0 ? targetUnitId : (isSingleUnitRoom ? 1 : 0);
 
         if (bRoomId !== targetRoomId || bUnitId !== tUnitId) return false;
 
@@ -303,9 +312,13 @@ export function findExtensionConflicts(
 
     return allBookings.filter((b) => {
         if (Number(b.id) === bId || !isValidBooking(b)) return false;
+        // 🛡️ 미배정(호실 해제 상태) 예약은 연장 시 충돌 대상에서 제외
+        if (isUnallocatedBooking(b)) return false;
 
         const bRoomId = Number(b.roomId);
-        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : 1;
+        const roomUnits = getUnitsForRoomId(bRoomId);
+        const isSingleUnitRoom = roomUnits.length <= 1;
+        const bUnitId = Number(b.unitId) > 0 ? Number(b.unitId) : (isSingleUnitRoom ? 1 : 0);
 
         if (bRoomId !== roomId || bUnitId !== tUnitId) return false;
 
