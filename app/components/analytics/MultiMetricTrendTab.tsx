@@ -56,9 +56,9 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
     const [selectedRoomKeys, setSelectedRoomKeys] = useState<string[]>(() => {
         const defaultKeys: string[] = [];
         const yeonnam = ALL_UNITS.find((u) => u.propName === 'YEONNAM');
-        const namsun = ALL_UNITS.find((u) => u.propName === 'Namsun');
+        const horang = ALL_UNITS.find((u) => u.propName === 'Horang' || u.propName === 'Namsun');
         if (yeonnam) defaultKeys.push(yeonnam.key);
-        if (namsun) defaultKeys.push(namsun.key);
+        if (horang) defaultKeys.push(horang.key);
         return defaultKeys.length > 0 ? defaultKeys : [ALL_UNITS[0].key];
     });
 
@@ -76,7 +76,7 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
             .map((key, idx) => {
                 const unit = ALL_UNITS.find((u) => u.key === key);
                 if (!unit) return null;
-                const propDisplayName = unit.propName === 'Namsun' ? '남선' : unit.propName === 'YEONNAM' ? '연남' : unit.propName === 'WAVE' ? '웨이브' : '그린';
+                const propDisplayName = (unit.propName === 'Horang' || unit.propName === 'Namsun') ? '호랑' : unit.propName === 'YEONNAM' ? '연남' : unit.propName === 'WAVE' ? '웨이브' : '그린';
                 return {
                     ...unit,
                     displayNameFull: `${propDisplayName} ${unit.displayName}${unit.subName ? ` (${unit.subName})` : ''}`,
@@ -493,7 +493,7 @@ export default function MultiMetricTrendTab({ bookings }: MultiMetricTrendTabPro
                                     </div>
                                     <div className="max-h-60 overflow-y-auto flex flex-col gap-2">
                                         {PROPERTY_GROUPS.map((group) => {
-                                            const propLabel = group.name === 'Namsun' ? '남선' : group.name === 'YEONNAM' ? '연남' : group.name === 'WAVE' ? '웨이브' : '그린';
+                                            const propLabel = (group.name === 'Horang' || group.name === 'Namsun') ? '호랑' : group.name === 'YEONNAM' ? '연남' : group.name === 'WAVE' ? '웨이브' : '그린';
                                             return (
                                                 <div key={group.name} className="flex flex-col gap-1">
                                                     <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">

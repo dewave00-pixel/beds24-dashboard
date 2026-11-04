@@ -66,7 +66,8 @@ const PROPERTY_LABEL: Record<string, { label: string; badge: string }> = {
     YEONNAM: { label: '연남', badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' },
     WAVE: { label: '웨이브', badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300' },
     Green: { label: '그린', badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' },
-    Namsun: { label: '남선', badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' },
+    Horang: { label: '호랑', badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' },
+    Namsun: { label: '호랑', badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' },
 };
 
 interface UnitRowData {

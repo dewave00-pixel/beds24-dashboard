@@ -62,7 +62,7 @@ export interface OtaAdSetting {
 }
 
 export type AdPaymentMethod = 'settlement_deduction' | 'card';
-export type AdTargetProperty = 'all' | 'YEONNAM' | 'WAVE' | 'Green' | 'Namsun' | string;
+export type AdTargetProperty = 'all' | 'YEONNAM' | 'WAVE' | 'Green' | 'Horang' | 'Namsun' | string;
 
 // 실제 결제된 OTA 광고비 원장 (정산금 차감 vs 카드 직접 결제)
 export interface OtaAdCharge {

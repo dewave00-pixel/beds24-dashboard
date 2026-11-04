@@ -1416,7 +1416,8 @@ export function calculateHierarchicalPeriodComparison(
             YEONNAM: '연남',
             WAVE: '웨이브',
             Green: '그린',
-            Namsun: '남선',
+            Horang: '호랑',
+            Namsun: '호랑',
         };
         const label = labelMap[pg.name] || pg.name;
 

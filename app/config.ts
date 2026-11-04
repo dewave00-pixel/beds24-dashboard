@@ -37,8 +37,8 @@ export const PROPERTY_GROUPS: PropertyGroup[] = [
         ],
     },
     {
-        name: 'Namsun',
-        themeClass: 'group-theme-namsan',
+        name: 'Horang',
+        themeClass: 'group-theme-horang',
         units: [
             { key: '560162-1', roomId: 560162, unitId: 1, displayName: '1호', subName: 'mini 1' },
             { key: '560162-2', roomId: 560162, unitId: 2, displayName: '4호', subName: 'mini 1' },
@@ -309,7 +309,8 @@ export function getUnitDisplayInfo(booking: {
         'group-theme-green': { backgroundColor: '#047857', color: '#000000' }, // 진한 에메랄드 그린
         'group-theme-wave': { backgroundColor: '#0369a1', color: '#000000' },  // 진한 웨이브 블루
         'group-theme-yeonnam': { backgroundColor: '#6d28d9', color: '#000000' }, // 진한 연남 퍼플
-        'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남선 앰버
+        'group-theme-namsan': { backgroundColor: '#b45309', color: '#000000' },
+        'group-theme-horang': { backgroundColor: '#b45309', color: '#000000' }, // 진한 남선 앰버
         'group-theme-default': { backgroundColor: '#78aaf1ff', color: '#000000' }, // 다크 슬레이트
     };
 
