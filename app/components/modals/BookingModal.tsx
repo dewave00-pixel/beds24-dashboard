@@ -56,6 +56,19 @@ export default function BookingModal({
         isChicken
     );
 
+    // 🛏️ 투숙 박수(stayNights) 및 박당 평균 정산 단가(ADR) 계산 (타임존 왜곡 방지 UTC 일수 연산)
+    const stayNights = (() => {
+        if (!booking.arrival || !booking.departure) return 1;
+        const [ay, am, ad] = booking.arrival.split('-').map(Number);
+        const [dy, dm, dd] = booking.departure.split('-').map(Number);
+        if (!ay || !am || !ad || !dy || !dm || !dd) return 1;
+        const diffDays = Math.round(
+            (Date.UTC(dy, dm - 1, dd) - Date.UTC(ay, am - 1, ad)) / (1000 * 60 * 60 * 24)
+        );
+        return Math.max(1, diffDays);
+    })();
+    const adr = Math.round(commInfo.netPayout / stayNights);
+
     // 🔑 현재 배정된 키: 'roomId-unitId' (단, unitId가 0이거나 미배정이면 '0-0')
     const currentKey = Number(booking.unitId) > 0 && booking.roomId
         ? `${Number(booking.roomId)}-${Number(booking.unitId)}`
@@ -193,7 +206,12 @@ export default function BookingModal({
                         </div>
                         <div>
                             <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">체크아웃</span>
-                            <span className="font-extrabold text-orange-700 dark:text-amber-400">{booking.departure}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-orange-700 dark:text-amber-400">{booking.departure}</span>
+                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold border border-amber-300/70 dark:border-amber-800/70 font-mono">
+                                    {stayNights}박 · ADR {adr.toLocaleString()}원
+                                </span>
+                            </div>
                         </div>
                         <div>
                             <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block">투숙 인원</span>
