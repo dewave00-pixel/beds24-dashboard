@@ -26,16 +26,22 @@ export async function GET(request: Request) {
         const limit = parseInt(searchParams.get('limit') || defaultLimit, 10);
 
         const todayKst = getKstDateString();
-        const todayStartIso = new Date(`${todayKst}T00:00:00+09:00`).toISOString();
+        const arrivalDateParam = searchParams.get('arrivalDate');
+        const targetArrivalDate = (arrivalDateParam && /^\d{4}-\d{2}-\d{2}$/.test(arrivalDateParam))
+            ? arrivalDateParam
+            : todayKst;
 
-        // 1. 오늘 입실(arrival = todayKst) 활성 예약 조회
+        const targetStartIso = new Date(`${targetArrivalDate}T00:00:00+09:00`).toISOString();
+        const targetEndIso = new Date(`${targetArrivalDate}T23:59:59.999+09:00`).toISOString();
+
+        // 1. 지정 날짜 입실(arrival = targetArrivalDate) 활성 예약 조회
         const { data: todayBookings, error: bookingsError } = await supabase
             .from('bookings')
             .select('id, first_name, last_name, arrival, departure, status, room_id, unit_id, raw_data')
-            .eq('arrival', todayKst);
+            .eq('arrival', targetArrivalDate);
 
         if (bookingsError) {
-            console.error('Failed to fetch today bookings:', bookingsError);
+            console.error('Failed to fetch target arrivals bookings:', bookingsError);
         }
 
         const validTodayBookings = (todayBookings || []).filter((b: any) => {
@@ -45,7 +51,7 @@ export async function GET(request: Request) {
 
         const todayBookingIds = validTodayBookings.map((b: any) => b.id);
 
-        // 2. 오늘 입실 예약들과 관련된 로그 및 게스트 케어 조회 (booking_id 매칭)
+        // 2. 지정 날짜 입실 예약들과 관련된 로그 및 게스트 케어 조회 (booking_id 매칭)
         let matchedLogs: any[] = [];
         let matchedCareSurveys: any[] = [];
         if (todayBookingIds.length > 0) {
@@ -77,14 +83,15 @@ export async function GET(request: Request) {
             }
         });
 
-        // 3. 오늘 발생한 'LOOKUP_FAILED' 로그 건수 조회
+        // 3. 해당 날짜에 발생한 'LOOKUP_FAILED' 로그 건수 조회
         const { count: todayFailuresCount } = await supabase
             .from('checkin_logs')
             .select('id', { count: 'exact', head: true })
             .eq('event_type', 'LOOKUP_FAILED')
-            .gte('created_at', todayStartIso);
+            .gte('created_at', targetStartIso)
+            .lte('created_at', targetEndIso);
 
-        // 4. 오늘 입실 게스트별 상태 매핑
+        // 4. 지정 날짜 입실 게스트별 상태 매핑
         const bookingStatusMap: Record<
             number,
             {
@@ -223,6 +230,7 @@ export async function GET(request: Request) {
         return NextResponse.json({
             success: true,
             todayDate: todayKst,
+            targetDate: targetArrivalDate,
             todayStats: {
                 totalArrivals,
                 rulesAgreedCount,

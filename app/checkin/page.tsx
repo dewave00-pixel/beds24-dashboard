@@ -89,6 +89,16 @@ export default function CheckinManagementPage() {
 
     // 데이터 상태
     const [todayDate, setTodayDate] = useState<string>('');
+    const [selectedArrivalDate, setSelectedArrivalDate] = useState<string>(() => {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(new Date());
+        const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+        return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+    });
     const [todayArrivals, setTodayArrivals] = useState<TodayArrivalItem[]>([]);
     const [logs, setLogs] = useState<CheckinLogItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -148,12 +158,13 @@ export default function CheckinManagementPage() {
 
     const getCareLabel = (code: string) => CARE_LABEL_MAP[code] || code;
 
-    // 1. API 데이터 페칭 (체크인 로그 및 오늘 현황)
+    // 1. API 데이터 페칭 (체크인 로그 및 입실 현황)
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
             if (propertyFilter !== 'ALL') params.set('property', propertyFilter);
+            if (selectedArrivalDate) params.set('arrivalDate', selectedArrivalDate);
             if (activeTab === 'logs' && eventFilter !== 'ALL') params.set('eventType', eventFilter);
             if (activeTab === 'logs' && logDateFilter !== 'ALL') params.set('date', logDateFilter);
             if (searchQuery.trim()) params.set('search', searchQuery.trim());
@@ -171,7 +182,7 @@ export default function CheckinManagementPage() {
         } finally {
             setLoading(false);
         }
-    }, [propertyFilter, activeTab, eventFilter, logDateFilter, searchQuery]);
+    }, [propertyFilter, activeTab, eventFilter, logDateFilter, searchQuery, selectedArrivalDate]);
 
     // 2. 게스트 케어 전용 데이터 페칭
     const fetchCareData = useCallback(async () => {
@@ -311,6 +322,39 @@ export default function CheckinManagementPage() {
         const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
         return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
     }, []);
+
+    const tomorrowKst = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(d);
+        const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+        return `${getVal('year')}-${getVal('month')}-${getVal('day')}`;
+    }, []);
+
+    // 입실일자 +/- n일 이동 헬퍼 (UTC 기준 계산으로 타임존 왜곡 방지)
+    const shiftArrivalDate = (offsetDays: number) => {
+        try {
+            const baseStr = selectedArrivalDate || todayKst;
+            const [y, m, d] = baseStr.split('-').map(Number);
+            const dateObj = new Date(Date.UTC(y, m - 1, d));
+            dateObj.setUTCDate(dateObj.getUTCDate() + offsetDays);
+            const parts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'UTC',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).formatToParts(dateObj);
+            const getVal = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+            setSelectedArrivalDate(`${getVal('year')}-${getVal('month')}-${getVal('day')}`);
+        } catch (e) {
+            console.error('날짜 변경 실패:', e);
+        }
+    };
 
     // 5. 실시간 로그 날짜별 그룹핑
     const groupedLogs = useMemo(() => {
@@ -519,14 +563,14 @@ export default function CheckinManagementPage() {
                                 <h1 className="text-base md:text-lg font-black text-gray-900 dark:text-slate-100 leading-tight">
                                     체크인 관리
                                 </h1>
-                                {todayDate && (
+                                {selectedArrivalDate && (
                                     <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-md border border-blue-200 dark:border-blue-800 hidden sm:inline-block">
-                                        {formatDateKst(todayDate)} 기준
+                                        {formatDateKst(selectedArrivalDate)} {selectedArrivalDate === todayKst ? '(오늘)' : ''} 입실 기준
                                     </span>
                                 )}
                             </div>
                             <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold hidden sm:inline">
-                                오늘 체크인 게스트 열람 현황 및 실시간 체크인 로그 모니터링
+                                체크인 게스트 열람 현황 및 실시간 체크인 로그 모니터링
                             </span>
                         </div>
                     </div>
@@ -575,7 +619,7 @@ export default function CheckinManagementPage() {
                                             : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'
                                     }`}
                                 >
-                                    <span>오늘 체크인</span>
+                                    <span>{selectedArrivalDate === todayKst ? '오늘 체크인' : '체크인 현황'}</span>
                                     <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300">
                                         {todayArrivals.length}
                                     </span>
@@ -729,6 +773,101 @@ export default function CheckinManagementPage() {
                             </div>
                         </div>
 
+                        {/* 체크인 현황 전용 입실 날짜 선택 툴바 */}
+                        {activeTab === 'today' && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-slate-800 text-xs">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-gray-500 dark:text-slate-400 font-extrabold text-[11px] shrink-0">📅 입실일:</span>
+                                    
+                                    {/* 이전날 버튼 */}
+                                    <button
+                                        type="button"
+                                        onClick={() => shiftArrivalDate(-1)}
+                                        title="이전날 (-1일)"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-black text-xs transition cursor-pointer border border-gray-200 dark:border-slate-700"
+                                    >
+                                        ‹
+                                    </button>
+
+                                    {/* 어제, 오늘, 내일 버튼 */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedArrivalDate(yesterdayKst)}
+                                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                            selectedArrivalDate === yesterdayKst
+                                                ? 'bg-blue-600 text-white shadow-2xs'
+                                                : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        어제
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedArrivalDate(todayKst)}
+                                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                            selectedArrivalDate === todayKst
+                                                ? 'bg-blue-600 text-white shadow-2xs'
+                                                : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        오늘
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedArrivalDate(tomorrowKst)}
+                                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                            selectedArrivalDate === tomorrowKst
+                                                ? 'bg-blue-600 text-white shadow-2xs'
+                                                : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        내일
+                                    </button>
+
+                                    {/* 다음날 버튼 */}
+                                    <button
+                                        type="button"
+                                        onClick={() => shiftArrivalDate(1)}
+                                        title="다음날 (+1일)"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-black text-xs transition cursor-pointer border border-gray-200 dark:border-slate-700"
+                                    >
+                                        ›
+                                    </button>
+
+                                    {/* 날짜 직접 입력 (캘린더 픽커) */}
+                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-800 p-0.5 px-2 rounded-lg border border-gray-200 dark:border-slate-700">
+                                        <span className="text-[11px] text-gray-400 font-medium">직접선택:</span>
+                                        <input
+                                            type="date"
+                                            value={selectedArrivalDate}
+                                            onChange={(e) => {
+                                                if (e.target.value) setSelectedArrivalDate(e.target.value);
+                                            }}
+                                            className="bg-transparent text-xs font-bold text-gray-800 dark:text-slate-200 outline-none cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* 현재 선택 날짜 요약 레이블 */}
+                                <div className="text-xs font-extrabold text-gray-700 dark:text-slate-300 flex items-center gap-1.5 ml-auto sm:ml-0">
+                                    <span>{getKstFullDateLabel(selectedArrivalDate)}</span>
+                                    {selectedArrivalDate === todayKst ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                                            오늘
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedArrivalDate(todayKst)}
+                                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                                        >
+                                            (오늘로 이동)
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* 실시간 로그 전용 날짜 선택 툴바 */}
                         {activeTab === 'logs' && (
                             <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-slate-800 text-xs">
@@ -806,7 +945,11 @@ export default function CheckinManagementPage() {
                             {/* 테이블 헤더 안내 */}
                             <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
                                 <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
-                                    <span>오늘 입실 게스트 목록</span>
+                                    <span>
+                                        {selectedArrivalDate === todayKst
+                                            ? '오늘 입실 게스트 목록'
+                                            : `${formatDateKst(selectedArrivalDate)} 입실 게스트 목록`}
+                                    </span>
                                     <span className="text-gray-400 dark:text-slate-500 text-xs font-bold">
                                         ({filteredTodayArrivals.length}팀)
                                     </span>
@@ -938,7 +1081,7 @@ export default function CheckinManagementPage() {
                                                                                 property_name: item.propertyName,
                                                                                 room_name: item.unitName || item.subName || '',
                                                                                 guest_name: item.guestName,
-                                                                                check_in: todayDate,
+                                                                                check_in: selectedArrivalDate || todayDate,
                                                                                 check_out: '',
                                                                                 q1_cleanliness: item.careSurvey!.cleanliness,
                                                                                 q2_facility: item.careSurvey!.facility,
@@ -1071,7 +1214,7 @@ export default function CheckinManagementPage() {
                                                                         property_name: item.propertyName,
                                                                         room_name: item.unitName || item.subName || '',
                                                                         guest_name: item.guestName,
-                                                                        check_in: todayDate,
+                                                                        check_in: selectedArrivalDate || todayDate,
                                                                         check_out: '',
                                                                         q1_cleanliness: item.careSurvey!.cleanliness,
                                                                         q2_facility: item.careSurvey!.facility,
