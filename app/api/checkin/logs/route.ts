@@ -75,8 +75,12 @@ export async function GET(request: Request) {
         matchedLogs.forEach((l) => {
             if (l.booking_id && l.event_type === 'CHECKIN_INFO_SUBMITTED') {
                 if (!checkinDetailsMap[l.booking_id] || new Date(l.created_at) > new Date(checkinDetailsMap[l.booking_id].submittedAt || 0)) {
+                    const meta = l.metadata || {};
                     checkinDetailsMap[l.booking_id] = {
-                        ...l.metadata,
+                        ...meta,
+                        airportArrivalTime: meta.flightArrivalTime || meta.airportArrivalTime,
+                        hasLuggageStorage: meta.luggageRequested ?? meta.hasLuggageStorage,
+                        luggageStorageTime: meta.luggageTime || meta.luggageStorageTime,
                         submittedAt: l.created_at,
                     };
                 }
