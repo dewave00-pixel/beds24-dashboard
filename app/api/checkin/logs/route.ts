@@ -54,13 +54,17 @@ export async function GET(request: Request) {
         // 2. 지정 날짜 입실 예약들과 관련된 로그 및 게스트 케어 조회 (booking_id 매칭)
         let matchedLogs: any[] = [];
         let matchedCareSurveys: any[] = [];
+        let matchedGuestDetails: any[] = [];
         if (todayBookingIds.length > 0) {
-            const [logsRes, careRes] = await Promise.all([
+            const [logsRes, careRes, detailsRes] = await Promise.all([
                 supabase.from('checkin_logs').select('*').in('booking_id', todayBookingIds),
                 supabase.from('guest_care_surveys').select('*').in('booking_id', todayBookingIds),
+                // 전용 테이블 guest_checkin_details가 생성되어 있는 경우 함께 조회 (미생성 시 에러 무시)
+                Promise.resolve(supabase.from('guest_checkin_details').select('*').in('booking_id', todayBookingIds)).catch(() => ({ data: null })),
             ]);
             matchedLogs = logsRes.data || [];
             matchedCareSurveys = careRes.data || [];
+            matchedGuestDetails = (detailsRes && 'data' in detailsRes && Array.isArray(detailsRes.data)) ? detailsRes.data : [];
         }
 
         const careSurveyMap: Record<number, any> = {};
@@ -70,7 +74,7 @@ export async function GET(request: Request) {
             }
         });
 
-        // 게스트 여정 / 체크인 세부 정보 매핑
+        // 게스트 여정 / 체크인 세부 정보 매핑 (checkin_logs 기반)
         const checkinDetailsMap: Record<number, any> = {};
         matchedLogs.forEach((l) => {
             if (l.booking_id && l.event_type === 'CHECKIN_INFO_SUBMITTED') {
@@ -84,6 +88,33 @@ export async function GET(request: Request) {
                         submittedAt: l.created_at,
                     };
                 }
+            }
+        });
+
+        // guest_checkin_details 전용 테이블 데이터가 있으면 병합/우선 적용
+        matchedGuestDetails.forEach((gd: any) => {
+            if (gd.booking_id) {
+                const existing = checkinDetailsMap[gd.booking_id] || {};
+                checkinDetailsMap[gd.booking_id] = {
+                    ...existing,
+                    hasFlight: gd.has_flight ?? existing.hasFlight,
+                    flightNumber: gd.flight_number || existing.flightNumber,
+                    flightArrivalTime: gd.flight_arrival_time || existing.flightArrivalTime,
+                    airportArrivalTime: gd.flight_arrival_time || existing.airportArrivalTime,
+                    flightDepartureTime: gd.flight_departure_time || existing.flightDepartureTime,
+                    tripStartDate: gd.trip_start_date || existing.tripStartDate,
+                    tripEndDate: gd.trip_end_date || existing.tripEndDate,
+                    estimatedArrivalTime: gd.estimated_arrival_time || existing.estimatedArrivalTime,
+                    estimatedCheckoutTime: gd.estimated_checkout_time || existing.estimatedCheckoutTime,
+                    earlyCheckinRequested: gd.early_checkin_requested ?? existing.earlyCheckinRequested,
+                    earlyCheckinTime: gd.early_checkin_time || existing.earlyCheckinTime,
+                    hasLuggageStorage: gd.luggage_requested ?? existing.hasLuggageStorage,
+                    luggageRequested: gd.luggage_requested ?? existing.luggageRequested,
+                    luggageTime: gd.luggage_time || existing.luggageTime,
+                    luggageStorageTime: gd.luggage_time || existing.luggageStorageTime,
+                    luggageCount: gd.luggage_count || existing.luggageCount,
+                    submittedAt: gd.updated_at || gd.created_at || existing.submittedAt,
+                };
             }
         });
 
