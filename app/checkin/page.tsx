@@ -39,15 +39,82 @@ export interface CareStats {
 }
 
 export interface CheckinGuestDetails {
+    hasFlight?: boolean;
     flightNumber?: string;
     departureCity?: string;
     airportArrivalTime?: string;
+    flightArrivalTime?: string;
+    flightDepartureTime?: string;
+    tripStartDate?: string;
+    tripEndDate?: string;
     estimatedArrivalTime?: string;
     estimatedCheckoutTime?: string;
     earlyCheckinTime?: string;
+    earlyCheckinRequested?: boolean;
     hasLuggageStorage?: boolean;
+    luggageRequested?: boolean;
+    luggageTime?: string;
     luggageStorageTime?: string;
+    luggageCount?: number;
     submittedAt?: string;
+}
+
+function renderCheckinDetailsBadges(details: CheckinGuestDetails) {
+    const flightArrival = details.flightArrivalTime || details.airportArrivalTime;
+    const flightDep = details.flightDepartureTime;
+    const hasLuggage = details.hasLuggageStorage ?? details.luggageRequested;
+    const luggageTime = details.luggageTime || details.luggageStorageTime;
+    const earlyTime = details.earlyCheckinTime;
+
+    return (
+        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+            {/* 1. 한국 체류 일정 */}
+            {details.tripStartDate && details.tripEndDate && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    🗓️ 체류 {details.tripStartDate.slice(5).replace('-', '.')} ~ {details.tripEndDate.slice(5).replace('-', '.')}
+                </span>
+            )}
+
+            {/* 2. 항공편 / 공항 도착 및 출국 시간 */}
+            {details.hasFlight === false ? (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                    🚶 항공 미이용
+                </span>
+            ) : (details.flightNumber || flightArrival) ? (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                    ✈️ {details.flightNumber ? `${details.flightNumber} ` : ''}도착 {flightArrival}{flightDep ? ` (출국 ${flightDep})` : ''}
+                </span>
+            ) : null}
+
+            {/* 3. 얼리 체크인 */}
+            {(earlyTime || details.earlyCheckinRequested) && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    ⏰ 얼리 {earlyTime || '신청'}
+                </span>
+            )}
+
+            {/* 4. 짐보관 */}
+            {hasLuggage && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    🧳 짐보관{luggageTime ? ` (${luggageTime})` : ''}
+                </span>
+            )}
+
+            {/* 5. 숙소 입실 예정 */}
+            {details.estimatedArrivalTime && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    🏠 입실예정 {details.estimatedArrivalTime}
+                </span>
+            )}
+
+            {/* 6. 퇴실 예정 */}
+            {details.estimatedCheckoutTime && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    🚪 퇴실예정 {details.estimatedCheckoutTime}
+                </span>
+            )}
+        </div>
+    );
 }
 
 interface TodayArrivalItem {
@@ -1024,35 +1091,7 @@ export default function CheckinManagementPage() {
                                                             <div className="text-[11px] text-gray-400 dark:text-slate-500 font-medium">
                                                                 예약 ID: #{item.bookingId}
                                                             </div>
-                                                            {item.checkinDetails && (
-                                                                <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                                                                    {(item.checkinDetails.flightNumber || item.checkinDetails.airportArrivalTime) && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                                                                            ✈️ {item.checkinDetails.flightNumber || '항공'}{item.checkinDetails.airportArrivalTime ? ` (${item.checkinDetails.airportArrivalTime})` : ''}
-                                                                        </span>
-                                                                    )}
-                                                                    {item.checkinDetails.earlyCheckinTime && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                                            ⏰ 얼리 {item.checkinDetails.earlyCheckinTime}
-                                                                        </span>
-                                                                    )}
-                                                                    {item.checkinDetails.hasLuggageStorage && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                                                            🧳 짐보관{item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
-                                                                        </span>
-                                                                    )}
-                                                                    {item.checkinDetails.estimatedArrivalTime && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                                                            🏠 입실예정 {item.checkinDetails.estimatedArrivalTime}
-                                                                        </span>
-                                                                    )}
-                                                                    {item.checkinDetails.estimatedCheckoutTime && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                                                            🚪 퇴실예정 {item.checkinDetails.estimatedCheckoutTime}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                            {item.checkinDetails && renderCheckinDetailsBadges(item.checkinDetails)}
                                                         </td>
 
                                                         {/* 채널 / 인원 */}
@@ -1171,35 +1210,7 @@ export default function CheckinManagementPage() {
                                                         <span className="text-[11px] text-gray-400 dark:text-slate-500">
                                                             #{item.bookingId} · {item.channel} · {item.numGuests}인
                                                         </span>
-                                                        {item.checkinDetails && (
-                                                            <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                                                                {(item.checkinDetails.flightNumber || item.checkinDetails.airportArrivalTime) && (
-                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                                                                        ✈️ {item.checkinDetails.flightNumber || '항공'}{item.checkinDetails.airportArrivalTime ? ` (${item.checkinDetails.airportArrivalTime})` : ''}
-                                                                    </span>
-                                                                )}
-                                                                {item.checkinDetails.earlyCheckinTime && (
-                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                                        ⏰ 얼리 {item.checkinDetails.earlyCheckinTime}
-                                                                    </span>
-                                                                )}
-                                                                {item.checkinDetails.hasLuggageStorage && (
-                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                                                        🧳 짐보관{item.checkinDetails.luggageStorageTime ? ` (${item.checkinDetails.luggageStorageTime})` : ''}
-                                                                    </span>
-                                                                )}
-                                                                {item.checkinDetails.estimatedArrivalTime && (
-                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                                                        🏠 입실예정 {item.checkinDetails.estimatedArrivalTime}
-                                                                    </span>
-                                                                )}
-                                                                {item.checkinDetails.estimatedCheckoutTime && (
-                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                                                        🚪 퇴실예정 {item.checkinDetails.estimatedCheckoutTime}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                        {item.checkinDetails && renderCheckinDetailsBadges(item.checkinDetails)}
                                                     </div>
 
                                                     <div className="text-right shrink-0 flex flex-col items-end gap-1">
