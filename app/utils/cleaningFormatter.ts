@@ -1,5 +1,5 @@
 import { Booking } from '../types';
-import { ALL_UNITS, parseBookingTag } from '../config';
+import { ALL_UNITS, parseBookingTag, formatEarlyLateTime24 } from '../config';
 import { isValidBooking, getUnitForBooking } from './bookingUtils';
 
 export interface CleaningAssignment {
@@ -45,7 +45,7 @@ export function generateCleaningShareText(
             : null;
         const lateTag = checkoutNoteData?.tags?.find((t) => t.startsWith('late_'));
         const checkoutTime = lateTag
-            ? `${lateTag.replace('late_', '')} (레이트 체크아웃)`
+            ? `${formatEarlyLateTime24(lateTag)} (레이트 체크아웃)`
             : '11:00 (체크아웃)';
 
         // 3. 체크인 시간 계산 (오늘 입실 손님의 얼리체크인 태그만 반영)
@@ -54,7 +54,7 @@ export function generateCleaningShareText(
             : null;
         const earlyTag = checkinNoteData?.tags?.find((t) => t.startsWith('early_'));
         const checkinTime = earlyTag
-            ? `${earlyTag.replace('early_', '')} (얼리 체크인)`
+            ? `${formatEarlyLateTime24(earlyTag)} (얼리 체크인)`
             : '17:00 (체크인 예정)';
 
         // 4. 순수 특이사항 태그 취합 (얼리/레이트 시간 태그는 상단 시간에 이미 표시되었으므로 중복 및 오염 제거, 이모티콘 없이 텍스트만)

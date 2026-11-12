@@ -209,7 +209,61 @@ export interface BookingTagDef {
 
 // 🏷️ 예약 상태 태그 설정 및 시간 옵션 마스터
 export const EARLY_CHECKIN_HOURS = ['오후 1시', '오후 2시', '오후 3시', '오후 4시'];
-export const LATE_CHECKOUT_HOURS = ['오후 1시', '오후 2시', '오후 3시'];
+export const LATE_CHECKOUT_HOURS = ['오후 12시', '오후 1시', '오후 2시', '오후 3시'];
+
+// 💰 얼리체크인 / 레이트체크아웃 시간별 추가 요금표
+export const EARLY_CHECKIN_FEE_MAP: Record<string, string> = {
+    '오후 1시': '60,000원',
+    '13:00': '60,000원',
+    '오후 2시': '40,000원',
+    '14:00': '40,000원',
+    '오후 3시': '20,000원',
+    '15:00': '20,000원',
+    '오후 4시': '10,000원',
+    '16:00': '10,000원',
+};
+
+export const LATE_CHECKOUT_FEE_MAP: Record<string, string> = {
+    '오후 12시': '10,000원',
+    '12:00': '10,000원',
+    '오후 1시': '20,000원',
+    '13:00': '20,000원',
+    '오후 2시': '40,000원',
+    '14:00': '40,000원',
+    '오후 3시': '60,000원',
+    '15:00': '60,000원',
+};
+
+// '13:00' ~ '16:00' 또는 '오후 1시' ~ '오후 4시'를 대시보드 드롭다운 표준값('오후 N시')으로 정규화
+export function normalizeEarlyCheckinHour(rawTagOrTime: string): string {
+    const t = rawTagOrTime.replace(/^early_/, '').trim();
+    if (t === '13:00' || t === '1시' || t === '오후 1시') return '오후 1시';
+    if (t === '14:00' || t === '2시' || t === '오후 2시') return '오후 2시';
+    if (t === '15:00' || t === '3시' || t === '오후 3시') return '오후 3시';
+    if (t === '16:00' || t === '4시' || t === '오후 4시') return '오후 4시';
+    return EARLY_CHECKIN_HOURS.includes(t) ? t : EARLY_CHECKIN_HOURS[1];
+}
+
+// '12:00' ~ '15:00' 또는 '오후 N시'를 레이트체크아웃 드롭다운 표준값으로 정규화
+export function normalizeLateCheckoutHour(rawTagOrTime: string): string {
+    const t = rawTagOrTime.replace(/^late_/, '').trim();
+    if (t === '12:00' || t === '12시' || t === '오후 12시') return '오후 12시';
+    if (t === '13:00' || t === '1시' || t === '오후 1시') return '오후 1시';
+    if (t === '14:00' || t === '2시' || t === '오후 2시') return '오후 2시';
+    if (t === '15:00' || t === '3시' || t === '오후 3시') return '오후 3시';
+    return LATE_CHECKOUT_HOURS.includes(t) ? t : '오후 1시';
+}
+
+// 대시보드 및 뱃지 표기용 24시간 포맷 변환 ('오후 2시' / '14:00' ➔ '14:00')
+export function formatEarlyLateTime24(rawTagOrTime: string): string {
+    const t = rawTagOrTime.replace(/^(early_|late_)/, '').trim();
+    if (t === '오후 12시' || t === '12시' || t === '12:00') return '12:00';
+    if (t === '오후 1시' || t === '1시' || t === '13:00') return '13:00';
+    if (t === '오후 2시' || t === '2시' || t === '14:00') return '14:00';
+    if (t === '오후 3시' || t === '3시' || t === '15:00') return '15:00';
+    if (t === '오후 4시' || t === '4시' || t === '16:00') return '16:00';
+    return t.replace('오후 ', '');
+}
 
 export interface BookingTagBadgeInfo {
     icon: string;
@@ -222,13 +276,12 @@ export interface BookingTagBadgeInfo {
 
 // 태그 키 문자열을 받아서 대시보드 카드에 노출할 뱃지 정보를 반환하는 모듈 함수 (상세 모달과 100% 동일 색상 테마)
 export function parseBookingTag(tagKey: string): BookingTagBadgeInfo | null {
-    // 1. 얼리체크인 (예: early_오후 2시) ➔ Blue
+    // 1. 얼리체크인 (예: early_오후 2시 또는 early_14:00) ➔ Blue
     if (tagKey.startsWith('early_')) {
-        const timeStr = tagKey.replace('early_', '');
-        const simpleTime = timeStr.replace('오후 ', '');
+        const displayTime = formatEarlyLateTime24(tagKey);
         return {
             icon: '',
-            label: `${simpleTime} 인`,
+            label: `${displayTime} 인`,
             bgClass: 'bg-blue-600',
             textClass: 'text-blue-900',
             borderClass: 'border-blue-500',
@@ -236,13 +289,12 @@ export function parseBookingTag(tagKey: string): BookingTagBadgeInfo | null {
         };
     }
 
-    // 2. 레이트체크아웃 (예: late_오후 1시) ➔ Indigo
+    // 2. 레이트체크아웃 (예: late_오후 1시 또는 late_13:00) ➔ Indigo
     if (tagKey.startsWith('late_')) {
-        const timeStr = tagKey.replace('late_', '');
-        const simpleTime = timeStr.replace('오후 ', '');
+        const displayTime = formatEarlyLateTime24(tagKey);
         return {
             icon: '',
-            label: `${simpleTime} 아웃`,
+            label: `${displayTime} 아웃`,
             bgClass: 'bg-indigo-600',
             textClass: 'text-indigo-900',
             borderClass: 'border-indigo-500',
