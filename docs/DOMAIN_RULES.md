@@ -143,14 +143,69 @@ ADR = 해당 범위 매출 / 판매된 객실 박수
 
 상세 화면 기획은 [ANALYTICS_SPEC.md](ANALYTICS_SPEC.md)를 함께 확인한다.
 
-## 9. 예약 메모와 태그
+## 9. 예약 메모와 태그 (`booking_notes`)
 
-- `booking_notes`는 Beds24 notes와 별도의 내부 운영 메모다.
+- `booking_notes`는 Beds24 notes와 별도의 내부 운영 메모다 (`dewave-checkin`과 공유).
 - Beds24 notes에 기록되는 데이터와 내부 메모를 혼동하지 않는다.
 - 사용자 입력 길이와 허용 태그를 서버에서 검증한다.
 - 예약 삭제·취소 시 내부 메모 보존 정책을 임의로 변경하지 않는다.
+- 외부 체크인 웹(`dewave-checkin`)에서 태그를 갱신할 때 **기존 관리자 메모(`note`)와 타 태그(`chicken`, `no_cleaning`, `repair`, `late_*`)는 절대 덮어쓰거나 삭제하지 않고 보존**한다.
 
-## 10. 도메인 변경 승인
+### 표준 태그 형식 및 얼리/레이트 요금 규칙
+
+- **얼리체크인 태그**:
+  - 대시보드 표준 저장값: `early_오후 1시`, `early_오후 2시`, `early_오후 3시`, `early_오후 4시`
+  - 24시간 호환값(`dewave-checkin` 유입 포함): `early_13:00`, `early_14:00`, `early_15:00`, `early_16:00`
+  - 대시보드(`app/config.ts`의 `normalizeEarlyCheckinHour`, `formatEarlyLateTime24`)는 두 형식을 모두 양방향 호환해야 한다.
+  - 시간대별 추가 요금(기본 입실 `17:00` 무료):
+    - `13:00` (`오후 1시`): `+60,000원`
+    - `14:00` (`오후 2시`): `+40,000원`
+    - `15:00` (`오후 3시`): `+20,000원`
+    - `16:00` (`오후 4시`): `+10,000원`
+- **레이트체크아웃 태그**:
+  - 대시보드 표준 저장값: `late_오후 12시`, `late_오후 1시`, `late_오후 2시`, `late_오후 3시` (24시간 형식 `late_12:00`~`late_15:00` 호환)
+  - 시간대별 추가 요금(기본 퇴실 `11:00` 무료):
+    - `12:00` (`오후 12시`): `+10,000원`
+    - `13:00` (`오후 1시`): `+20,000원`
+    - `14:00` (`오후 2시`): `+40,000원`
+    - `15:00` (`오후 3시`): `+60,000원`
+- **기타 상태 태그**: `no_cleaning` (청소안함), `repair` (수리/점검), `chicken` (리뷰 치킨 이벤트 - 정산 시 21,000원 차감)
+
+## 10. 외부 체크인 웹 (`dewave-checkin`) 공유 Supabase 데이터 계약
+
+`beds24-dashboard`(관리자용)와 `dewave-checkin`(게스트용)은 동일한 Supabase DB의 다음 테이블을 공유한다. 두 저장소는 독립된 워크스페이스에서 관리하되 아래 데이터 계약을 반드시 준수한다.
+
+### 공유 테이블 목록 및 역할
+
+1. `bookings`: `beds24-dashboard`가 Beds24로부터 동기화(Write), `dewave-checkin`은 예약 조회용(Read-only)으로만 사용
+2. `properties_info`: `beds24-dashboard`가 도어락 비밀번호·안내정보 관리(Write), `dewave-checkin`은 조회(Read-only)
+3. `booking_notes`: 양방향 공유 — `dewave-checkin`은 `note`를 보존한 채 `early_*` 태그만 동기화
+4. `checkin_logs`: `dewave-checkin`이 게스트 이벤트 기록(Write), `beds24-dashboard`(`/checkin`)가 조회(Read)
+5. `guest_care_surveys`: `dewave-checkin`이 케어 설문 기록(Write), `beds24-dashboard`(`/checkin`)가 조회(Read)
+6. `guest_checkin_details` (선택/전용 테이블): 테이블 존재 시 정규화 컬럼 upsert, 미존재 시 `checkin_logs`의 `CHECKIN_INFO_SUBMITTED` metadata를 원본으로 사용
+
+### `CHECKIN_INFO_SUBMITTED` (`checkin_logs.metadata`) 필수 정합성 규칙
+
+```json
+{
+  "hasFlight": true,
+  "tripStartDate": "YYYY-MM-DD",
+  "tripEndDate": "YYYY-MM-DD",
+  "flightArrivalTime": "HH:mm",
+  "flightDepartureTime": "HH:mm",
+  "estimatedArrivalTime": "14:00 | 17:00 | ...",
+  "earlyCheckinRequested": true,
+  "earlyCheckinTime": "13:00 | 14:00 | 15:00 | 16:00 | null",
+  "luggageRequested": false,
+  "luggageTime": "11:00 ~ 16:00 | null",
+  "luggageCount": 0
+}
+```
+
+- **모순 방지 불변조건**: `earlyCheckinRequested === true`이고 `earlyCheckinTime`이 존재할 때, `estimatedArrivalTime`이 기본값 `'17:00'`으로 따로 놀지 않도록 반드시 `estimatedArrivalTime = earlyCheckinTime`으로 일치시킨다.
+- **가짜 기본값 저장 금지**: 공항 도착/출국 시간(`flightArrivalTime`, `flightDepartureTime`), 숙소 도착 예정 시간(`estimatedArrivalTime`), 얼리체크인 희망 시간(`earlyCheckinTime`)에 임의의 기본값(`11:30`, `15:00`, `14:00` 등)을 미리 채워둔 채 제출되게 하지 않는다. 게스트가 직접 선택한 값만 저장한다.
+
+## 11. 도메인 변경 승인
 
 다음은 사용자 승인 없이 변경하지 않는다.
 
@@ -161,4 +216,5 @@ ADR = 해당 범위 매출 / 판매된 객실 박수
 - 예약 상태 필터
 - 겹침 판정 공식
 - 직접 수령 금액 태그 형식
+- 얼리체크인·레이트체크아웃 시간 및 요금 태그 규격 (`dewave-checkin` 공유 계약 포함)
 - 공휴일과 영업일 정책
