@@ -2,7 +2,17 @@
 
 import { useState } from 'react';
 import { Booking } from '../../types';
-import { getChannelStyle, EARLY_CHECKIN_HOURS, LATE_CHECKOUT_HOURS, PROPERTY_GROUPS } from '../../config';
+import {
+    getChannelStyle,
+    EARLY_CHECKIN_HOURS,
+    LATE_CHECKOUT_HOURS,
+    EARLY_CHECKIN_FEE_MAP,
+    LATE_CHECKOUT_FEE_MAP,
+    normalizeEarlyCheckinHour,
+    normalizeLateCheckoutHour,
+    formatEarlyLateTime24,
+    PROPERTY_GROUPS,
+} from '../../config';
 import { getUnitForBooking, findConflictingBookings, getCommissionInfo, getDirectExtensionPrice } from '../../utils/bookingUtils';
 import { formatKSTDateTime } from '../../utils/dateUtils';
 import StayExtensionSection from './StayExtensionSection';
@@ -97,11 +107,11 @@ export default function BookingModal({
 
     const currentEarlyTag = selectedTags.find((t) => t.startsWith('early_'));
     const isEarlyActive = Boolean(currentEarlyTag);
-    const earlyTime = currentEarlyTag ? currentEarlyTag.replace('early_', '') : EARLY_CHECKIN_HOURS[1];
+    const earlyTime = currentEarlyTag ? normalizeEarlyCheckinHour(currentEarlyTag) : EARLY_CHECKIN_HOURS[1];
 
     const currentLateTag = selectedTags.find((t) => t.startsWith('late_'));
     const isLateActive = Boolean(currentLateTag);
-    const lateTime = currentLateTag ? currentLateTag.replace('late_', '') : LATE_CHECKOUT_HOURS[0];
+    const lateTime = currentLateTag ? normalizeLateCheckoutHour(currentLateTag) : '오후 1시';
 
     const isNoCleaning = selectedTags.includes('no_cleaning');
     const isRepair = selectedTags.includes('repair');
@@ -370,7 +380,7 @@ export default function BookingModal({
                                         >
                                             {EARLY_CHECKIN_HOURS.map((h) => (
                                                 <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                    {h}
+                                                    {formatEarlyLateTime24(h)} ({h}) · +{EARLY_CHECKIN_FEE_MAP[h]}
                                                 </option>
                                             ))}
                                         </select>
@@ -406,7 +416,7 @@ export default function BookingModal({
                                         >
                                             {LATE_CHECKOUT_HOURS.map((h) => (
                                                 <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                    {h}
+                                                    {formatEarlyLateTime24(h)} ({h}) · +{LATE_CHECKOUT_FEE_MAP[h]}
                                                 </option>
                                             ))}
                                         </select>

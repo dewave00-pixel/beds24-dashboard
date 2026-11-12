@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import '../dashboard.css';
 import { useAuth } from '../hooks/useAuth';
 import AppSidebar from '../components/layout/AppSidebar';
+import { EARLY_CHECKIN_FEE_MAP, formatEarlyLateTime24 } from '../config';
 
 export interface CareSurveyInfo {
     id: string;
@@ -64,7 +65,17 @@ function renderCheckinDetailsBadges(details: CheckinGuestDetails) {
     const flightDep = details.flightDepartureTime;
     const hasLuggage = details.hasLuggageStorage ?? details.luggageRequested;
     const luggageTime = details.luggageTime || details.luggageStorageTime;
-    const earlyTime = details.earlyCheckinTime;
+    const earlyTimeRaw = details.earlyCheckinTime;
+    const isEarly = Boolean(earlyTimeRaw || details.earlyCheckinRequested);
+    const earlyTime = earlyTimeRaw ? formatEarlyLateTime24(earlyTimeRaw) : '';
+    const earlyFee = earlyTime ? EARLY_CHECKIN_FEE_MAP[earlyTime] : '';
+
+    // 얼리체크인을 신청했는데 estimatedArrivalTime이 기본값('17:00')이거나 얼리체크인 시간과 동일하면 중복/모순 뱃지 숨김
+    const estArrival = details.estimatedArrivalTime;
+    const shouldShowEstArrival = Boolean(
+        estArrival &&
+        !(isEarly && (estArrival.startsWith('17:00') || estArrival === earlyTime))
+    );
 
     return (
         <div className="flex flex-wrap items-center gap-1 mt-1.5">
@@ -86,10 +97,10 @@ function renderCheckinDetailsBadges(details: CheckinGuestDetails) {
                 </span>
             ) : null}
 
-            {/* 3. 얼리 체크인 */}
-            {(earlyTime || details.earlyCheckinRequested) && (
+            {/* 3. 얼리 체크인 (시간 + 요금 표시) */}
+            {isEarly && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    ⏰ 얼리 {earlyTime || '신청'}
+                    ⏰ 얼리 {earlyTime || '신청'}{earlyFee ? ` (+${earlyFee})` : ''}
                 </span>
             )}
 
@@ -101,9 +112,9 @@ function renderCheckinDetailsBadges(details: CheckinGuestDetails) {
             )}
 
             {/* 5. 숙소 입실 예정 */}
-            {details.estimatedArrivalTime && (
+            {shouldShowEstArrival && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                    🏠 입실예정 {details.estimatedArrivalTime}
+                    🏠 입실예정 {estArrival}
                 </span>
             )}
 

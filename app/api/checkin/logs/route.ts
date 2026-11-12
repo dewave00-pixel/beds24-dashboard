@@ -80,8 +80,14 @@ export async function GET(request: Request) {
             if (l.booking_id && l.event_type === 'CHECKIN_INFO_SUBMITTED') {
                 if (!checkinDetailsMap[l.booking_id] || new Date(l.created_at) > new Date(checkinDetailsMap[l.booking_id].submittedAt || 0)) {
                     const meta = l.metadata || {};
+                    const isEarly = Boolean(meta.earlyCheckinRequested && meta.earlyCheckinTime);
+                    const normalizedEstArrival = (isEarly && (!meta.estimatedArrivalTime || String(meta.estimatedArrivalTime).startsWith('17:00')))
+                        ? meta.earlyCheckinTime
+                        : meta.estimatedArrivalTime;
+
                     checkinDetailsMap[l.booking_id] = {
                         ...meta,
+                        estimatedArrivalTime: normalizedEstArrival,
                         airportArrivalTime: meta.flightArrivalTime || meta.airportArrivalTime,
                         hasLuggageStorage: meta.luggageRequested ?? meta.hasLuggageStorage,
                         luggageStorageTime: meta.luggageTime || meta.luggageStorageTime,
@@ -95,6 +101,15 @@ export async function GET(request: Request) {
         matchedGuestDetails.forEach((gd: any) => {
             if (gd.booking_id) {
                 const existing = checkinDetailsMap[gd.booking_id] || {};
+                const earlyReq = gd.early_checkin_requested ?? existing.earlyCheckinRequested;
+                const earlyTime = gd.early_checkin_time || existing.earlyCheckinTime;
+                const rawEstArrival = gd.estimated_arrival_time || existing.estimatedArrivalTime;
+                const normalizedEstArrival = (earlyReq && earlyTime && (!rawEstArrival || String(rawEstArrival).startsWith('17:00')))
+                    ? earlyTime
+                    : rawEstArrival;
+                const luggageReq = gd.luggage_storage_requested ?? gd.luggage_requested ?? existing.luggageRequested ?? existing.hasLuggageStorage;
+                const luggageTime = gd.luggage_storage_time || gd.luggage_time || existing.luggageTime || existing.luggageStorageTime;
+
                 checkinDetailsMap[gd.booking_id] = {
                     ...existing,
                     hasFlight: gd.has_flight ?? existing.hasFlight,
@@ -104,14 +119,14 @@ export async function GET(request: Request) {
                     flightDepartureTime: gd.flight_departure_time || existing.flightDepartureTime,
                     tripStartDate: gd.trip_start_date || existing.tripStartDate,
                     tripEndDate: gd.trip_end_date || existing.tripEndDate,
-                    estimatedArrivalTime: gd.estimated_arrival_time || existing.estimatedArrivalTime,
+                    estimatedArrivalTime: normalizedEstArrival,
                     estimatedCheckoutTime: gd.estimated_checkout_time || existing.estimatedCheckoutTime,
-                    earlyCheckinRequested: gd.early_checkin_requested ?? existing.earlyCheckinRequested,
-                    earlyCheckinTime: gd.early_checkin_time || existing.earlyCheckinTime,
-                    hasLuggageStorage: gd.luggage_requested ?? existing.hasLuggageStorage,
-                    luggageRequested: gd.luggage_requested ?? existing.luggageRequested,
-                    luggageTime: gd.luggage_time || existing.luggageTime,
-                    luggageStorageTime: gd.luggage_time || existing.luggageStorageTime,
+                    earlyCheckinRequested: earlyReq,
+                    earlyCheckinTime: earlyTime,
+                    hasLuggageStorage: luggageReq,
+                    luggageRequested: luggageReq,
+                    luggageTime: luggageTime,
+                    luggageStorageTime: luggageTime,
                     luggageCount: gd.luggage_count || existing.luggageCount,
                     submittedAt: gd.updated_at || gd.created_at || existing.submittedAt,
                 };
