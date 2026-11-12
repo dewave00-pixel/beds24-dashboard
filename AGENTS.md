@@ -56,6 +56,7 @@
 - 예약 변경은 Beds24 성공 확인 후 Supabase에 반영한다.
 - Supabase 반영 실패를 완전 성공으로 숨기지 않는다. 부분 성공을 식별하고 재동기화할 수 있어야 한다.
 - 청소 배정, 예약 메모, 숙소 정보, 사용자 프로필, 체크인 로그, 게스트 케어 설문은 애플리케이션 소유 데이터다.
+- 외부 고객용 체크인 웹(`dewave-checkin`)과 Supabase 테이블(`bookings`, `properties_info`, `booking_notes`, `checkin_logs`, `guest_care_surveys`)을 공유하므로, 태그 포맷(`early_*`)과 체크인 로그(`CHECKIN_INFO_SUBMITTED`) 구조 변경 시 반드시 [도메인 규칙](docs/DOMAIN_RULES.md)의 공유 DB 계약을 확인하고 양방향 호환성을 유지한다.
 
 ### 4.2 동기화 안전
 
