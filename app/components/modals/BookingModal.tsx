@@ -10,7 +10,6 @@ import {
     LATE_CHECKOUT_FEE_MAP,
     normalizeEarlyCheckinHour,
     normalizeLateCheckoutHour,
-    formatEarlyLateTime24,
     PROPERTY_GROUPS,
 } from '../../config';
 import { getUnitForBooking, findConflictingBookings, getCommissionInfo, getDirectExtensionPrice } from '../../utils/bookingUtils';
@@ -173,7 +172,7 @@ export default function BookingModal({
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-            <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
+            <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[90vh] border border-gray-300 dark:border-slate-700 my-auto">
 
                 {/* 상단 헤더 */}
                 <div
@@ -357,13 +356,13 @@ export default function BookingModal({
                             {/* 1. 얼리체크인 */}
                             <div
                                 onClick={handleEarlyToggle}
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isEarlyActive
+                                className={`p-2 rounded-lg border flex items-center justify-between gap-1.5 transition-all cursor-pointer min-w-0 ${isEarlyActive
                                     ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 border-2 shadow-sm'
                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <div className="flex items-center gap-2">
-                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-blue-900 dark:text-blue-300 shrink-0 whitespace-nowrap">
                                         <span>🕒</span>
                                         <span>얼리체크인</span>
                                     </span>
@@ -376,30 +375,30 @@ export default function BookingModal({
                                                 e.stopPropagation();
                                                 handleEarlyTimeChange(e.target.value);
                                             }}
-                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer shadow-xs"
+                                            className="py-0.5 px-1.5 text-xs font-bold bg-white dark:bg-slate-800 border border-blue-500 rounded text-blue-900 dark:text-blue-200 focus:outline-none cursor-pointer shadow-xs min-w-0 flex-1 truncate"
                                         >
                                             {EARLY_CHECKIN_HOURS.map((h) => (
                                                 <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                    {formatEarlyLateTime24(h)} ({h}) · +{EARLY_CHECKIN_FEE_MAP[h]}
+                                                    {h} (+{EARLY_CHECKIN_FEE_MAP[h]})
                                                 </option>
                                             ))}
                                         </select>
                                     )}
                                 </div>
 
-                                <span className="text-xs shrink-0">{isEarlyActive ? '✅' : '⬜'}</span>
+                                <span className="text-xs shrink-0 ml-1">{isEarlyActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 2. 레이트체크아웃 */}
                             <div
                                 onClick={handleLateToggle}
-                                className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${isLateActive
+                                className={`p-2 rounded-lg border flex items-center justify-between gap-1.5 transition-all cursor-pointer min-w-0 ${isLateActive
                                     ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 border-2 shadow-sm'
                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                <div className="flex items-center gap-2">
-                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span className="flex items-center gap-1.5 font-extrabold text-xs text-indigo-900 dark:text-indigo-300 shrink-0 whitespace-nowrap">
                                         <span>⏱️</span>
                                         <span>레이트체크아웃</span>
                                     </span>
@@ -412,18 +411,18 @@ export default function BookingModal({
                                                 e.stopPropagation();
                                                 handleLateTimeChange(e.target.value);
                                             }}
-                                            className="py-0.5 px-1.5 text-xs font-extrabold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer shadow-xs"
+                                            className="py-0.5 px-1.5 text-xs font-bold bg-white dark:bg-slate-800 border border-indigo-500 rounded text-indigo-900 dark:text-indigo-200 focus:outline-none cursor-pointer shadow-xs min-w-0 flex-1 truncate"
                                         >
                                             {LATE_CHECKOUT_HOURS.map((h) => (
                                                 <option key={h} value={h} className="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100">
-                                                    {formatEarlyLateTime24(h)} ({h}) · +{LATE_CHECKOUT_FEE_MAP[h]}
+                                                    {h} (+{LATE_CHECKOUT_FEE_MAP[h]})
                                                 </option>
                                             ))}
                                         </select>
                                     )}
                                 </div>
 
-                                <span className="text-xs shrink-0">{isLateActive ? '✅' : '⬜'}</span>
+                                <span className="text-xs shrink-0 ml-1">{isLateActive ? '✅' : '⬜'}</span>
                             </div>
 
                             {/* 3. 청소안함 */}
