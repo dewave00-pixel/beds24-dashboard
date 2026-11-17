@@ -26,6 +26,12 @@ const MENU_ITEMS: MenuItem[] = [
         name: '대시보드',
         href: '/',
         icon: '📊',
+        roles: ['admin'],
+    },
+    {
+        name: '스케줄 달력',
+        href: '/schedule',
+        icon: '📅',
         roles: ['admin', 'manager'],
     },
     {
