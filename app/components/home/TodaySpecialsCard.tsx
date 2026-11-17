@@ -23,7 +23,9 @@ interface TodaySpecialsCardProps {
     bookingNotes: BookingNotesMap;
     arrivalDetailsMap: Record<number, GuestArrivalDetailSummary>;
     unassignedCleaningCount?: number;
+    isCleaningLoading?: boolean;
     inventoryIssueCount?: number;
+    isInventoryLoading?: boolean;
     hasOverbooking?: boolean;
     onOpenInventoryModal?: () => void;
 }
@@ -48,7 +50,9 @@ export default function TodaySpecialsCard({
     bookingNotes,
     arrivalDetailsMap,
     unassignedCleaningCount = 0,
+    isCleaningLoading = false,
     inventoryIssueCount = 0,
+    isInventoryLoading = false,
     hasOverbooking = false,
     onOpenInventoryModal,
 }: TodaySpecialsCardProps) {
@@ -178,9 +182,11 @@ export default function TodaySpecialsCard({
                 <Link
                     href="/cleaning"
                     className={`px-3 py-2 rounded-xl border flex items-center justify-between transition text-xs font-extrabold ${
-                        unassignedCleaningCount > 0
-                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'
-                            : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/70'
+                        isCleaningLoading
+                            ? 'bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 animate-pulse'
+                            : unassignedCleaningCount > 0
+                                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                                : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/70'
                     }`}
                 >
                     <span className="flex items-center gap-1.5">
@@ -188,27 +194,30 @@ export default function TodaySpecialsCard({
                         <span>청소 미배정</span>
                     </span>
                     <span className="font-mono">
-                        {unassignedCleaningCount > 0 ? `${unassignedCleaningCount}실` : '완료 ✓'}
+                        {isCleaningLoading ? '확인 중…' : unassignedCleaningCount > 0 ? `${unassignedCleaningCount}실` : '완료 ✓'}
                     </span>
                 </Link>
 
                 <button
                     type="button"
+                    disabled={isInventoryLoading}
                     onClick={onOpenInventoryModal}
-                    className={`px-3 py-2 rounded-xl border flex items-center justify-between transition text-xs font-extrabold cursor-pointer ${
-                        inventoryIssueCount > 0
-                            ? hasOverbooking
-                                ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50'
-                                : 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50'
-                            : 'bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    className={`px-3 py-2 rounded-xl border flex items-center justify-between transition text-xs font-extrabold ${
+                        isInventoryLoading
+                            ? 'bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 animate-pulse cursor-wait'
+                            : inventoryIssueCount > 0
+                                ? hasOverbooking
+                                    ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer'
+                                    : 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 cursor-pointer'
+                                : 'bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer'
                     }`}
                 >
                     <span className="flex items-center gap-1.5">
-                        <span>{hasOverbooking ? '🚨' : '🔒'}</span>
+                        <span>{isInventoryLoading ? '🔒' : hasOverbooking ? '🚨' : '🔒'}</span>
                         <span>재고 이슈</span>
                     </span>
                     <span className="font-mono">
-                        {inventoryIssueCount > 0 ? `${inventoryIssueCount}건` : '정상 ✓'}
+                        {isInventoryLoading ? '확인 중…' : inventoryIssueCount > 0 ? `${inventoryIssueCount}건` : '정상 ✓'}
                     </span>
                 </button>
             </div>

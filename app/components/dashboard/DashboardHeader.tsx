@@ -15,6 +15,7 @@ export interface DashboardHeaderProps {
     isCleaningSummaryLoading?: boolean;
     hasCleaningSummaryError?: boolean;
     inventoryIssueCount?: number;
+    isInventoryLoading?: boolean;
     hasOverbooking?: boolean;
     onOpenInventoryModal?: () => void;
     viewMode: 'vertical' | 'horizontal';
@@ -40,6 +41,7 @@ export default function DashboardHeader({
     isCleaningSummaryLoading = false,
     hasCleaningSummaryError = false,
     inventoryIssueCount = 0,
+    isInventoryLoading = false,
     hasOverbooking = false,
     onOpenInventoryModal,
     viewMode = 'vertical',
@@ -80,8 +82,8 @@ export default function DashboardHeader({
                 </button>
 
                 <div className="flex items-center gap-1.5 text-gray-900 dark:text-slate-100 font-black text-sm md:text-base tracking-tight">
-                    <span>🏨</span>
-                    <span>예약 타임라인 대시보드</span>
+                    <span>📅</span>
+                    <span>스케줄 달력</span>
                     {isRealtimeConnected && (
                         <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 ml-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -192,11 +194,13 @@ export default function DashboardHeader({
                                     ? 'text-amber-900 dark:text-amber-200'
                                     : 'text-slate-700 dark:text-slate-300'
                         }`}>
-                            {hasOverbooking
-                                ? `초과 포함 ${inventoryIssueCount}건`
-                                : inventoryIssueCount > 0
-                                    ? `마감/축소 ${inventoryIssueCount}건`
-                                    : '정상 (0건)'}
+                            {isInventoryLoading
+                                ? '확인 중…'
+                                : hasOverbooking
+                                    ? `초과 포함 ${inventoryIssueCount}건`
+                                    : inventoryIssueCount > 0
+                                        ? `마감/축소 ${inventoryIssueCount}건`
+                                        : '정상 (0건)'}
                         </span>
                     </button>
                 )}

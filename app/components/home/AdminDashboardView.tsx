@@ -29,6 +29,7 @@ import {
 import AppSidebar from '../layout/AppSidebar';
 import DailyPickupReportSection from '../analytics/DailyPickupReportSection';
 import InventoryIssuesModal from '../modals/InventoryIssuesModal';
+import AdminDashboardSkeleton from './AdminDashboardSkeleton';
 import TodayPlatformBookingsCard from './TodayPlatformBookingsCard';
 import TodaySpecialsCard, { BookingNotesMap, GuestArrivalDetailSummary } from './TodaySpecialsCard';
 
@@ -78,6 +79,8 @@ export default function AdminDashboardView() {
     const [inventoryMap, setInventoryMap] = useState<Record<string, { numAvail: number; price: number }>>({});
     const [isInventoryModalOpen, setIsInventoryModalOpen] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isCleaningLoading, setIsCleaningLoading] = useState<boolean>(true);
+    const [isInventoryLoading, setIsInventoryLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
     const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('this_month');
@@ -91,6 +94,8 @@ export default function AdminDashboardView() {
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
         setLoading(true);
+        setIsCleaningLoading(true);
+        setIsInventoryLoading(true);
         setError(null);
 
         try {
@@ -133,6 +138,7 @@ export default function AdminDashboardView() {
             if (calendarData.success && calendarData.data) {
                 setInventoryMap(calendarData.data);
             }
+            setIsInventoryLoading(false);
 
             // 예약 데이터를 바탕으로 오늘 청소 미배정 계산용 이력/배정 조회
             const activeList = loadedBookings.filter((b) => isValidBooking(b));
@@ -146,11 +152,14 @@ export default function AdminDashboardView() {
                 setTodayAssignments(assignData.data || {});
                 setTodayCleaningHistory(assignData.history || {});
             }
+            setIsCleaningLoading(false);
         } catch (err) {
             console.error('대시보드 데이터 로딩 실패:', err);
             setError('대시보드 데이터를 불러오는 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);
+            setIsCleaningLoading(false);
+            setIsInventoryLoading(false);
             isFetchingRef.current = false;
         }
     }, [todayStr]);
@@ -217,17 +226,18 @@ export default function AdminDashboardView() {
     const activeBookings = useMemo(() => bookings.filter((b) => isValidBooking(b)), [bookings]);
 
     const unassignedCleaningCount = useMemo(() => {
+        if (loading || isCleaningLoading || bookings.length === 0) return 0;
         return ALL_UNITS.filter((unit) => {
             const status = getUnitCleaningStatus(unit, todayStr, activeBookings, todayCleaningHistory);
             return status.needsCleaning && !todayAssignments[unit.key];
         }).length;
-    }, [activeBookings, todayStr, todayCleaningHistory, todayAssignments]);
+    }, [loading, isCleaningLoading, bookings.length, activeBookings, todayStr, todayCleaningHistory, todayAssignments]);
 
     const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(activeBookings, ALL_UNITS), [activeBookings]);
     const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
 
     const inventoryIssues = useMemo<InventoryIssueItem[]>(() => {
-        if (!inventoryMap || Object.keys(inventoryMap).length === 0) return [];
+        if (loading || isInventoryLoading || bookings.length === 0 || !inventoryMap || Object.keys(inventoryMap).length === 0) return [];
         const list: InventoryIssueItem[] = [];
         for (let i = 0; i < 30; i++) {
             const dStr = addDaysToDateStr(todayStr, i);
@@ -258,7 +268,7 @@ export default function AdminDashboardView() {
             }
         }
         return list;
-    }, [inventoryMap, todayStr, bookedUnitDateSet, unitsByRoomId]);
+    }, [loading, isInventoryLoading, bookings.length, inventoryMap, todayStr, bookedUnitDateSet, unitsByRoomId]);
 
     const leadTimeStats = useMemo(
         () => calculateLeadTimeAndStayStats(revenueBookings, 'custom', startDate, endDate, 'all', 'all'),
@@ -332,12 +342,24 @@ export default function AdminDashboardView() {
                     </div>
                 </header>
 
+                {/* 상단 슬림 로딩 프로그레스 바 */}
+                {(loading || isCleaningLoading || isInventoryLoading) && (
+                    <div className="w-full h-1 bg-blue-100 dark:bg-slate-800 overflow-hidden shrink-0" role="progressbar" aria-label="데이터 불러오는 중">
+                        <div className="h-full w-1/2 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 animate-pulse rounded-r-full" />
+                    </div>
+                )}
+
                 <main className="p-3 md:p-5 flex-1 flex flex-col gap-4 max-w-[1600px] w-full mx-auto">
                     {error && (
                         <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs font-bold">
                             🚨 {error}
                         </div>
                     )}
+
+                    {loading && bookings.length === 0 ? (
+                        <AdminDashboardSkeleton />
+                    ) : (
+                        <>
 
                     {/* 2. 기간 필터 바 */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
@@ -511,7 +533,9 @@ export default function AdminDashboardView() {
                             bookingNotes={bookingNotes}
                             arrivalDetailsMap={arrivalDetailsMap}
                             unassignedCleaningCount={unassignedCleaningCount}
+                            isCleaningLoading={loading || isCleaningLoading}
                             inventoryIssueCount={inventoryIssues.length}
+                            isInventoryLoading={loading || isInventoryLoading}
                             hasOverbooking={inventoryIssues.some((i) => i.issueType === 'overbooked')}
                             onOpenInventoryModal={() => setIsInventoryModalOpen(true)}
                         />
@@ -567,6 +591,8 @@ export default function AdminDashboardView() {
                         currentOccupancyRate={overallSummary.occupancyRate}
                         hideDetailTable={true}
                     />
+                        </>
+                    )}
                 </main>
             </div>
 

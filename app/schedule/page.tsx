@@ -49,6 +49,7 @@ export default function SchedulePage() {
           isCleaningSummaryLoading={d.isTodayCleaningSummaryLoading}
           hasCleaningSummaryError={d.todayCleaningSummaryError}
           inventoryIssueCount={d.inventoryIssues.length}
+          isInventoryLoading={d.isInventoryLoading}
           hasOverbooking={d.inventoryIssues.some((i) => i.issueType === 'overbooked')}
           onOpenInventoryModal={() => d.setIsInventoryIssuesModalOpen(true)}
           viewMode={d.viewMode}
@@ -87,6 +88,13 @@ export default function SchedulePage() {
               onOpenTotalNotes={() => d.setIsTotalNotesOpen(true)}
             />
 
+            {/* 예약 로딩 중 상단 슬림 프로그레스 바 */}
+            {d.loading && (
+              <div className="w-full h-1 bg-blue-100 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-label="예약 일정 불러오는 중">
+                <div className="h-full w-1/2 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 animate-pulse rounded-r-full" />
+              </div>
+            )}
+
             {/* 타임라인 렌더링 (구글 시트형 줌 배율 제어 래퍼) */}
             <ZoomableTimelineWrapper
               zoomLevel={d.zoomLevel}
@@ -99,7 +107,7 @@ export default function SchedulePage() {
                   selectedDate={d.selectedDate}
                   bookings={d.bookings}
                   bookingNotes={d.bookingNotes}
-                  inventoryMap={d.inventoryMap}
+                  inventoryMap={d.isInventoryLoading ? {} : d.inventoryMap}
                   ROW_HEIGHT={ROW_HEIGHT}
                   displayDaysCount={d.displayDaysCount}
                   onDateClick={d.handleDateClick}
@@ -113,7 +121,7 @@ export default function SchedulePage() {
                   selectedDate={d.selectedDate}
                   bookings={d.bookings}
                   bookingNotes={d.bookingNotes}
-                  inventoryMap={d.inventoryMap}
+                  inventoryMap={d.isInventoryLoading ? {} : d.inventoryMap}
                   COL_WIDTH={COL_WIDTH_HORIZ}
                   ROW_HEIGHT={ROW_HEIGHT}
                   onDateClick={d.handleDateClick}
