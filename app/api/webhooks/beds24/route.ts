@@ -61,17 +61,16 @@ export async function POST(request: Request) {
         for (const item of bookingsToSave) {
             const bookingId = Number(item.id || item.bookId);
             const status = (item.status || '').toLowerCase().trim();
-            const price = Number(item.price) || 0;
             const isDeleteAction = item.action === 'delete';
 
-            // 삭제(deleted), 문의(inquiry)이거나 금액이 0원 이하인 무료 취소 건은 DB에서 삭제
-            if (isDeleteAction || status === 'deleted' || status === 'inquiry' || (status === 'cancelled' && price <= 0)) {
+            // 영구 삭제(delete action / deleted), 단순 문의(inquiry)만 DB에서 삭제하고,
+            // 취소(cancelled) 건은 노쇼/일반취소 판별을 위해 DB에 보존
+            if (isDeleteAction || status === 'deleted' || status === 'inquiry') {
                 if (bookingId) {
-                    console.log(`🗑️ [Beds24 Webhook] 예약 삭제/문의/무료취소 감지 -> DB에서 삭제: ID ${bookingId}`);
+                    console.log(`🗑️ [Beds24 Webhook] 예약 삭제/문의 감지 -> DB에서 삭제: ID ${bookingId}`);
                     await deleteBookingFromSupabase(bookingId);
                 }
             } else {
-                // 활성 예약 및 위약금이 발생한 취소 건(price > 0)은 Supabase에 upsert 보존
                 activeBookings.push(item);
             }
         }

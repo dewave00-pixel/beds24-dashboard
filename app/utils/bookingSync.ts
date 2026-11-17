@@ -48,22 +48,20 @@ export function formatBeds24ToSupabaseRow(b: any): SupabaseBookingRow {
 
 /**
  * 여러 예약 데이터를 Supabase bookings 테이블에 일괄 upsert (중복 시 최신으로 갱신)
- * 🛡️ inquiry(단순 문의), cancelled(취소), deleted(삭제) 건은 DB 저장 자체를 원천 차단
+ * 🛡️ inquiry(단순 문의), deleted(삭제) 건은 DB 저장 자체를 원천 차단
+ * ℹ️ cancelled(취소) 건은 위약금(price > 0) 및 무료취소(price <= 0) 모두 대시보드 취소/노쇼 판별을 위해 보존
  */
 export async function upsertBookingsToSupabase(beds24Bookings: any[]): Promise<{ success: boolean; count: number; error?: string }> {
     if (!beds24Bookings || beds24Bookings.length === 0) {
         return { success: true, count: 0 };
     }
 
-    // 🛡️ 유효한 활성 예약 및 위약금 발생 취소 예약 필터링 (단순 문의 inquiry, 삭제, 무료 취소 제외)
+    // 🛡️ 유효한 활성 예약 및 취소 예약 보존 (단순 문의 inquiry, 삭제 deleted만 제외)
     const validBookings = beds24Bookings.filter((b) => {
         if (!b) return false;
         const status = (b.status || '').toLowerCase().trim();
         if (status === 'deleted' || status === 'inquiry') return false;
-        if (status === 'cancelled') {
-            // 위약금/정산 금액(price > 0)이 있는 취소 건만 매출 집계를 위해 보존
-            return (Number(b.price) || 0) > 0;
-        }
+        if (status === 'cancelled') return true;
         return isValidBooking(b);
     });
     if (validBookings.length === 0) {
@@ -134,18 +132,14 @@ export async function syncAllBookingsWithSupabase(
         // 2. 동기화 날짜 범위가 주어진 경우, 삭제된 유령 예약(Ghost Bookings) 및 취소/문의 데이터 청소
         let deletedGhostCount = 0;
 
-        // DB에 혹시 남아있는 inquiry / deleted 상태 및 무료 취소(금액 0원) 데이터 선제적 정리
+        // DB에 혹시 남아있는 inquiry / deleted 상태 데이터만 선제적 정리 (cancelled는 무료취소 포함 대시보드 현황용으로 유지)
         const { data: invalidDbRows } = await supabase
             .from('bookings')
-            .select('id, status, price')
-            .or('status.eq.inquiry,status.eq.deleted,status.eq.cancelled');
+            .select('id, status')
+            .or('status.eq.inquiry,status.eq.deleted');
 
         if (invalidDbRows && invalidDbRows.length > 0) {
-            // 취소 건 중 위약금(price > 0)이 있는 건은 매출 보존을 위해 유지하고,
-            // 나머지(inquiry, deleted, 금액 0원 이하인 cancelled)만 정리
-            const invalidIds = invalidDbRows
-                .filter((r: any) => r.status !== 'cancelled' || (Number(r.price) || 0) <= 0)
-                .map((r: any) => Number(r.id));
+            const invalidIds = invalidDbRows.map((r: any) => Number(r.id));
 
             if (invalidIds.length > 0) {
                 const chunkSize = 500;
@@ -154,7 +148,7 @@ export async function syncAllBookingsWithSupabase(
                     await supabase.from('bookings').delete().in('id', chunk);
                     deletedGhostCount += chunk.length;
                 }
-                console.log(`🧹 [Reconciliation] DB 내 문의/삭제/무료취소 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
+                console.log(`🧹 [Reconciliation] DB 내 문의/삭제 잔여 데이터 ${invalidIds.length}건 자동 청소 완료`);
             }
         }
 
@@ -169,13 +163,13 @@ export async function syncAllBookingsWithSupabase(
         }
 
         if (arrivalFrom && arrivalTo) {
-            // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 삭제, 무료 취소 건 제외
+            // Beds24 API에 존재하는 유효한 예약 ID 목록 (Set) - inquiry, 삭제 건만 제외 (cancelled는 보존)
             const beds24ValidIds = new Set(
                 beds24Bookings
                     .filter((b) => {
                         const status = (b.status || '').toLowerCase().trim();
                         if (status === 'deleted' || status === 'inquiry') return false;
-                        if (status === 'cancelled') return (Number(b.price) || 0) > 0;
+                        if (status === 'cancelled') return true;
                         return isValidBooking(b);
                     })
                     .map((b) => Number(b.id || b.bookId))
