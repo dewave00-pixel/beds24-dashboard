@@ -382,7 +382,7 @@ export function useDashboard() {
     const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
 
     const inventoryIssues = useMemo<InventoryIssueItem[]>(() => {
-        if (!inventoryMap || Object.keys(inventoryMap).length === 0) return [];
+        if (loading || bookings.length === 0 || !inventoryMap || Object.keys(inventoryMap).length === 0) return [];
         const list: InventoryIssueItem[] = [];
 
         for (const dStr of timelineDates) {
@@ -705,6 +705,7 @@ export function useDashboard() {
         isRealtimeConnected,
         inventoryMap,
         inventoryIssues,
+        isInventoryLoading: loading || Object.keys(inventoryMap).length === 0,
         isInventoryIssuesModalOpen,
         setIsInventoryIssuesModalOpen,
     };

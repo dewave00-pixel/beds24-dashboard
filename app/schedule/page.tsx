@@ -49,6 +49,7 @@ export default function SchedulePage() {
           isCleaningSummaryLoading={d.isTodayCleaningSummaryLoading}
           hasCleaningSummaryError={d.todayCleaningSummaryError}
           inventoryIssueCount={d.inventoryIssues.length}
+          isInventoryLoading={d.isInventoryLoading}
           hasOverbooking={d.inventoryIssues.some((i) => i.issueType === 'overbooked')}
           onOpenInventoryModal={() => d.setIsInventoryIssuesModalOpen(true)}
           viewMode={d.viewMode}
