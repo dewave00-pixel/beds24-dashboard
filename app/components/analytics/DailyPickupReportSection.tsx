@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import { ALL_UNITS, getChannelStyle } from '../../config';
-import { getUnitForBooking, calculateNetPayout, isRevenueBooking } from '../../utils/bookingUtils';
+import { getUnitForBooking, calculateNetPayout, isRevenueBooking, getBookingDateKST } from '../../utils/bookingUtils';
 import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface DailyPickupReportSectionProps {
@@ -14,6 +14,8 @@ interface DailyPickupReportSectionProps {
     selectedUnitKey?: string;
     currentOccupancyRate?: number; // 상단 KPI 표준 가동률 (동기화용)
     onSelectBooking?: (booking: Booking) => void;
+    hideDetailTable?: boolean;
+    allBookingsWithCancelled?: Booking[];
 }
 
 export default function DailyPickupReportSection({
@@ -24,6 +26,8 @@ export default function DailyPickupReportSection({
     selectedUnitKey = 'all',
     currentOccupancyRate,
     onSelectBooking,
+    hideDetailTable = false,
+    allBookingsWithCancelled,
 }: DailyPickupReportSectionProps) {
     // 📅 오늘, 어제, 현재 월 시작일 (기준일 퀵 옵션 및 미래 월 판별용)
     const { todayStr, yesterdayStr, currentMonthStart } = useMemo(() => {
@@ -214,7 +218,17 @@ export default function DailyPickupReportSection({
         };
     }, [matchingValidBookings, asOfDateStr, startDate, endDate, totalCapacityNights, currentOccupancyRate]);
 
-    // 🧮 2. 기준일 이후 일별 누적 유입 곡선 데이터 (Pace Progression)
+    // 🧮 2. 기준일 이후 일별 누적 유입 + 취소 하락 곡선 데이터 (Pace Progression)
+    const matchingCancelledBookings = useMemo(() => {
+        const source = allBookingsWithCancelled || bookings;
+        return source.filter((b) => {
+            if ((b.status || '').toLowerCase().trim() !== 'cancelled') return false;
+            const unit = getUnitForBooking(b);
+            if (!unit || !activeUnitKeySet.has(unit.key)) return false;
+            return b.arrival <= endDate && b.departure > startDate;
+        });
+    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, startDate, endDate]);
+
     const paceTimeline = useMemo(() => {
         // 기준일(asOfDateStr) 당일부터 추적 시작
         const cur = new Date(asOfDateStr);
@@ -232,6 +246,9 @@ export default function DailyPickupReportSection({
             dayNights: number;
             dayOccPpt: number;
             dayRev: number;
+            cancelledNights: number;
+            cancelledOccPpt: number;
+            cancelledCount: number;
             cumulativeOccRate: number;
             cumulativeNights: number;
             dayBookingsCount: number;
@@ -286,7 +303,30 @@ export default function DailyPickupReportSection({
                 }
             });
 
+            let cancelledNights = 0;
+            let cancelledCount = 0;
+            matchingCancelledBookings.forEach((b) => {
+                const cancelDate = b.modified ? getBookingDateKST(b.modified, b.arrival) : '';
+                if (cancelDate !== dateStr) return;
+
+                const dep = new Date(b.departure);
+                const cDate = new Date(b.arrival);
+                let overlap = 0;
+                while (cDate < dep) {
+                    const s = formatLocalDate(cDate);
+                    if (s >= startDate && s <= endDate) {
+                        overlap++;
+                    }
+                    cDate.setDate(cDate.getDate() + 1);
+                }
+                if (overlap > 0) {
+                    cancelledNights += overlap;
+                    cancelledCount++;
+                }
+            });
+
             const dayOccPpt = totalCapacityNights > 0 ? (dayNights / totalCapacityNights) * 100 : 0;
+            const cancelledOccPpt = totalCapacityNights > 0 ? (cancelledNights / totalCapacityNights) * 100 : 0;
             runningOccRate += dayOccPpt;
             runningNights += dayNights;
 
@@ -298,6 +338,9 @@ export default function DailyPickupReportSection({
                 dayNights,
                 dayOccPpt,
                 dayRev,
+                cancelledNights,
+                cancelledOccPpt,
+                cancelledCount,
                 cumulativeOccRate: Math.min(100, runningOccRate),
                 cumulativeNights: runningNights,
                 dayBookingsCount: dayCount,
@@ -307,7 +350,14 @@ export default function DailyPickupReportSection({
         }
 
         return items;
-    }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, startDate, totalCapacityNights]);
+    }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, matchingCancelledBookings, startDate, totalCapacityNights]);
+
+    const totalCancelledInTimeline = useMemo(() => {
+        const nights = paceTimeline.reduce((acc, i) => acc + i.cancelledNights, 0);
+        const ppt = paceTimeline.reduce((acc, i) => acc + i.cancelledOccPpt, 0);
+        const count = paceTimeline.reduce((acc, i) => acc + i.cancelledCount, 0);
+        return { nights, ppt, count };
+    }, [paceTimeline]);
 
     // 기준일 퀵 프리셋 핸들러
     const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
@@ -627,21 +677,30 @@ export default function DailyPickupReportSection({
             <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span>📊 일자별 가동률 유입 & 누적 증가 추이</span>
+                        <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center flex-wrap gap-2">
+                            <span>📊 일자별 가동률 유입 & 취소 하락 추이</span>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 font-mono font-bold">
                                 {asOfDateStr.slice(5)} 이전 {paceSummary.preOccRate.toFixed(1)}% ➔ 최종 {paceSummary.finalOccRate.toFixed(1)}%
                             </span>
+                            {totalCancelledInTimeline.nights > 0 && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 font-mono font-bold">
+                                    취소 하락 -{totalCancelledInTimeline.ppt.toFixed(1)}%p (-{totalCancelledInTimeline.nights}박 / {totalCancelledInTimeline.count}건)
+                                </span>
+                            )}
                         </h4>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            기준일({asOfDateStr})부터 매일매일 신규 예약이 들어올 때마다 가동률이 몇 %p씩 차올랐는지 보여줍니다.
+                            기준일({asOfDateStr})부터 매일 신규 유입(+%p)과 취소로 인한 가동률 하락(-%p)을 함께 보여줍니다.
                         </p>
                     </div>
 
-                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3 self-start sm:self-center">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3 self-start sm:self-center flex-wrap">
                         <span className="flex items-center gap-1.5 font-medium">
                             <span className="w-2.5 h-2.5 rounded-xs bg-indigo-500 inline-block" />
-                            일일 신규 유입 (+%p)
+                            신규 유입 (+%p)
+                        </span>
+                        <span className="flex items-center gap-1.5 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 inline-block" />
+                            취소 하락 (-%p)
                         </span>
                         <span className="flex items-center gap-1.5 font-medium">
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
@@ -664,25 +723,38 @@ export default function DailyPickupReportSection({
                                 {paceTimeline.map((item) => {
                                     const heightPercent = Math.max(6, Math.min(100, (item.dayOccPpt / maxDayOccPpt) * 100));
                                     const isHotDay = item.dayOccPpt > 0;
+                                    const hasCancel = item.cancelledOccPpt > 0;
 
                                     return (
                                         <div
                                             key={item.dateStr}
                                             className="flex flex-col items-center gap-1 h-full justify-end group relative"
-                                            title={`${item.dateStr}: +${item.dayOccPpt.toFixed(1)}%p 유입 (+${item.dayNights}박 / ₩${Math.round(item.dayRev).toLocaleString()}) ➔ 누적 ${item.cumulativeOccRate.toFixed(1)}%`}
+                                            title={`${item.dateStr}: 유입 +${item.dayOccPpt.toFixed(1)}%p (+${item.dayNights}박)${hasCancel ? ` / 취소 -${item.cancelledOccPpt.toFixed(1)}%p (-${item.cancelledNights}박)` : ''} ➔ 누적 ${item.cumulativeOccRate.toFixed(1)}%`}
                                         >
                                             {/* 호버 시 툴팁 */}
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none absolute -top-12 z-20 bg-slate-900 text-white text-[10px] font-mono rounded px-2 py-1 shadow-lg whitespace-nowrap">
-                                                +{item.dayOccPpt.toFixed(1)}%p (+{item.dayNights}박)
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none absolute -top-14 z-20 bg-slate-900 text-white text-[10px] font-mono rounded px-2 py-1 shadow-lg whitespace-nowrap">
+                                                <div>+{item.dayOccPpt.toFixed(1)}%p (+{item.dayNights}박)</div>
+                                                {hasCancel && (
+                                                    <div className="text-rose-400 font-bold">
+                                                        취소 -{item.cancelledOccPpt.toFixed(1)}%p (-{item.cancelledNights}박)
+                                                    </div>
+                                                )}
                                                 <div className="text-emerald-300 font-bold">
                                                     누적 {item.cumulativeOccRate.toFixed(1)}%
                                                 </div>
                                             </div>
 
-                                            {/* 바 상단: 증가폭 */}
-                                            <span className={`text-[10px] font-mono font-bold leading-none ${isHotDay ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-600'}`}>
-                                                {item.dayOccPpt > 0 ? `+${item.dayOccPpt.toFixed(1)}` : '·'}
-                                            </span>
+                                            {/* 바 상단: 유입 증가폭 & 취소 하락폭 */}
+                                            <div className="flex flex-col items-center leading-none gap-0.5">
+                                                {hasCancel && (
+                                                    <span className="text-[9px] font-mono font-black text-rose-600 dark:text-rose-400 leading-none">
+                                                        -{item.cancelledOccPpt.toFixed(1)}
+                                                    </span>
+                                                )}
+                                                <span className={`text-[10px] font-mono font-bold leading-none ${isHotDay ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-600'}`}>
+                                                    {item.dayOccPpt > 0 ? `+${item.dayOccPpt.toFixed(1)}` : '·'}
+                                                </span>
+                                            </div>
 
                                             {/* 막대 */}
                                             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-sm h-20 flex items-end overflow-hidden">
@@ -720,6 +792,7 @@ export default function DailyPickupReportSection({
             </div>
 
             {/* 5. 📋 세부 예약 목록 (사후 유입 건 vs 사전 확보 건 토글) */}
+            {!hideDetailTable && (
             <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2">
@@ -859,6 +932,7 @@ export default function DailyPickupReportSection({
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 }

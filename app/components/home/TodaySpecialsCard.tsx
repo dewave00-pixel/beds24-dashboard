@@ -22,6 +22,10 @@ interface TodaySpecialsCardProps {
     bookings: Booking[];
     bookingNotes: BookingNotesMap;
     arrivalDetailsMap: Record<number, GuestArrivalDetailSummary>;
+    unassignedCleaningCount?: number;
+    inventoryIssueCount?: number;
+    hasOverbooking?: boolean;
+    onOpenInventoryModal?: () => void;
 }
 
 type FilterTab = 'all' | 'checkin' | 'checkout' | 'cancelled';
@@ -43,6 +47,10 @@ export default function TodaySpecialsCard({
     bookings,
     bookingNotes,
     arrivalDetailsMap,
+    unassignedCleaningCount = 0,
+    inventoryIssueCount = 0,
+    hasOverbooking = false,
+    onOpenInventoryModal,
 }: TodaySpecialsCardProps) {
     const [activeTab, setActiveTab] = useState<FilterTab>('all');
     const [onlySpecialOrCancelled, setOnlySpecialOrCancelled] = useState<boolean>(true);
@@ -163,6 +171,46 @@ export default function TodaySpecialsCard({
                         체크인 관리 →
                     </Link>
                 </div>
+            </div>
+
+            {/* 청소 미배정 & 재고 점검 요약 바 */}
+            <div className="grid grid-cols-2 gap-2">
+                <Link
+                    href="/cleaning"
+                    className={`px-3 py-2 rounded-xl border flex items-center justify-between transition text-xs font-extrabold ${
+                        unassignedCleaningCount > 0
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                            : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/70'
+                    }`}
+                >
+                    <span className="flex items-center gap-1.5">
+                        <span>🧹</span>
+                        <span>청소 미배정</span>
+                    </span>
+                    <span className="font-mono">
+                        {unassignedCleaningCount > 0 ? `${unassignedCleaningCount}실` : '완료 ✓'}
+                    </span>
+                </Link>
+
+                <button
+                    type="button"
+                    onClick={onOpenInventoryModal}
+                    className={`px-3 py-2 rounded-xl border flex items-center justify-between transition text-xs font-extrabold cursor-pointer ${
+                        inventoryIssueCount > 0
+                            ? hasOverbooking
+                                ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50'
+                                : 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50'
+                            : 'bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }`}
+                >
+                    <span className="flex items-center gap-1.5">
+                        <span>{hasOverbooking ? '🚨' : '🔒'}</span>
+                        <span>재고 이슈</span>
+                    </span>
+                    <span className="font-mono">
+                        {inventoryIssueCount > 0 ? `${inventoryIssueCount}건` : '정상 ✓'}
+                    </span>
+                </button>
             </div>
 
             {/* 취소/노쇼 요약 배지 바 */}

@@ -16,6 +16,7 @@ export interface Booking {
     price?: number;
     notes?: string;
     bookingTime?: string;
+    modified?: string;
     country?: string;
     lang?: string;
     phone?: string;

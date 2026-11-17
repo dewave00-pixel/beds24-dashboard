@@ -92,7 +92,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
     const includeCancelledInQuery = scopeMode === 'analytics' || scopeMode === 'home';
     let query = supabase
         .from('bookings')
-        .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data')
+        .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data, updated_at')
         .neq('status', 'deleted')
         .neq('status', 'inquiry')
         .order('arrival', { ascending: true })
@@ -153,6 +153,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
         price: row.price || 0,
         notes: row.notes || '',
         bookingTime: row.raw_data?.bookingTime || row.raw_data?.booking_time || row.raw_data?.created || row.arrival,
+        modified: row.raw_data?.modified || row.updated_at || '',
         country: row.raw_data?.country || row.raw_data?.guestCountry || '',
         lang: row.raw_data?.lang || row.raw_data?.language || '',
         phone: row.raw_data?.phone || row.raw_data?.mobile || '',

@@ -2,15 +2,24 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Booking } from '../../types';
+import { useRouter } from 'next/navigation';
+import { Booking, InventoryIssueItem } from '../../types';
 import { ALL_UNITS } from '../../config';
 import { useRealtimeBookings } from '../../hooks/useRealtimeBookings';
 import { useOtaAdCosts } from '../../hooks/useOtaAdCosts';
-import { getKSTTodayStr } from '../../utils/dateUtils';
-import { isRevenueBooking } from '../../utils/bookingUtils';
+import { addDaysToDateStr, getKSTTodayStr } from '../../utils/dateUtils';
+import {
+    getBookedUnitDateSet,
+    getUnitsByRoomIdMap,
+    getVacantUnitInventoryStatus,
+    isRevenueBooking,
+    isValidBooking,
+} from '../../utils/bookingUtils';
+import { getCleaningHistoryDates, getUnitCleaningStatus } from '../../utils/cleaningStatus';
 import {
     calculateOverallSummary,
     calculateLeadTimeAndStayStats,
+    calculatePropertyStats,
     formatLocalDate,
 } from '../../utils/analyticsCalculations';
 import {
@@ -19,8 +28,16 @@ import {
 } from '../../utils/adCostCalculations';
 import AppSidebar from '../layout/AppSidebar';
 import DailyPickupReportSection from '../analytics/DailyPickupReportSection';
+import InventoryIssuesModal from '../modals/InventoryIssuesModal';
 import TodayPlatformBookingsCard from './TodayPlatformBookingsCard';
 import TodaySpecialsCard, { BookingNotesMap, GuestArrivalDetailSummary } from './TodaySpecialsCard';
+
+const PROPERTY_BADGE_MAP: Record<string, { label: string; badgeClass: string }> = {
+    WAVE: { label: '웨이브 (WAVE)', badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300' },
+    YEONNAM: { label: '연남 (YEONNAM)', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' },
+    Green: { label: '그린 (Green)', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' },
+    Horang: { label: '호랑 (Horang)', badgeClass: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' },
+};
 
 type QuickPeriod = 'this_month' | 'last_month' | 'last_30_days';
 
@@ -46,6 +63,7 @@ function getKstLast30DaysRange(): { start: string; end: string } {
 }
 
 export default function AdminDashboardView() {
+    const router = useRouter();
     const todayStr = useMemo(() => getKSTTodayStr(), []);
     const initialRange = useMemo(() => getKstMonthRange(0), []);
 
@@ -53,6 +71,12 @@ export default function AdminDashboardView() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [bookingNotes, setBookingNotes] = useState<BookingNotesMap>({});
     const [arrivalDetailsMap, setArrivalDetailsMap] = useState<Record<number, GuestArrivalDetailSummary>>({});
+    const [todayAssignments, setTodayAssignments] = useState<Record<string, unknown>>({});
+    const [todayCleaningHistory, setTodayCleaningHistory] = useState<
+        Record<string, Record<string, { isCompleted?: boolean; staffName?: string; completedAt?: string }>>
+    >({});
+    const [inventoryMap, setInventoryMap] = useState<Record<string, { numAvail: number; price: number }>>({});
+    const [isInventoryModalOpen, setIsInventoryModalOpen] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -70,20 +94,24 @@ export default function AdminDashboardView() {
         setError(null);
 
         try {
-            const [resRes, notesRes, checkinRes] = await Promise.all([
+            const [resRes, notesRes, checkinRes, calendarRes] = await Promise.all([
                 fetch('/api/reservations?scope=home', { cache: 'no-store' }),
                 fetch('/api/notes', { cache: 'no-store' }),
                 fetch(`/api/checkin/logs?arrivalDate=${todayStr}`, { cache: 'no-store' }),
+                fetch(`/api/beds24/calendar?startDate=${todayStr}&days=30`, { cache: 'no-store' }),
             ]);
 
-            const [resData, notesData, checkinData] = await Promise.all([
+            const [resData, notesData, checkinData, calendarData] = await Promise.all([
                 resRes.json(),
                 notesRes.json(),
                 checkinRes.json().catch(() => ({ success: false })),
+                calendarRes.json().catch(() => ({ success: false })),
             ]);
 
+            let loadedBookings: Booking[] = [];
             if (resData.success && Array.isArray(resData.data)) {
-                setBookings(resData.data);
+                loadedBookings = resData.data;
+                setBookings(loadedBookings);
             } else {
                 setError(resData.error || '예약 데이터를 불러오지 못했습니다.');
             }
@@ -100,6 +128,23 @@ export default function AdminDashboardView() {
                     }
                 }
                 setArrivalDetailsMap(map);
+            }
+
+            if (calendarData.success && calendarData.data) {
+                setInventoryMap(calendarData.data);
+            }
+
+            // 예약 데이터를 바탕으로 오늘 청소 미배정 계산용 이력/배정 조회
+            const activeList = loadedBookings.filter((b) => isValidBooking(b));
+            const historyDates = getCleaningHistoryDates(ALL_UNITS, todayStr, activeList);
+            const assignUrl = historyDates.length > 0
+                ? `/api/assignments?targetDate=${todayStr}&historyDates=${encodeURIComponent(historyDates.join(','))}`
+                : `/api/assignments?targetDate=${todayStr}`;
+            const assignRes = await fetch(assignUrl, { cache: 'no-store' });
+            const assignData = await assignRes.json().catch(() => ({ success: false }));
+            if (assignData.success) {
+                setTodayAssignments(assignData.data || {});
+                setTodayCleaningHistory(assignData.history || {});
             }
         } catch (err) {
             console.error('대시보드 데이터 로딩 실패:', err);
@@ -161,6 +206,59 @@ export default function AdminDashboardView() {
 
     const totalAvailableNights = ALL_UNITS.length * overallSummary.periodDays;
     const revPar = Math.round((overallSummary.adr * overallSummary.occupancyRate) / 100);
+
+    // 건물별 매출 통계
+    const propertyStats = useMemo(
+        () => calculatePropertyStats(revenueBookings, 'custom', startDate, endDate, 'stay'),
+        [revenueBookings, startDate, endDate]
+    );
+
+    // 활성 예약만 추출 (청소 미배정 & 재고 점검용)
+    const activeBookings = useMemo(() => bookings.filter((b) => isValidBooking(b)), [bookings]);
+
+    const unassignedCleaningCount = useMemo(() => {
+        return ALL_UNITS.filter((unit) => {
+            const status = getUnitCleaningStatus(unit, todayStr, activeBookings, todayCleaningHistory);
+            return status.needsCleaning && !todayAssignments[unit.key];
+        }).length;
+    }, [activeBookings, todayStr, todayCleaningHistory, todayAssignments]);
+
+    const bookedUnitDateSet = useMemo(() => getBookedUnitDateSet(activeBookings, ALL_UNITS), [activeBookings]);
+    const unitsByRoomId = useMemo(() => getUnitsByRoomIdMap(ALL_UNITS), []);
+
+    const inventoryIssues = useMemo<InventoryIssueItem[]>(() => {
+        if (!inventoryMap || Object.keys(inventoryMap).length === 0) return [];
+        const list: InventoryIssueItem[] = [];
+        for (let i = 0; i < 30; i++) {
+            const dStr = addDaysToDateStr(todayStr, i);
+            for (const unit of ALL_UNITS) {
+                if (bookedUnitDateSet.has(`${unit.key}_${dStr}`)) continue;
+                const inv = inventoryMap[`${unit.roomId}_${dStr}`];
+                if (!inv) continue;
+                const status = getVacantUnitInventoryStatus(unit, dStr, bookedUnitDateSet, unitsByRoomId, inv);
+                if (status.isOverbooked || status.isClosed) {
+                    list.push({
+                        id: `${unit.key}_${dStr}`,
+                        dateStr: dStr,
+                        unitKey: unit.key,
+                        propName: unit.propName || '',
+                        displayName: unit.displayName,
+                        subName: unit.subName,
+                        roomId: unit.roomId,
+                        unitId: unit.unitId,
+                        themeClass: unit.themeClass || '',
+                        numAvail: inv.numAvail,
+                        price: inv.price,
+                        issueType: status.isOverbooked ? 'overbooked' : (inv.numAvail === 0 ? 'zero_inventory' : 'reduced_inventory'),
+                        vacantIndex: status.vacantIndex,
+                        vacantCount: status.vacantCount,
+                        totalUnits: status.totalUnits,
+                    });
+                }
+            }
+        }
+        return list;
+    }, [inventoryMap, todayStr, bookedUnitDateSet, unitsByRoomId]);
 
     const leadTimeStats = useMemo(
         () => calculateLeadTimeAndStayStats(revenueBookings, 'custom', startDate, endDate, 'all', 'all'),
@@ -359,6 +457,51 @@ export default function AdminDashboardView() {
                         </div>
                     </div>
 
+                    {/* 3-1. 건물별 매출 요약 */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 shadow-xs flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base">🏢</span>
+                                <h3 className="text-sm font-extrabold text-gray-900 dark:text-slate-100">
+                                    건물별 매출 현황 ({startDate} ~ {endDate})
+                                </h3>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400">
+                                체크아웃 정산 기준
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                            {propertyStats.map((prop) => {
+                                const badge = PROPERTY_BADGE_MAP[prop.propName] || {
+                                    label: prop.propName,
+                                    badgeClass: 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-200',
+                                };
+                                return (
+                                    <div
+                                        key={prop.propName}
+                                        className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-800 flex flex-col gap-1.5"
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`px-2 py-0.5 rounded text-[11px] font-extrabold ${badge.badgeClass}`}>
+                                                {badge.label}
+                                            </span>
+                                            <span className="text-[11px] font-bold text-gray-500 dark:text-slate-400 font-mono">
+                                                비중 {prop.revenueShare}%
+                                            </span>
+                                        </div>
+                                        <div className="text-lg font-black text-gray-900 dark:text-slate-100 font-mono">
+                                            {loading ? '...' : `${prop.totalRevenue.toLocaleString()}원`}
+                                        </div>
+                                        <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-slate-400 font-mono">
+                                            <span>가동률 {prop.occupancyRate}%</span>
+                                            <span>ADR {prop.adr.toLocaleString()}원</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {/* 4. 메인 2열: 플랫폼별 당일 예약 현황 + 오늘 체크인/체크아웃 특이사항(취소 포함) */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <TodayPlatformBookingsCard todayStr={todayStr} bookings={revenueBookings} />
@@ -367,6 +510,10 @@ export default function AdminDashboardView() {
                             bookings={bookings}
                             bookingNotes={bookingNotes}
                             arrivalDetailsMap={arrivalDetailsMap}
+                            unassignedCleaningCount={unassignedCleaningCount}
+                            inventoryIssueCount={inventoryIssues.length}
+                            hasOverbooking={inventoryIssues.some((i) => i.issueType === 'overbooked')}
+                            onOpenInventoryModal={() => setIsInventoryModalOpen(true)}
                         />
                     </div>
 
@@ -411,15 +558,27 @@ export default function AdminDashboardView() {
                         </div>
                     </div>
 
-                    {/* 6. 일일 예약 유입 (Pick-up) 리포트 */}
+                    {/* 6. 일일 예약 유입 (Pick-up) 및 취소 하락 차트 (하단 세부 표 제외) */}
                     <DailyPickupReportSection
                         bookings={revenueBookings}
+                        allBookingsWithCancelled={bookings}
                         startDate={startDate}
                         endDate={endDate}
                         currentOccupancyRate={overallSummary.occupancyRate}
+                        hideDetailTable={true}
                     />
                 </main>
             </div>
+
+            <InventoryIssuesModal
+                isOpen={isInventoryModalOpen}
+                issues={inventoryIssues}
+                onClose={() => setIsInventoryModalOpen(false)}
+                onSelectDate={() => {
+                    setIsInventoryModalOpen(false);
+                    router.push('/schedule');
+                }}
+            />
         </div>
     );
 }
