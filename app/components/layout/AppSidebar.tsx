@@ -23,16 +23,16 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
     {
-        name: '대시보드',
-        href: '/',
-        icon: '📊',
-        roles: ['admin'],
-    },
-    {
         name: '스케줄 달력',
-        href: '/schedule',
+        href: '/',
         icon: '📅',
         roles: ['admin', 'manager'],
+    },
+    {
+        name: '대시보드',
+        href: '/dashboard',
+        icon: '📊',
+        roles: ['admin'],
     },
     {
         name: '매출/통계',

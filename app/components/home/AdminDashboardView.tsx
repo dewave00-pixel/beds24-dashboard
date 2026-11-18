@@ -317,7 +317,7 @@ export default function AdminDashboardView() {
 
                     <div className="flex items-center gap-1.5 md:gap-2">
                         <Link
-                            href="/schedule"
+                            href="/"
                             className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-xl border border-blue-200 dark:border-blue-800 transition flex items-center gap-1"
                         >
                             <span>📅</span>
@@ -602,7 +602,7 @@ export default function AdminDashboardView() {
                 onClose={() => setIsInventoryModalOpen(false)}
                 onSelectDate={() => {
                     setIsInventoryModalOpen(false);
-                    router.push('/schedule');
+                    router.push('/');
                 }}
             />
         </div>
