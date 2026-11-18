@@ -183,6 +183,7 @@ export default function TodayPlatformBookingsCard({
                                     b.roomId,
                                     Boolean(b.isChicken)
                                 );
+                                const adr = Math.round(net / nights);
                                 const guestName = `${b.firstName || ''} ${b.lastName || ''}`.trim() || '게스트';
 
                                 return (
@@ -202,12 +203,15 @@ export default function TodayPlatformBookingsCard({
                                                 {unit ? `${unit.propName} ${unit.displayName}` : '미배정'}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
+                                        <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
                                             <span className="text-gray-500 dark:text-slate-400 hidden sm:inline">
                                                 {b.arrival.slice(5)}~{b.departure.slice(5)} ({nights}박)
                                             </span>
                                             <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
                                                 {net.toLocaleString()}원
+                                            </span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold border border-amber-300/60 dark:border-amber-800/60">
+                                                ADR {adr.toLocaleString()}원
                                             </span>
                                         </div>
                                     </div>
