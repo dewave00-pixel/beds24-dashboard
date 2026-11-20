@@ -78,6 +78,7 @@ export function useDashboard() {
     };
 
     const isFetchingReservationsRef = useRef<boolean>(false);
+    const lastReservationsFetchAtRef = useRef<number>(0);
 
     // 2. Beds24 실시간 예약 데이터 불러오기 (forceSync=true 시 Beds24 본사 직접 긁어오기)
     const fetchReservations = async (forceSync: boolean = false) => {
@@ -93,6 +94,7 @@ export function useDashboard() {
             if (data.success) {
                 const list = Array.isArray(data.data) ? data.data : [];
                 setBookings(list.filter((b: Booking) => isValidBooking(b)));
+                lastReservationsFetchAtRef.current = Date.now();
             } else {
                 setError(data.error || '예약 데이터를 불러오지 못했습니다.');
             }
@@ -175,14 +177,29 @@ export function useDashboard() {
     // 🛡️ 백그라운드 증분 동기화 동시 호출 방지 락(Ref)
     const isIncrementalSyncingRef = useRef<boolean>(false);
 
-    // ⚡ 간섭 없는 안전한 백그라운드 증분 동기화 헬퍼 (수동 동기화 중이거나 중복 실행 시 자동 차단)
+    // ⚡ 간섭 없는 안전한 백그라운드 증분 동기화 헬퍼 (수동 동기화 중이거나 중복 실행/쿨타임 시 자동 차단)
     const triggerIncrementalSync = async (minutes: number = 30) => {
         if (isSyncing || isIncrementalSyncingRef.current) return;
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
+        // 클라이언트 15분 쿨타임: 다중 탭이나 잦은 새로고침으로 인한 서버 CPU 낭비 방지
+        try {
+            const lastSyncStr = localStorage.getItem('beds24_last_inc_sync_at');
+            if (lastSyncStr && Date.now() - Number(lastSyncStr) < 15 * 60 * 1000) {
+                return;
+            }
+        } catch {
+            // localStorage 접근 불가 무시
+        }
+
         isIncrementalSyncingRef.current = true;
         try {
             const res = await fetch(`/api/sync/incremental?minutes=${minutes}`, { cache: 'no-store' });
             if (res.ok) {
                 const result = await res.json();
+                try {
+                    localStorage.setItem('beds24_last_inc_sync_at', String(Date.now()));
+                } catch {}
                 // 실제로 밤새 변경/신규 건이 감지되어 DB에 들어간 경우, UI 최신 데이터 반영
                 if (result.success && (result.upsertCount > 0 || result.deleteCount > 0)) {
                     console.log(`⚡ [Incremental Sync] 변경 감지됨 (Upsert: ${result.upsertCount}, Delete: ${result.deleteCount}) -> 대시보드 갱신`);
@@ -200,18 +217,20 @@ export function useDashboard() {
         // 1. 기존 Supabase 캐시로 0.1초 만에 화면 즉시 렌더링
         reloadAll();
 
-        // 2. 🚀 첫 대시보드 진입 시: 밤새(최근 24시간) 들어온 예약이 누락되지 않도록 백그라운드 증분 동기화 1회 자동 실행
+        // 2. 🚀 첫 대시보드 진입 시: 밤새(최근 24시간) 들어온 예약이 누락되지 않도록 백그라운드 증분 동기화 1회 자동 실행 (15분 쿨타임 적용)
         triggerIncrementalSync(1440);
 
-        // 3. 15분마다 가벼운 증분 동기화 자동 호출 (웹훅 누락 완벽 방어)
+        // 3. 30분마다 가벼운 증분 동기화 자동 호출 (활성 탭일 때만 실행)
         const syncInterval = setInterval(() => {
-            triggerIncrementalSync(30);
-        }, 15 * 60 * 1000);
+            triggerIncrementalSync(45);
+        }, 30 * 60 * 1000);
 
-        // 📱 모바일/PC 탭 화면 복귀 시(비활성 -> 활성) 최신 데이터 자동 확인
+        // 📱 모바일/PC 탭 화면 복귀 시(비활성 -> 활성): 이미 Realtime이 연결되어 있으므로 3분 이상 경과 시에만 재조회
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                fetchReservations(false);
+                if (Date.now() - lastReservationsFetchAtRef.current > 3 * 60 * 1000) {
+                    fetchReservations(false);
+                }
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -322,8 +341,9 @@ export function useDashboard() {
     );
     const todayCleaningHistoryDatesKey = todayCleaningHistoryDates.join(',');
 
-    // 오늘 청소 배정 및 직전 청소 이력 조회
+    // 오늘 청소 배정 및 직전 청소 이력 조회 (초기 예약 로딩 중 빈 bookings로 인한 이중 호출 방지)
     useEffect(() => {
+        if (loading && bookings.length === 0) return;
         const controller = new AbortController();
 
         const fetchTodayCleaningSummary = async () => {
@@ -359,7 +379,7 @@ export function useDashboard() {
 
         fetchTodayCleaningSummary();
         return () => controller.abort();
-    }, [bookings, todayStr, todayCleaningHistoryDatesKey]);
+    }, [loading, bookings, todayStr, todayCleaningHistoryDatesKey]);
 
     // 예약 건수가 아닌 실제 호실(unit.key) 기준으로 청소 필요 + 미배정 객실만 계산
     const unassignedCleaningCount = useMemo(() => {
