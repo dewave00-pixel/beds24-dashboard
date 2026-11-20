@@ -73,10 +73,10 @@ export async function POST(req: NextRequest) {
                 redirectTo = '/';
             } else if (profile.role === 'manager' || profile.role === 'staff_1') {
                 role = 'manager';
-                redirectTo = '/schedule';
+                redirectTo = '/';
             } else if (profile.staff_id === 'staff_1' || profile.staff_id === 'manager') {
                 role = 'manager';
-                redirectTo = '/schedule';
+                redirectTo = '/';
             } else if (profile.staff_id) {
                 role = profile.staff_id;
                 redirectTo = '/cleaning/my';

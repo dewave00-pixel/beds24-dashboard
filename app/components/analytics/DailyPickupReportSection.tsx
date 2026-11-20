@@ -133,8 +133,11 @@ export default function DailyPickupReportSection({
         const postBookings: { booking: Booking; overlapNights: number; netPayout: number; revenue: number }[] = [];
 
         let preStayNights = 0;
+        let preCheckoutNights = 0;
         let preRevenue = 0;
         let postPickupNights = 0;
+        let postCheckoutNights = 0;
+        let postNextMonthNights = 0;
         let postRevenue = 0;
 
         matchingValidBookings.forEach((b) => {
@@ -155,9 +158,13 @@ export default function DailyPickupReportSection({
                 }
             }
 
-            // 2) 체크아웃 기준 정산 매출 (총매출 탭과 100% 일치)
+            // 2) 체크아웃 기준 정산 매출 및 정산 박수 (calculateOverallSummary와 100% 일치)
             const isCheckoutInPeriod = b.departure >= startDate && b.departure <= endDate;
             const revenue = isCheckoutInPeriod ? netPayout : 0;
+            const totalBookingNights = b.status !== 'cancelled'
+                ? Math.max(1, Math.round((dep.getTime() - arr.getTime()) / (1000 * 60 * 60 * 24)))
+                : 0;
+            const checkoutNights = isCheckoutInPeriod ? totalBookingNights : 0;
 
             if (overlapNights > 0 || isCheckoutInPeriod) {
                 const bDate = getBookingDate(b);
@@ -166,16 +173,22 @@ export default function DailyPickupReportSection({
                 if (bDate < asOfDateStr) {
                     preBookings.push(item);
                     preStayNights += overlapNights;
+                    preCheckoutNights += checkoutNights;
                     preRevenue += revenue;
                 } else {
                     postBookings.push(item);
                     postPickupNights += overlapNights;
+                    postCheckoutNights += checkoutNights;
+                    if (!isCheckoutInPeriod && overlapNights > 0) {
+                        postNextMonthNights += overlapNights;
+                    }
                     postRevenue += revenue;
                 }
             }
         });
 
         const totalStayNights = preStayNights + postPickupNights;
+        const totalCheckoutNights = preCheckoutNights + postCheckoutNights;
         const totalRevenue = preRevenue + postRevenue;
 
         // 가동률 산출
@@ -183,10 +196,10 @@ export default function DailyPickupReportSection({
         const postOccPpt = totalCapacityNights > 0 ? (postPickupNights / totalCapacityNights) * 100 : 0;
         const finalOccRate = currentOccupancyRate !== undefined ? currentOccupancyRate : (totalCapacityNights > 0 ? (totalStayNights / totalCapacityNights) * 100 : 0);
 
-        // 사전/사후/최종 ADR 및 선확보 대비 변동률
-        const preAdr = preStayNights > 0 ? preRevenue / preStayNights : 0;
-        const postAdr = postPickupNights > 0 ? postRevenue / postPickupNights : 0;
-        const finalAdr = totalStayNights > 0 ? totalRevenue / totalStayNights : 0;
+        // 사전/사후/최종 ADR (분자·분모 모두 체크아웃 정산 기준으로 일치)
+        const preAdr = preCheckoutNights > 0 ? preRevenue / preCheckoutNights : 0;
+        const postAdr = postCheckoutNights > 0 ? postRevenue / postCheckoutNights : 0;
+        const finalAdr = totalCheckoutNights > 0 ? totalRevenue / totalCheckoutNights : 0;
 
         // 선확보 대비 픽업 ADR 변동률 (%)
         const postAdrDiff = postAdr - preAdr;
@@ -204,6 +217,8 @@ export default function DailyPickupReportSection({
             preOccRate,
             preAdr,
             postPickupNights,
+            postCheckoutNights,
+            postNextMonthNights,
             postRevenue,
             postOccPpt,
             postAdr,
@@ -593,13 +608,20 @@ export default function DailyPickupReportSection({
                             <span>추가 발생 매출</span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                 +₩{Math.round(paceSummary.postRevenue).toLocaleString()}
+                                {paceSummary.postNextMonthNights > 0 && (
+                                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                        (익월 정산 {paceSummary.postNextMonthNights}박)
+                                    </span>
+                                )}
                             </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-dashed border-emerald-100 dark:border-emerald-900/40">
                             <span className="font-medium text-emerald-800 dark:text-emerald-300">픽업 객단가(ADR)</span>
                             <div className="flex items-center gap-1.5">
                                 <span className="font-black text-emerald-700 dark:text-emerald-300">
-                                    ₩{Math.round(paceSummary.postAdr).toLocaleString()}
+                                    {paceSummary.postCheckoutNights === 0 && paceSummary.postNextMonthNights > 0
+                                        ? '익월 정산'
+                                        : `₩${Math.round(paceSummary.postAdr).toLocaleString()}`}
                                 </span>
                                 {paceSummary.preAdr > 0 && paceSummary.postAdr > 0 && (
                                     <span
@@ -848,7 +870,11 @@ export default function DailyPickupReportSection({
                                     const b = item.booking;
                                     const unit = getUnitForBooking(b);
                                     const chStyle = getChannelStyle(b.apiSourceId);
-                                    const adr = item.overlapNights > 0 && item.revenue > 0 ? item.revenue / item.overlapNights : (item.revenue > 0 ? item.revenue : 0);
+                                    const totalBookingNights = Math.max(
+                                        1,
+                                        Math.round((new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24))
+                                    );
+                                    const adr = b.status !== 'cancelled' ? Math.round(item.netPayout / totalBookingNights) : 0;
                                     const guestFullName = [b.lastName, b.firstName].filter(Boolean).join(' ') || '고객명 미기재';
 
                                     return (

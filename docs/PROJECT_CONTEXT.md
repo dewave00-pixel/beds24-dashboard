@@ -29,8 +29,8 @@ npm run start
 
 | 경로 | 목적 | 현재 주요 사용자 |
 |---|---|---|
-| `/` | 운영 요약 대시보드 (총매출, 당일 유입, 리드타임, 오늘 체크인/아웃 특이사항·취소) | admin |
-| `/schedule` | 예약 타임라인(스케줄 달력), 검색, 메모, 호실 배정, 연박 연장 | admin, manager |
+| `/` | 예약 타임라인(스케줄 달력), 검색, 메모, 호실 배정, 연박 연장 | admin, manager |
+| `/dashboard` | 운영 요약 대시보드 (총매출, 건물별 매출, 당일 유입, 리드타임, 오늘 체크인/아웃 특이사항·취소) | admin |
 | `/analytics` | 매출, 가동률, ADR, 공실, OTA 분석 | admin |
 | `/cleaning` | 전체 청소 배정 | admin |
 | `/cleaning/my` | 본인 청소 목록과 완료 처리 | manager, staff |
