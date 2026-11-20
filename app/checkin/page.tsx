@@ -195,7 +195,7 @@ export default function CheckinManagementPage() {
     const [eventFilter, setEventFilter] = useState<string>('ALL'); // 전체 로그 필터
     const [logDateFilter, setLogDateFilter] = useState<string>('ALL'); // 로그 날짜 필터 ('ALL' | 'YYYY-MM-DD')
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [autoRefreshSec, setAutoRefreshSec] = useState<number>(15); // 15s 기본
+    const [autoRefreshSec, setAutoRefreshSec] = useState<number>(60); // 60s 기본 (서버 CPU 부하 절감)
     const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
     // 상세 모달 및 피드백 상태
@@ -290,10 +290,11 @@ export default function CheckinManagementPage() {
         fetchCareData();
     }, [fetchData, fetchCareData]);
 
-    // 3. 자동 새로고침 타이머
+    // 3. 자동 새로고침 타이머 (백그라운드 탭일 때는 서버 호출 생략)
     useEffect(() => {
         if (autoRefreshSec <= 0) return;
         const timer = setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
             fetchData();
             if (activeTab === 'care') {
                 fetchCareData();

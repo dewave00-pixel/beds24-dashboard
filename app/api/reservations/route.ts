@@ -87,12 +87,14 @@ async function syncFromBeds24(): Promise<any[]> {
     return allBookings;
 }
 
-// Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼
+// Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼 (raw_data 전체 대신 필요한 JSON 필드만 추출)
 async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 'default' | 'analytics' | 'home' = 'default') {
     const includeCancelledInQuery = scopeMode === 'analytics' || scopeMode === 'home';
     let query = supabase
         .from('bookings')
-        .select('id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, raw_data, updated_at')
+        .select(
+            'id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, updated_at, bookingTime:raw_data->>bookingTime, booking_time:raw_data->>booking_time, created:raw_data->>created, modified:raw_data->>modified, country:raw_data->>country, guestCountry:raw_data->>guestCountry, lang:raw_data->>lang, language:raw_data->>language, phone:raw_data->>phone, mobile:raw_data->>mobile'
+        )
         .neq('status', 'deleted')
         .neq('status', 'inquiry')
         .order('arrival', { ascending: true })
@@ -152,12 +154,12 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
         apiSourceId: row.api_source_id,
         price: row.price || 0,
         notes: row.notes || '',
-        bookingTime: row.raw_data?.bookingTime || row.raw_data?.booking_time || row.raw_data?.created || row.arrival,
-        modified: row.raw_data?.modified || row.updated_at || '',
-        country: row.raw_data?.country || row.raw_data?.guestCountry || '',
-        lang: row.raw_data?.lang || row.raw_data?.language || '',
-        phone: row.raw_data?.phone || row.raw_data?.mobile || '',
-        mobile: row.raw_data?.mobile || row.raw_data?.phone || '',
+        bookingTime: row.bookingTime || row.booking_time || row.created || row.arrival,
+        modified: row.modified || row.updated_at || '',
+        country: row.country || row.guestCountry || '',
+        lang: row.lang || row.language || '',
+        phone: row.phone || row.mobile || '',
+        mobile: row.mobile || row.phone || '',
         isChicken: chickenBookingIds.has(Number(row.id)),
     }));
 

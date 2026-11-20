@@ -103,7 +103,7 @@ export default function AdminDashboardView() {
                 fetch('/api/reservations?scope=home', { cache: 'no-store' }),
                 fetch('/api/notes', { cache: 'no-store' }),
                 fetch(`/api/checkin/logs?arrivalDate=${todayStr}`, { cache: 'no-store' }),
-                fetch(`/api/beds24/calendar?startDate=${todayStr}&days=30`, { cache: 'no-store' }),
+                fetch(`/api/beds24/calendar?startDate=${todayStr}&endDate=${addDaysToDateStr(todayStr, 30)}`, { cache: 'no-store' }),
             ]);
 
             const [resData, notesData, checkinData, calendarData] = await Promise.all([

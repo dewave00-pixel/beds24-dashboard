@@ -9,6 +9,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const PROPERTY_IDS = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
 
+// ⏱️ 서버 측 중복 호출 방지 쿨타임 (3분 이내 동일 인스턴스 재호출 시 Beds24 API 스킵)
+let lastIncrementalSyncAt = 0;
+const SERVER_SYNC_COOLDOWN_MS = 3 * 60 * 1000;
+
 /**
  * ⚡ Beds24 초경량 증분 동기화 API (Incremental Sync)
  * 전체 예약을 전수조사하지 않고, 최근 N분 이내에 생성/수정/취소된 예약만 조회하여 Supabase에 반영합니다.
@@ -19,11 +23,23 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         // 기본값: 최근 15분 전부터 변경된 내역 (분 단위 커스텀 지원: ?minutes=30)
         const requestedMinutes = Math.max(1, Math.min(1440, Number(searchParams.get('minutes')) || 15));
-        
+        const forceSync = searchParams.get('force') === 'true';
+
         // 🛡️ 시간 경계 누락 방지 안전 버퍼: 요청 분에 5분을 더해 오버랩 조회 (Supabase upsert는 멱등 처리되므로 안전)
         const effectiveMinutes = Math.min(1440, requestedMinutes + 5);
 
         const isVercelCron = request.headers.get('x-vercel-cron') !== null;
+        const nowMs = Date.now();
+
+        if (!isVercelCron && !forceSync && nowMs - lastIncrementalSyncAt < SERVER_SYNC_COOLDOWN_MS) {
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                reason: 'server_cooldown',
+                upsertCount: 0,
+                deleteCount: 0,
+            });
+        }
         if (isVercelCron) {
             console.log(`⏰ [Vercel Cron] 백그라운드 증분 동기화 실행 (윈도우: ${effectiveMinutes}분)`);
         }
@@ -120,6 +136,10 @@ export async function GET(request: Request) {
             if (upsertRes.success) {
                 upsertCount = upsertRes.count;
             }
+        }
+
+        if (errors.length === 0) {
+            lastIncrementalSyncAt = Date.now();
         }
 
         return NextResponse.json({
