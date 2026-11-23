@@ -36,7 +36,7 @@ export default function AnalyticsPage() {
         isFetchingRef.current = true;
         setLoading(true);
         try {
-            const res = await fetch('/api/reservations?scope=analytics', { cache: 'no-store' });
+            const res = await fetch('/api/reservations?scope=home', { cache: 'no-store' });
             const data = await res.json();
             if (data.success && Array.isArray(data.data)) {
                 setBookings(data.data);

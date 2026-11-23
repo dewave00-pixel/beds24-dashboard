@@ -374,6 +374,52 @@ export default function DailyPickupReportSection({
         return { nights, ppt, count };
     }, [paceTimeline]);
 
+    // 🚫 기간 내 취소/노쇼된 예약 상세 리스트 (가동률 하락 원인 추적용)
+    const [showCancelledList, setShowCancelledList] = useState<boolean>(true);
+    const cancelledBookingItems = useMemo(() => {
+        const items: {
+            booking: Booking;
+            cancelDate: string;
+            overlapNights: number;
+            occDropPpt: number;
+            isNoshowWithFee: boolean;
+            netPayout: number;
+        }[] = [];
+
+        matchingCancelledBookings.forEach((b) => {
+            const cancelDate = b.modified ? getBookingDateKST(b.modified, b.arrival) : b.arrival;
+            const dep = new Date(b.departure);
+            const cDate = new Date(b.arrival);
+            let overlap = 0;
+            while (cDate < dep) {
+                const s = formatLocalDate(cDate);
+                if (s >= startDate && s <= endDate) {
+                    overlap++;
+                }
+                cDate.setDate(cDate.getDate() + 1);
+            }
+            if (overlap <= 0) return;
+
+            const occDropPpt = totalCapacityNights > 0 ? (overlap / totalCapacityNights) * 100 : 0;
+            const grossPrice = Number(b.price) || 0;
+            const isNoshowWithFee = grossPrice > 0;
+            const netPayout = isNoshowWithFee
+                ? calculateNetPayout(grossPrice, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken))
+                : 0;
+
+            items.push({
+                booking: b,
+                cancelDate,
+                overlapNights: overlap,
+                occDropPpt,
+                isNoshowWithFee,
+                netPayout,
+            });
+        });
+
+        return items.sort((a, b) => b.cancelDate.localeCompare(a.cancelDate));
+    }, [matchingCancelledBookings, startDate, endDate, totalCapacityNights]);
+
     // 기준일 퀵 프리셋 핸들러
     const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
         if (type === 'currentMonth') {
@@ -805,10 +851,100 @@ export default function DailyPickupReportSection({
                             </div>
 
                             <div className="text-[11px] text-slate-400 dark:text-slate-500 px-1 flex items-center justify-between">
-                                <span>💡 막대 위: 해당 날짜의 일일 유입 증가폭(+%p) | 막대 아래 초록 뱃지: 당시 누적 가동률(%)</span>
+                                <span>💡 막대 위: 일일 유입(+%p) 및 취소 하락(-%p) | 막대 아래 초록 뱃지: 누적 가동률(%)</span>
                                 <span>마우스를 올리면 상세 박수와 매출이 표시됩니다</span>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* 🚫 취소/노쇼로 빠진 예약 상세 리스트 (대시보드 & 통계 공통 노출) */}
+                {cancelledBookingItems.length > 0 && (
+                    <div className="pt-3 border-t border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowCancelledList((prev) => !prev)}
+                                className="flex items-center gap-2 text-xs font-extrabold text-rose-700 dark:text-rose-300 cursor-pointer hover:opacity-80"
+                            >
+                                <span>🚫 해당 기간 취소·노쇼로 빠진 예약 ({cancelledBookingItems.length}건)</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 font-mono">
+                                    총 -{cancelledBookingItems.reduce((acc, i) => acc + i.overlapNights, 0)}박 (-
+                                    {cancelledBookingItems.reduce((acc, i) => acc + i.occDropPpt, 0).toFixed(1)}%p)
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                    {showCancelledList ? '▲ 접기' : '▼ 펼치기'}
+                                </span>
+                            </button>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                                노쇼 위약금은 OTA 수수료 제외 순정산액으로 매출에 보존됩니다
+                            </span>
+                        </div>
+
+                        {showCancelledList && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+                                {cancelledBookingItems.map((item) => {
+                                    const b = item.booking;
+                                    const unit = getUnitForBooking(b);
+                                    const ch = getChannelStyle(b.apiSourceId);
+                                    const guestName = [b.lastName, b.firstName].filter(Boolean).join(' ') || '게스트';
+
+                                    return (
+                                        <div
+                                            key={`cancel-${b.id}`}
+                                            onClick={() => onSelectBooking?.(b)}
+                                            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs ${
+                                                onSelectBooking ? 'cursor-pointer hover:shadow-xs' : ''
+                                            } ${
+                                                item.isNoshowWithFee
+                                                    ? 'bg-rose-50/70 dark:bg-rose-950/25 border-rose-200 dark:border-rose-800/70'
+                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/80'
+                                            }`}
+                                        >
+                                            <div className="flex flex-col gap-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span
+                                                        className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0"
+                                                        style={{ backgroundColor: ch.bg, color: ch.text }}
+                                                    >
+                                                        {ch.name}
+                                                    </span>
+                                                    <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                                                        {guestName}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                                                        {unit ? `${unit.propName} ${unit.displayName}` : '미배정'}
+                                                    </span>
+                                                    <span className="text-[10px] font-mono text-slate-400">
+                                                        #{b.id}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                                                    <span>투숙: {b.arrival.slice(5)}~{b.departure.slice(5)}</span>
+                                                    <span>·</span>
+                                                    <span>취소일: {item.cancelDate}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-end gap-1 shrink-0 font-mono">
+                                                <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-black">
+                                                    -{item.overlapNights}박 (-{item.occDropPpt.toFixed(1)}%p)
+                                                </span>
+                                                {item.isNoshowWithFee ? (
+                                                    <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400">
+                                                        노쇼 정산 +₩{item.netPayout.toLocaleString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                                                        아예 취소 (₩0)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

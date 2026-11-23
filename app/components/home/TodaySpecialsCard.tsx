@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Booking } from '../../types';
 import { getChannelStyle, parseBookingTag } from '../../config';
-import { getUnitForBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
+import { calculateNetPayout, getUnitForBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
 
 export type BookingNotesMap = Record<number, { note: string; tags: string[] }>;
 
@@ -324,7 +324,14 @@ export default function TodaySpecialsCard({
                                                 }`}
                                             >
                                                 {isNoshowWithFee
-                                                    ? `노쇼/위약금 (${(Number(booking.price) || 0).toLocaleString()}원)`
+                                                    ? `노쇼/위약금 정산 (${calculateNetPayout(
+                                                          Number(booking.price) || 0,
+                                                          booking.apiSourceId,
+                                                          0,
+                                                          booking.bookingTime,
+                                                          booking.roomId,
+                                                          Boolean(booking.isChicken)
+                                                      ).toLocaleString()}원)`
                                                     : '아예 취소 (0원)'}
                                             </span>
                                         )}
