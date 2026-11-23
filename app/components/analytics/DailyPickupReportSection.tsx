@@ -233,7 +233,7 @@ export default function DailyPickupReportSection({
         };
     }, [matchingValidBookings, asOfDateStr, startDate, endDate, totalCapacityNights, currentOccupancyRate]);
 
-    // 🧮 2. 기준일 이후 일별 누적 유입 + 취소 하락 곡선 데이터 (Pace Progression)
+    // 🧮 2. 기준일 이후 일별 누적 유입 + 취소/중도퇴실 하락 곡선 데이터 (Pace Progression)
     const matchingCancelledBookings = useMemo(() => {
         const source = allBookingsWithCancelled || bookings;
         return source.filter((b) => {
@@ -242,6 +242,24 @@ export default function DailyPickupReportSection({
             if (!unit || !activeUnitKeySet.has(unit.key)) return false;
             return b.arrival <= endDate && b.departure > startDate;
         });
+    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, startDate, endDate]);
+
+    const matchingEarlyDepartures = useMemo(() => {
+        const source = allBookingsWithCancelled || bookings;
+        const list: { booking: Booking; oldDeparture: string; newDeparture: string }[] = [];
+        for (const b of source) {
+            if ((b.status || '').toLowerCase().trim() === 'cancelled') continue;
+            const match = (b.notes || '').match(/\[중도퇴실:(\d{4}-\d{2}-\d{2})->(\d{4}-\d{2}-\d{2}),(\d+)->(\d+)\]/);
+            if (!match) continue;
+            const oldDeparture = match[1];
+            const newDeparture = match[2];
+            const unit = getUnitForBooking(b);
+            if (!unit || !activeUnitKeySet.has(unit.key)) continue;
+            if (newDeparture <= endDate && oldDeparture > startDate) {
+                list.push({ booking: b, oldDeparture, newDeparture });
+            }
+        }
+        return list;
     }, [allBookingsWithCancelled, bookings, activeUnitKeySet, startDate, endDate]);
 
     const paceTimeline = useMemo(() => {
@@ -340,6 +358,26 @@ export default function DailyPickupReportSection({
                 }
             });
 
+            matchingEarlyDepartures.forEach(({ booking: b, oldDeparture, newDeparture }) => {
+                const cancelDate = b.modified ? getBookingDateKST(b.modified, b.arrival) : '';
+                if (cancelDate !== dateStr) return;
+
+                const dep = new Date(oldDeparture);
+                const cDate = new Date(newDeparture);
+                let overlap = 0;
+                while (cDate < dep) {
+                    const s = formatLocalDate(cDate);
+                    if (s >= startDate && s <= endDate) {
+                        overlap++;
+                    }
+                    cDate.setDate(cDate.getDate() + 1);
+                }
+                if (overlap > 0) {
+                    cancelledNights += overlap;
+                    cancelledCount++;
+                }
+            });
+
             const dayOccPpt = totalCapacityNights > 0 ? (dayNights / totalCapacityNights) * 100 : 0;
             const cancelledOccPpt = totalCapacityNights > 0 ? (cancelledNights / totalCapacityNights) * 100 : 0;
             runningOccRate += dayOccPpt;
@@ -365,7 +403,7 @@ export default function DailyPickupReportSection({
         }
 
         return items;
-    }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, matchingCancelledBookings, startDate, totalCapacityNights]);
+    }, [asOfDateStr, endDate, todayStr, paceSummary.preOccRate, paceSummary.preStayNights, matchingValidBookings, matchingCancelledBookings, matchingEarlyDepartures, startDate, totalCapacityNights]);
 
     const totalCancelledInTimeline = useMemo(() => {
         const nights = paceTimeline.reduce((acc, i) => acc + i.cancelledNights, 0);
@@ -374,7 +412,7 @@ export default function DailyPickupReportSection({
         return { nights, ppt, count };
     }, [paceTimeline]);
 
-    // 🚫 기간 내 취소/노쇼된 예약 상세 리스트 (가동률 하락 원인 추적용)
+    // 🚫 기간 내 취소/노쇼/중도퇴실된 예약 상세 리스트 (가동률 하락 원인 추적용)
     const [showCancelledList, setShowCancelledList] = useState<boolean>(true);
     const cancelledBookingItems = useMemo(() => {
         const items: {
@@ -383,6 +421,8 @@ export default function DailyPickupReportSection({
             overlapNights: number;
             occDropPpt: number;
             isNoshowWithFee: boolean;
+            isEarlyDeparture?: boolean;
+            oldDeparture?: string;
             netPayout: number;
         }[] = [];
 
@@ -417,8 +457,38 @@ export default function DailyPickupReportSection({
             });
         });
 
+        matchingEarlyDepartures.forEach(({ booking: b, oldDeparture, newDeparture }) => {
+            const cancelDate = b.modified ? getBookingDateKST(b.modified, b.arrival) : newDeparture;
+            const dep = new Date(oldDeparture);
+            const cDate = new Date(newDeparture);
+            let overlap = 0;
+            while (cDate < dep) {
+                const s = formatLocalDate(cDate);
+                if (s >= startDate && s <= endDate) {
+                    overlap++;
+                }
+                cDate.setDate(cDate.getDate() + 1);
+            }
+            if (overlap <= 0) return;
+
+            const occDropPpt = totalCapacityNights > 0 ? (overlap / totalCapacityNights) * 100 : 0;
+            const grossPrice = Number(b.price) || 0;
+            const netPayout = calculateNetPayout(grossPrice, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken));
+
+            items.push({
+                booking: b,
+                cancelDate,
+                overlapNights: overlap,
+                occDropPpt,
+                isNoshowWithFee: grossPrice > 0,
+                isEarlyDeparture: true,
+                oldDeparture,
+                netPayout,
+            });
+        });
+
         return items.sort((a, b) => b.cancelDate.localeCompare(a.cancelDate));
-    }, [matchingCancelledBookings, startDate, endDate, totalCapacityNights]);
+    }, [matchingCancelledBookings, matchingEarlyDepartures, startDate, endDate, totalCapacityNights]);
 
     // 기준일 퀵 프리셋 핸들러
     const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
@@ -920,9 +990,15 @@ export default function DailyPickupReportSection({
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                                                    <span>투숙: {b.arrival.slice(5)}~{b.departure.slice(5)}</span>
+                                                    {item.isEarlyDeparture && item.oldDeparture ? (
+                                                        <span>
+                                                            중도퇴실: {b.arrival.slice(5)}~{b.departure.slice(5)} (기존 ~{item.oldDeparture.slice(5)})
+                                                        </span>
+                                                    ) : (
+                                                        <span>투숙: {b.arrival.slice(5)}~{b.departure.slice(5)}</span>
+                                                    )}
                                                     <span>·</span>
-                                                    <span>취소일: {item.cancelDate}</span>
+                                                    <span>처리일: {item.cancelDate}</span>
                                                 </div>
                                             </div>
 
@@ -930,7 +1006,11 @@ export default function DailyPickupReportSection({
                                                 <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-black">
                                                     -{item.overlapNights}박 (-{item.occDropPpt.toFixed(1)}%p)
                                                 </span>
-                                                {item.isNoshowWithFee ? (
+                                                {item.isEarlyDeparture ? (
+                                                    <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400">
+                                                        부분정산 +₩{item.netPayout.toLocaleString()}
+                                                    </span>
+                                                ) : item.isNoshowWithFee ? (
                                                     <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400">
                                                         노쇼 정산 +₩{item.netPayout.toLocaleString()}
                                                     </span>
