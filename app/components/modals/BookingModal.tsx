@@ -13,7 +13,7 @@ import {
     PROPERTY_GROUPS,
 } from '../../config';
 import { getUnitForBooking, findConflictingBookings, getCommissionInfo, getDirectExtensionPrice } from '../../utils/bookingUtils';
-import { formatKSTDateTime } from '../../utils/dateUtils';
+import { addDaysToDateStr, formatKSTDateTime, getKSTTodayStr } from '../../utils/dateUtils';
 import StayExtensionSection from './StayExtensionSection';
 
 interface BookingModalProps {
@@ -28,7 +28,11 @@ interface BookingModalProps {
     onClose: () => void;
     onAssignUnit?: (bookingId: number, roomId: number, unitId: number) => Promise<{ success: boolean; error?: string }>;
     onExtendStay?: (bookingId: number, newDeparture: string, additionalPrice: number, note?: string) => Promise<{ success: boolean; error?: string }>;
-    onCancelBooking?: (bookingId: number, action: 'noshow_cancel' | 'permanent_delete') => Promise<{ success: boolean; error?: string }>;
+    onCancelBooking?: (
+        bookingId: number,
+        action: 'noshow_cancel' | 'early_departure' | 'permanent_delete',
+        options?: { newDeparture?: string; newPrice?: number }
+    ) => Promise<{ success: boolean; error?: string }>;
     propertiesInfo?: Record<string, { doorPassword: string; maxGuests: number; repairNotes: string }>;
 }
 
@@ -87,11 +91,45 @@ export default function BookingModal({
     const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [assignMsg, setAssignMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    // 🚫 예약 취소/삭제 모달 상태
+    // 🚫 예약 취소/중도퇴실/삭제 모달 상태
+    const grossPrice = Number(booking.price) || 0;
+    const earlyDepartureOptions = (() => {
+        if (stayNights < 2 || !booking.arrival) return [];
+        const list: { dateStr: string; keptNights: number; droppedNights: number; proratedGross: number }[] = [];
+        for (let i = 1; i < stayNights; i++) {
+            const dStr = addDaysToDateStr(booking.arrival, i);
+            list.push({
+                dateStr: dStr,
+                keptNights: i,
+                droppedNights: stayNights - i,
+                proratedGross: Math.round((grossPrice * i) / stayNights),
+            });
+        }
+        return list;
+    })();
+
+    const defaultEarlyOpt = (() => {
+        if (earlyDepartureOptions.length === 0) return null;
+        const todayKst = getKSTTodayStr();
+        return earlyDepartureOptions.find((o) => o.dateStr === todayKst) || earlyDepartureOptions[0];
+    })();
+
     const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
-    const [cancelAction, setCancelAction] = useState<'noshow_cancel' | 'permanent_delete'>('noshow_cancel');
+    const [cancelAction, setCancelAction] = useState<'noshow_cancel' | 'early_departure' | 'permanent_delete'>('noshow_cancel');
+    const [earlyDepartureDate, setEarlyDepartureDate] = useState<string>(defaultEarlyOpt?.dateStr || '');
+    const [earlyDeparturePrice, setEarlyDeparturePrice] = useState<number>(defaultEarlyOpt?.proratedGross ?? grossPrice);
     const [isCancelling, setIsCancelling] = useState<boolean>(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
+
+    const selectedEarlyOpt = earlyDepartureOptions.find((o) => o.dateStr === earlyDepartureDate) || defaultEarlyOpt;
+    const earlyCommInfo = getCommissionInfo(
+        earlyDeparturePrice,
+        booking.apiSourceId,
+        directPrice,
+        booking.bookingTime,
+        booking.roomId,
+        isChicken
+    );
 
     // 파싱된 선택 호실 정보
     const [targetRoomId, targetUnitId] = selectedUnitKey === '0-0'
@@ -507,12 +545,16 @@ export default function BookingModal({
                                 onClick={() => {
                                     setCancelError(null);
                                     setCancelAction('noshow_cancel');
+                                    if (defaultEarlyOpt) {
+                                        setEarlyDepartureDate(defaultEarlyOpt.dateStr);
+                                        setEarlyDeparturePrice(defaultEarlyOpt.proratedGross);
+                                    }
                                     setShowCancelConfirm(true);
                                 }}
                                 className="px-2.5 sm:px-3 py-2 text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-rose-300 dark:border-rose-900/60 transition cursor-pointer flex items-center gap-1"
                             >
                                 <span>🚫</span>
-                                <span>예약 취소 / 삭제</span>
+                                <span>취소 / 중도퇴실 / 삭제</span>
                             </button>
                         )}
                     </div>
@@ -534,25 +576,25 @@ export default function BookingModal({
                     </div>
                 </div>
 
-                {/* 🚫 예약 취소 / 영구 삭제 선택 모달 오버레이 */}
+                {/* 🚫 예약 취소 / 중도퇴실 / 영구 삭제 선택 모달 오버레이 */}
                 {showCancelConfirm && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
-                        <div className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl p-4 sm:p-5 max-w-md w-full shadow-2xl flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl p-4 sm:p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-150">
                             <div className="flex items-center gap-2 text-gray-900 dark:text-slate-100 font-extrabold text-base border-b border-gray-200 dark:border-slate-800 pb-2.5">
                                 <span className="text-lg">⚠️</span>
-                                <span>Beds24 예약 취소 / 삭제 방식 선택</span>
+                                <span>Beds24 취소 / 중도퇴실 / 삭제 방식 선택</span>
                             </div>
 
                             <div className="text-xs text-gray-600 dark:text-slate-300">
                                 <p>
-                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id}, 결제금액: <strong className="text-blue-600 dark:text-blue-400">{Number(booking.price || 0).toLocaleString()}원</strong>)
+                                    <span className="font-bold text-gray-900 dark:text-slate-100">{guestName}</span> 님의 예약 (ID: #{booking.id}, 일정: <strong>{booking.arrival} ~ {booking.departure} ({stayNights}박)</strong>, 총액: <strong className="text-blue-600 dark:text-blue-400">{grossPrice.toLocaleString()}원</strong> / 실정산: <strong className="text-emerald-600 dark:text-emerald-400">{commInfo.netPayout.toLocaleString()}원</strong>)
                                 </p>
                                 <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
-                                    목적에 맞는 처리 방식을 선택해 주세요:
+                                    상황에 맞는 처리 방식을 선택해 주세요:
                                 </p>
                             </div>
 
-                            {/* 2가지 선택 옵션 카드 */}
+                            {/* 3가지 선택 옵션 카드 */}
                             <div className="flex flex-col gap-2.5">
                                 {/* 옵션 1: 노쇼 취소 (위약금 매출 보존) */}
                                 <div
@@ -566,18 +608,129 @@ export default function BookingModal({
                                     <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
                                         <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
                                             <span>🚫</span>
-                                            <span>노쇼 / 취소 처리 (위약금 매출 보존)</span>
+                                            <span>노쇼 / 취소 처리 (위약금 매출 전액 보존)</span>
                                         </span>
                                         <span className="text-sm">{cancelAction === 'noshow_cancel' ? '🟢' : '⚪'}</span>
                                     </div>
                                     <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
-                                        <p>• Beds24 상태를 <strong>cancelled</strong>로 변경하여 방을 즉시 <strong>공실로 반환</strong>합니다.</p>
-                                        <p>• 결제/위약금 <strong>{Number(booking.price || 0).toLocaleString()}원</strong>은 <strong>매출 통계에 그대로 보존</strong>됩니다.</p>
-                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold pt-0.5">💡 추천 대상: 투숙 당일 노쇼, 위약금이 부과된 정상 취소 건</p>
+                                        <p>• Beds24 상태를 <strong>cancelled</strong>로 변경하여 전체 일정을 즉시 <strong>공실로 반환</strong>합니다. (가동률 0박)</p>
+                                        <p>• 수수료 제외 실정산 <strong>{commInfo.netPayout.toLocaleString()}원</strong>(원금 {grossPrice.toLocaleString()}원)은 <strong>매출 통계에 그대로 보존</strong>됩니다.</p>
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold pt-0.5">💡 추천: 투숙 당일 노쇼, 투숙 없이 위약금이 전액 부과된 취소</p>
                                     </div>
                                 </div>
 
-                                {/* 옵션 2: 영구 삭제 (매출 제외 / 테스트 예약) */}
+                                {/* 옵션 2: 중도 퇴실 및 부분 환불 (숙소 사유 부분환불 / 일정 단축) */}
+                                <div
+                                    onClick={() => {
+                                        if (stayNights >= 2) {
+                                            setCancelAction('early_departure');
+                                        }
+                                    }}
+                                    className={`p-3 rounded-lg border text-xs flex flex-col gap-2 transition ${
+                                        stayNights < 2
+                                            ? 'bg-gray-100 dark:bg-slate-800/30 border-gray-200 dark:border-slate-800 opacity-60 cursor-not-allowed'
+                                            : cancelAction === 'early_departure'
+                                                ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 border-2 text-blue-950 dark:text-blue-100 shadow-xs cursor-pointer'
+                                                : 'bg-white dark:bg-slate-800/60 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
+                                        <span className="flex items-center gap-1.5 text-blue-900 dark:text-blue-200">
+                                            <span>✂️</span>
+                                            <span>중도 퇴실 / 부분 환불 (퇴실일 앞당김)</span>
+                                        </span>
+                                        <span className="text-sm">
+                                            {stayNights < 2 ? '1박 불가' : cancelAction === 'early_departure' ? '🔵' : '⚪'}
+                                        </span>
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
+                                        <p>• 선택한 <strong>중도 퇴실일 이전</strong>은 <strong>가동률과 조정 매출(수수료 제외)</strong>로 정상 반영됩니다.</p>
+                                        <p>• <strong>중도 퇴실일 이후</strong>는 가동률·매출에서 모두 빠지고 <strong>즉시 공실로 반환</strong>됩니다.</p>
+                                    </div>
+
+                                    {cancelAction === 'early_departure' && stayNights >= 2 && selectedEarlyOpt && (
+                                        <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="mt-1 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 flex flex-col gap-2.5"
+                                        >
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                                                <label className="text-[11px] font-extrabold text-gray-700 dark:text-slate-200">
+                                                    📅 중도 퇴실 날짜 (언제 나가는지)
+                                                </label>
+                                                <select
+                                                    value={earlyDepartureDate}
+                                                    onChange={(e) => {
+                                                        const nextDate = e.target.value;
+                                                        setEarlyDepartureDate(nextDate);
+                                                        const opt = earlyDepartureOptions.find((o) => o.dateStr === nextDate);
+                                                        if (opt) {
+                                                            setEarlyDeparturePrice(opt.proratedGross);
+                                                        }
+                                                    }}
+                                                    className="px-2 py-1 rounded border border-blue-400 bg-blue-50/50 dark:bg-slate-800 text-xs font-extrabold text-blue-900 dark:text-blue-200 font-mono"
+                                                >
+                                                    {earlyDepartureOptions.map((opt) => (
+                                                        <option key={opt.dateStr} value={opt.dateStr}>
+                                                            {opt.dateStr} 퇴실 ({opt.keptNights}박 투숙 / -{opt.droppedNights}박 취소)
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <label className="text-[11px] font-extrabold text-gray-700 dark:text-slate-200">
+                                                        💰 부분환불 후 남은 총 결제금액 (원금 기준)
+                                                    </label>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEarlyDeparturePrice(selectedEarlyOpt.proratedGross)}
+                                                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 hover:bg-blue-200 cursor-pointer"
+                                                        >
+                                                            일할 계산 ({selectedEarlyOpt.proratedGross.toLocaleString()}원)
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEarlyDeparturePrice(grossPrice)}
+                                                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 cursor-pointer"
+                                                        >
+                                                            환불 없음(전액)
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        step={1000}
+                                                        value={earlyDeparturePrice}
+                                                        onChange={(e) => setEarlyDeparturePrice(Math.max(0, Number(e.target.value) || 0))}
+                                                        className="flex-1 px-2.5 py-1 rounded border border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-xs font-extrabold font-mono text-gray-900 dark:text-slate-100"
+                                                    />
+                                                    <span className="text-xs font-bold text-gray-500">원</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-2 rounded bg-blue-50/80 dark:bg-blue-950/50 border border-blue-200/80 dark:border-blue-800/80 text-[11px] space-y-1 font-mono">
+                                                <div className="flex items-center justify-between text-blue-900 dark:text-blue-200 font-bold">
+                                                    <span>✓ 유지 ({booking.arrival.slice(5)}~{earlyDepartureDate.slice(5)})</span>
+                                                    <span>
+                                                        가동률 +{selectedEarlyOpt.keptNights}박 · 실정산 ₩{earlyCommInfo.netPayout.toLocaleString()} (수수료 제외)
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-rose-700 dark:text-rose-300 font-bold">
+                                                    <span>✗ 제외 ({earlyDepartureDate.slice(5)}~{booking.departure.slice(5)})</span>
+                                                    <span>
+                                                        가동률 -{selectedEarlyOpt.droppedNights}박 · 원금 환불 -₩{Math.max(0, grossPrice - earlyDeparturePrice).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 옵션 3: 영구 삭제 (매출 제외 / 테스트 예약) */}
                                 <div
                                     onClick={() => setCancelAction('permanent_delete')}
                                     className={`p-3 rounded-lg border text-xs cursor-pointer flex flex-col gap-1 transition ${
@@ -589,14 +742,14 @@ export default function BookingModal({
                                     <div className="flex items-center justify-between font-extrabold text-xs sm:text-sm">
                                         <span className="flex items-center gap-1.5 text-rose-900 dark:text-rose-200">
                                             <span>🗑️</span>
-                                            <span>영구 삭제 (매출 제외 / 테스트 예약)</span>
+                                            <span>영구 삭제 (완전 취소 / 매출 제외)</span>
                                         </span>
                                         <span className="text-sm">{cancelAction === 'permanent_delete' ? '🔴' : '⚪'}</span>
                                     </div>
                                     <div className="text-[11px] leading-relaxed text-gray-600 dark:text-slate-300 pl-5 space-y-0.5">
                                         <p>• Beds24 및 대시보드 DB에서 <strong>예약을 완전히 삭제</strong>합니다.</p>
-                                        <p>• 매출 통계에서도 0원으로 처리되어 <strong>완전히 제외</strong>됩니다.</p>
-                                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold pt-0.5">⚠️ 주의 대상: 테스트 예약, 오등록 예약, 전액 환불 건 전용</p>
+                                        <p>• 매출 통계와 가동률 모두에서 <strong>완전히 제외</strong>됩니다.</p>
+                                        <p className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold pt-0.5">⚠️ 주의 대상: 테스트 예약, 오등록 예약, 입실 전 전액 환불 건 전용</p>
                                     </div>
                                 </div>
                             </div>
@@ -624,7 +777,13 @@ export default function BookingModal({
                                         setIsCancelling(true);
                                         setCancelError(null);
                                         try {
-                                            const res = await onCancelBooking(booking.id, cancelAction);
+                                            const res = await onCancelBooking(
+                                                booking.id,
+                                                cancelAction,
+                                                cancelAction === 'early_departure'
+                                                    ? { newDeparture: earlyDepartureDate, newPrice: earlyDeparturePrice }
+                                                    : undefined
+                                            );
                                             if (res.success) {
                                                 setShowCancelConfirm(false);
                                                 onClose();
@@ -641,7 +800,9 @@ export default function BookingModal({
                                     className={`px-4 py-1.5 text-xs font-extrabold text-white rounded-lg shadow transition cursor-pointer flex items-center gap-1.5 ${
                                         cancelAction === 'permanent_delete'
                                             ? 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400'
-                                            : 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400'
+                                            : cancelAction === 'early_departure'
+                                                ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400'
+                                                : 'bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400'
                                     }`}
                                 >
                                     {isCancelling ? (
@@ -651,7 +812,11 @@ export default function BookingModal({
                                         </>
                                     ) : (
                                         <span>
-                                            {cancelAction === 'permanent_delete' ? '🗑️ 예약 영구 삭제 실행' : '🚫 노쇼 취소(위약금 보존) 확정'}
+                                            {cancelAction === 'permanent_delete'
+                                                ? '🗑️ 예약 영구 삭제 실행'
+                                                : cancelAction === 'early_departure'
+                                                    ? '✂️ 중도 퇴실 · 부분환불 확정'
+                                                    : '🚫 노쇼 취소(위약금 보존) 확정'}
                                         </span>
                                     )}
                                 </button>

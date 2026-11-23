@@ -640,22 +640,44 @@ export function useDashboard() {
         }
     };
 
-    // 🚫 예약 취소/영구삭제 처리 (Beds24 API + Supabase DB + 로컬 상태 동기화)
+    // 🚫 예약 취소/중도퇴실/영구삭제 처리 (Beds24 API + Supabase DB + 로컬 상태 동기화)
     const handleCancelBooking = async (
         bookingId: number,
-        action: 'noshow_cancel' | 'permanent_delete' = 'noshow_cancel'
+        action: 'noshow_cancel' | 'early_departure' | 'permanent_delete' = 'noshow_cancel',
+        options?: { newDeparture?: string; newPrice?: number }
     ): Promise<{ success: boolean; error?: string }> => {
         try {
             const res = await fetch('/api/bookings/cancel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookingId, action }),
+                body: JSON.stringify({
+                    bookingId,
+                    action,
+                    newDeparture: options?.newDeparture,
+                    newPrice: options?.newPrice,
+                }),
             });
             const result = await res.json();
 
             if (result.success) {
-                // 타임라인/대시보드 예약 목록에서 해당 예약을 즉시 제거 (실제 취소/삭제되어 공실로 전환)
-                setBookings((prev) => prev.filter((b) => Number(b.id) !== Number(bookingId)));
+                if (action === 'early_departure' && result.newDeparture) {
+                    // 중도 퇴실: 예약은 유지하되 퇴실일과 결제금액을 즉시 단축·갱신하여 남은 기간만 공실로 전환
+                    setBookings((prev) =>
+                        prev.map((b) =>
+                            Number(b.id) === Number(bookingId)
+                                ? {
+                                      ...b,
+                                      departure: result.newDeparture,
+                                      price: result.newPrice !== undefined ? result.newPrice : b.price,
+                                      notes: result.notes !== undefined ? result.notes : b.notes,
+                                  }
+                                : b
+                        )
+                    );
+                } else {
+                    // 노쇼 취소 / 영구 삭제: 타임라인 예약 목록에서 즉시 제거하여 전체 공실 전환
+                    setBookings((prev) => prev.filter((b) => Number(b.id) !== Number(bookingId)));
+                }
                 setActiveBooking(null);
                 return { success: true };
             } else {
