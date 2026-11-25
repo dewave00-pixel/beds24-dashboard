@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getValidBeds24Token } from '@/app/utils/beds24Client';
 import { upsertBookingsToSupabase, deleteBookingFromSupabase } from '@/app/utils/bookingSync';
+import { captureDailyInventorySnapshot } from '@/app/utils/inventorySnapshot';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // ⚡ 서버리스 타임아웃 방지 (최대 60초)
@@ -142,6 +143,13 @@ export async function GET(request: Request) {
             lastIncrementalSyncAt = Date.now();
         }
 
+        // 일일 Vercel Cron 실행 시 향후 90일치 가격/최소박수 스냅샷도 함께 적재
+        let snapshotSummary: { success: boolean; rowCount: number } | undefined;
+        if (isVercelCron) {
+            const snap = await captureDailyInventorySnapshot(90);
+            snapshotSummary = { success: snap.success, rowCount: snap.rowCount };
+        }
+
         return NextResponse.json({
             success: true,
             syncedAt: now.toISOString(),
@@ -151,6 +159,7 @@ export async function GET(request: Request) {
             totalDetected: modifiedBookings.length,
             upsertCount,
             deleteCount,
+            snapshotSummary,
             sample: modifiedBookings[0] ? {
                 id: modifiedBookings[0].id,
                 arrival: modifiedBookings[0].arrival,

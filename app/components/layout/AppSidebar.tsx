@@ -47,6 +47,12 @@ const MENU_ITEMS: MenuItem[] = [
         roles: ['admin'],
     },
     {
+        name: '전략/제안',
+        href: '/strategy',
+        icon: '🧠',
+        roles: ['admin'],
+    },
+    {
         name: '청소 배정',
         href: '/cleaning',
         icon: '🧹',
