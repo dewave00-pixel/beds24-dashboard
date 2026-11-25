@@ -239,10 +239,17 @@ export default function DailyPickupReportSection({
         return source.filter((b) => {
             if ((b.status || '').toLowerCase().trim() !== 'cancelled') return false;
             const unit = getUnitForBooking(b);
-            if (!unit || !activeUnitKeySet.has(unit.key)) return false;
+            if (unit) {
+                if (!activeUnitKeySet.has(unit.key)) return false;
+            } else {
+                // 취소 시 호실 배정이 해제된 경우 전체 조회('all')일 때만 포함
+                if ((selectedProperty && selectedProperty !== 'all') || (selectedUnitKey && selectedUnitKey !== 'all')) {
+                    return false;
+                }
+            }
             return b.arrival <= endDate && b.departure > startDate;
         });
-    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, startDate, endDate]);
+    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, selectedProperty, selectedUnitKey, startDate, endDate]);
 
     const matchingEarlyDepartures = useMemo(() => {
         const source = allBookingsWithCancelled || bookings;
@@ -489,6 +496,13 @@ export default function DailyPickupReportSection({
 
         return items.sort((a, b) => b.cancelDate.localeCompare(a.cancelDate));
     }, [matchingCancelledBookings, matchingEarlyDepartures, startDate, endDate, totalCapacityNights]);
+
+    const totalCancelledSummary = useMemo(() => {
+        const nights = cancelledBookingItems.reduce((acc, i) => acc + i.overlapNights, 0);
+        const ppt = cancelledBookingItems.reduce((acc, i) => acc + i.occDropPpt, 0);
+        const count = cancelledBookingItems.length;
+        return { nights, ppt, count };
+    }, [cancelledBookingItems]);
 
     // 기준일 퀵 프리셋 핸들러
     const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
@@ -820,9 +834,9 @@ export default function DailyPickupReportSection({
                             <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 font-mono font-bold">
                                 {asOfDateStr.slice(5)} 이전 {paceSummary.preOccRate.toFixed(1)}% ➔ 최종 {paceSummary.finalOccRate.toFixed(1)}%
                             </span>
-                            {totalCancelledInTimeline.nights > 0 && (
+                            {totalCancelledSummary.nights > 0 && (
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 font-mono font-bold">
-                                    취소 하락 -{totalCancelledInTimeline.ppt.toFixed(1)}%p (-{totalCancelledInTimeline.nights}박 / {totalCancelledInTimeline.count}건)
+                                    취소·단축 -{totalCancelledSummary.ppt.toFixed(1)}%p (-{totalCancelledSummary.nights}박 / {totalCancelledSummary.count}건)
                                 </span>
                             )}
                         </h4>

@@ -31,7 +31,7 @@ async function syncFromBeds24(): Promise<any[]> {
         let hasNextPage = true;
 
         while (hasNextPage) {
-            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&page=${page}&includeInfoItems=true&includeInvoice=true`;
+            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&status=confirmed&status=new&status=cancelled&limit=100&page=${page}&includeInfoItems=true&includeInvoice=true`;
 
             let res = await fetch(url, {
                 method: 'GET',
@@ -93,7 +93,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
     let query = supabase
         .from('bookings')
         .select(
-            'id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, updated_at, bookingTime:raw_data->>bookingTime, booking_time:raw_data->>booking_time, created:raw_data->>created, modified:raw_data->>modified, country:raw_data->>country, guestCountry:raw_data->>guestCountry, lang:raw_data->>lang, language:raw_data->>language, phone:raw_data->>phone, mobile:raw_data->>mobile'
+            'id, property_id, room_id, unit_id, arrival, departure, first_name, last_name, num_guests, status, api_source_id, price, notes, updated_at, bookingTime:raw_data->>bookingTime, booking_time:raw_data->>booking_time, created:raw_data->>created, cancelTime:raw_data->>cancelTime, cancel_time:raw_data->>cancel_time, modified:raw_data->>modified, country:raw_data->>country, guestCountry:raw_data->>guestCountry, lang:raw_data->>lang, language:raw_data->>language, phone:raw_data->>phone, mobile:raw_data->>mobile'
         )
         .neq('status', 'deleted')
         .neq('status', 'inquiry')
@@ -155,7 +155,7 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
         price: row.price || 0,
         notes: row.notes || '',
         bookingTime: row.bookingTime || row.booking_time || row.created || row.arrival,
-        modified: row.modified || row.updated_at || '',
+        modified: row.cancelTime || row.cancel_time || row.modified || row.updated_at || '',
         country: row.country || row.guestCountry || '',
         lang: row.lang || row.language || '',
         phone: row.phone || row.mobile || '',
