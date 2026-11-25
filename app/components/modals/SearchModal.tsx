@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import { getChannelStyle, getUnitDisplayInfo } from '../../config';
+import { isExplicitNoshowBooking } from '../../utils/bookingUtils';
 
 interface SearchModalProps {
     bookings: Booking[];
@@ -187,7 +188,7 @@ export default function SearchModal({
                             {filteredBookings.map((b) => {
                                 const ch = getChannelStyle(b.apiSourceId);
                                 const isCancelled = (b.status || '').toLowerCase().trim() === 'cancelled';
-                                const isNoshowWithFee = isCancelled && (Number(b.price) || 0) > 0;
+                                const isNoshowWithFee = isExplicitNoshowBooking(b);
                                 const guestName =
                                     b.firstName || b.lastName
                                         ? `${b.firstName || ''} ${b.lastName || ''}`.trim()

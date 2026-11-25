@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Booking } from '../../types';
 import { ALL_UNITS, getChannelStyle } from '../../config';
-import { getUnitForBooking, calculateNetPayout, isRevenueBooking, getBookingDateKST } from '../../utils/bookingUtils';
+import { getUnitForBooking, calculateNetPayout, isRevenueBooking, isExplicitNoshowBooking, getBookingDateKST } from '../../utils/bookingUtils';
 import { formatLocalDate } from '../../utils/analyticsCalculations';
 
 interface DailyPickupReportSectionProps {
@@ -449,10 +449,9 @@ export default function DailyPickupReportSection({
             if (overlap <= 0) return;
 
             const occDropPpt = totalCapacityNights > 0 ? (overlap / totalCapacityNights) * 100 : 0;
-            const grossPrice = Number(b.price) || 0;
-            const isNoshowWithFee = grossPrice > 0;
+            const isNoshowWithFee = isExplicitNoshowBooking(b);
             const netPayout = isNoshowWithFee
-                ? calculateNetPayout(grossPrice, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken))
+                ? calculateNetPayout(Number(b.price) || 0, b.apiSourceId, 0, b.bookingTime, b.roomId, Boolean(b.isChicken))
                 : 0;
 
             items.push({

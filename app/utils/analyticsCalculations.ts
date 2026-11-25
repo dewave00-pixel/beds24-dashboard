@@ -3,7 +3,7 @@
 import { Booking } from '../types';
 import { ALL_UNITS, PROPERTY_GROUPS, ROOM_TYPES, getChannelStyle } from '../config';
 import { getGuestCountryInfo } from './countryHelper';
-import { calculateNetPayout, getUnitForBooking, getBookingDateKST } from './bookingUtils';
+import { calculateNetPayout, getUnitForBooking, getBookingDateKST, isRevenueBooking } from './bookingUtils';
 
 export type TimeFilterRange = 'last7' | 'last30' | 'thisMonth' | 'next30' | 'all' | 'custom';
 export type DateFilterMode = 'booked' | 'stay'; // 🛒 예약 접수일 기준 (Beds24 공식) vs 🛏️ 체크아웃/정산 기준
@@ -127,16 +127,11 @@ export function getDateRangeByFilter(
 }
 
 /**
- * 헬퍼: 통계/매출 집계용 유효 예약 여부 (활성 투숙 건 + 위약금이 발생한 취소 건)
+ * 헬퍼: 통계/매출 집계용 유효 예약 여부 (활성 투숙 건 + 관리자가 노쇼/위약금 처리한 취소 건)
  */
 function isValidBooking(b: Booking): boolean {
     if (!b.arrival || !b.departure) return false;
-    const status = (b.status || '').toLowerCase().trim();
-    if (status === 'deleted' || status === 'inquiry') return false;
-    if (status === 'cancelled') {
-        return (Number(b.price) || 0) > 0;
-    }
-    return true;
+    return isRevenueBooking(b);
 }
 
 /**

@@ -180,9 +180,25 @@ export async function POST(request: Request) {
             // =========================================================================
             // 모드 2: 노쇼 / 취소 처리 (위약금 매출 보존 - 방은 공실 전환, 매출 통계는 보존)
             // =========================================================================
+            const { data: existingRow } = await supabase
+                .from('bookings')
+                .select('notes')
+                .eq('id', bId)
+                .maybeSingle();
+
+            const prevNotes = (existingRow?.notes || '').trim();
+            const updatedNotes = prevNotes.includes('[노쇼위약금]')
+                ? prevNotes
+                : prevNotes
+                    ? `${prevNotes} [노쇼위약금]`
+                    : '[노쇼위약금]';
+
             let beds24Result;
             try {
-                beds24Result = await updateBeds24Booking(bId, { status: 'cancelled' });
+                beds24Result = await updateBeds24Booking(bId, {
+                    status: 'cancelled',
+                    notes: updatedNotes,
+                });
             } catch (apiErr: unknown) {
                 const errorMsg = apiErr instanceof Error ? apiErr.message : String(apiErr);
                 console.error(`❌ [Noshow Cancel] Beds24 API 통신 실패:`, apiErr);
@@ -203,11 +219,12 @@ export async function POST(request: Request) {
 
             console.log(`✅ [Noshow Cancel] Beds24 취소 성공: ID #${bId}`);
 
-            // 위약금(price > 0)이 발생한 취소 건은 매출 보존을 위해 status: 'cancelled'로 업데이트
+            // 관리자가 노쇼 처리한 건만 매출에 포함되도록 notes에 [노쇼위약금] 태그와 함께 상태 갱신
             const { error: updateErr } = await supabase
                 .from('bookings')
                 .update({
                     status: 'cancelled',
+                    notes: updatedNotes,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', bId);
