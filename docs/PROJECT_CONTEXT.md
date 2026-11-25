@@ -33,6 +33,7 @@ npm run start
 | `/dashboard` | 운영 요약 대시보드 (총매출, 건물별 매출, 당일 유입, 리드타임, 오늘 체크인/아웃 특이사항·취소) | admin |
 | `/analytics` | 매출, 가동률, ADR, 공실, OTA 분석 | admin |
 | `/expenses` | 운영 비용(지출) 기입, 전월 고정비 복사, 건물별·카테고리별 비용 및 순이익 관리 | admin |
+| `/strategy` | Beds24 90일 가격·최소박수 스냅샷, 28일 룰/1박 오픈 진단, 설정·광고 전후 성적표 및 개선 제안 | admin |
 | `/cleaning` | 전체 청소 배정 | admin |
 | `/cleaning/my` | 본인 청소 목록과 완료 처리 | manager, staff |
 | `/properties` | 숙소 정보와 도어락 비밀번호 조회·관리 | admin, manager, staff |
