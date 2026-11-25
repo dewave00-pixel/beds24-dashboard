@@ -41,6 +41,12 @@ const MENU_ITEMS: MenuItem[] = [
         roles: ['admin'],
     },
     {
+        name: '비용 관리',
+        href: '/expenses',
+        icon: '💸',
+        roles: ['admin'],
+    },
+    {
         name: '청소 배정',
         href: '/cleaning',
         icon: '🧹',

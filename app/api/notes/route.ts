@@ -9,7 +9,8 @@ export async function GET() {
     try {
         const { data, error } = await supabase
             .from('booking_notes')
-            .select('booking_id, note, tags, updated_at');
+            .select('booking_id, note, tags, updated_at')
+            .gt('booking_id', 0);
 
         if (error) {
             console.error('메모/태그 조회 DB 오류:', error);
