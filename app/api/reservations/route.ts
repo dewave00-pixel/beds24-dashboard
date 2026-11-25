@@ -88,8 +88,12 @@ async function syncFromBeds24(): Promise<any[]> {
 }
 
 // Supabase bookings 테이블에서 슬림 컬럼 초고속 조회 헬퍼 (raw_data 전체 대신 필요한 JSON 필드만 추출)
-async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 'default' | 'analytics' | 'home' = 'default') {
-    const includeCancelledInQuery = scopeMode === 'analytics' || scopeMode === 'home';
+async function fetchFormattedBookingsFromSupabase(
+    pastDays?: number,
+    scopeMode: 'default' | 'analytics' | 'home' = 'default',
+    includeCancelled: boolean = false
+) {
+    const includeCancelledInQuery = scopeMode === 'analytics' || scopeMode === 'home' || includeCancelled;
     let query = supabase
         .from('bookings')
         .select(
@@ -163,8 +167,8 @@ async function fetchFormattedBookingsFromSupabase(pastDays?: number, scopeMode: 
         isChicken: chickenBookingIds.has(Number(row.id)),
     }));
 
-    if (scopeMode === 'home') {
-        // 홈 대시보드: 활성 예약 + 위약금 취소 + 무료 취소 모두 반환 (오늘 체크인/체크아웃 취소 현황 판별용)
+    if (scopeMode === 'home' || includeCancelled) {
+        // 홈 대시보드 또는 includeCancelled=true: 활성 예약 + 위약금 취소 + 무료 취소 모두 반환
         return formatted;
     }
     if (scopeMode === 'analytics') {
@@ -180,6 +184,7 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const forceSync = searchParams.get('sync') === 'true';
         const scope = searchParams.get('scope'); // 'analytics' | 'home' 등
+        const includeCancelled = searchParams.get('includeCancelled') === 'true';
         const customPastDays = searchParams.get('pastDays');
         const scopeMode: 'default' | 'analytics' | 'home' =
             scope === 'analytics' ? 'analytics' : scope === 'home' ? 'home' : 'default';
@@ -198,7 +203,7 @@ export async function GET(request: Request) {
         if (forceSync) {
             console.log('🔄 [Reservations] 수동 동기화 요청 감지 -> Beds24 직접 동기화 실행');
             await syncFromBeds24();
-            const formatted = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode);
+            const formatted = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode, includeCancelled);
             return NextResponse.json({
                 success: true,
                 count: formatted.length,
@@ -208,7 +213,7 @@ export async function GET(request: Request) {
         }
 
         // 2. 평상시: Supabase bookings 테이블에서 슬림 컬럼 초고속 조회! (60KB 초경량)
-        const cachedBookings = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode);
+        const cachedBookings = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode, includeCancelled);
 
         if (cachedBookings.length > 0) {
             return NextResponse.json({
@@ -222,7 +227,7 @@ export async function GET(request: Request) {
         // 3. Supabase DB가 비어있는 경우(초기 상태) 자동 동기화 실행 (Fallback)
         console.log('⚠️ [Reservations] Supabase DB가 비어있음 -> 최초 자동 동기화 실행');
         await syncFromBeds24();
-        const fallbackData = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode);
+        const fallbackData = await fetchFormattedBookingsFromSupabase(pastDays, scopeMode, includeCancelled);
 
         return NextResponse.json({
             success: true,

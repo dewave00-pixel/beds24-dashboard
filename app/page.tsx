@@ -181,7 +181,7 @@ export default function HomePage() {
 
       {d.isSearchOpen && (
         <SearchModal
-          bookings={d.bookings}
+          bookings={d.allBookingsWithCancelled.length > 0 ? d.allBookingsWithCancelled : d.bookings}
           onClose={() => d.setIsSearchOpen(false)}
           onSelectBooking={auth.isAdmin ? ((b) => {
             d.openBookingDetail(b);

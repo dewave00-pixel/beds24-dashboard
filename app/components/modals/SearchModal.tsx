@@ -186,6 +186,8 @@ export default function SearchModal({
 
                             {filteredBookings.map((b) => {
                                 const ch = getChannelStyle(b.apiSourceId);
+                                const isCancelled = (b.status || '').toLowerCase().trim() === 'cancelled';
+                                const isNoshowWithFee = isCancelled && (Number(b.price) || 0) > 0;
                                 const guestName =
                                     b.firstName || b.lastName
                                         ? `${b.firstName || ''} ${b.lastName || ''}`.trim()
@@ -198,13 +200,29 @@ export default function SearchModal({
                                     <div
                                         key={b.id}
                                         onClick={onSelectBooking ? () => onSelectBooking(b) : undefined}
-                                        className={`p-2.5 md:p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-300 dark:border-slate-800 shadow-sm transition flex flex-col gap-1.5 ${
+                                        className={`p-2.5 md:p-3 rounded-lg border shadow-sm transition flex flex-col gap-1.5 ${
+                                            isCancelled
+                                                ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
+                                                : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-800'
+                                        } ${
                                             onSelectBooking ? 'hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md cursor-pointer' : 'cursor-default'
                                         }`}
                                     >
                                         {/* 상단: 숙소명 + 호실 + 예약자명 + 채널 뱃지 */}
                                         <div className="flex items-start justify-between gap-1.5">
                                             <div className="flex flex-wrap items-center gap-1.5 min-w-0 grow">
+                                                {isCancelled && (
+                                                    <span
+                                                        className={`text-[9.5px] font-black px-1.5 py-0.5 rounded shrink-0 ${
+                                                            isNoshowWithFee
+                                                                ? 'bg-rose-600 text-white'
+                                                                : 'bg-gray-600 text-white'
+                                                        }`}
+                                                    >
+                                                        {isNoshowWithFee ? '노쇼/위약금' : '취소됨'}
+                                                    </span>
+                                                )}
+
                                                 {/* 숙소명 뱃지 */}
                                                 <span
                                                     style={badgeStyle}
@@ -220,7 +238,13 @@ export default function SearchModal({
 
                                                 {/* 예약자명 */}
                                                 <div className="flex items-center gap-1 truncate">
-                                                    <span className="font-black text-xs md:text-sm text-gray-900 dark:text-slate-100 truncate">
+                                                    <span
+                                                        className={`font-black text-xs md:text-sm truncate ${
+                                                            isCancelled
+                                                                ? 'line-through text-gray-500 dark:text-slate-400'
+                                                                : 'text-gray-900 dark:text-slate-100'
+                                                        }`}
+                                                    >
                                                         {guestName}
                                                     </span>
                                                     <span className="text-[10px] md:text-xs text-gray-600 dark:text-slate-400 font-extrabold shrink-0">

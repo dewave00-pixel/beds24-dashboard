@@ -421,6 +421,7 @@ export default function DailyPickupReportSection({
 
     // 🚫 기간 내 취소/노쇼/중도퇴실된 예약 상세 리스트 (가동률 하락 원인 추적용)
     const [showCancelledList, setShowCancelledList] = useState<boolean>(true);
+    const [cancelledFilter, setCancelledFilter] = useState<'all' | 'noshow' | 'free' | 'early'>('all');
     const cancelledBookingItems = useMemo(() => {
         const items: {
             booking: Booking;
@@ -966,8 +967,48 @@ export default function DailyPickupReportSection({
                         </div>
 
                         {showCancelledList && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
-                                {cancelledBookingItems.map((item) => {
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {(
+                                        [
+                                            { key: 'all', label: `전체 ${cancelledBookingItems.length}` },
+                                            {
+                                                key: 'noshow',
+                                                label: `노쇼·위약금 ${cancelledBookingItems.filter((i) => !i.isEarlyDeparture && i.isNoshowWithFee).length}`,
+                                            },
+                                            {
+                                                key: 'free',
+                                                label: `아예 취소 ${cancelledBookingItems.filter((i) => !i.isEarlyDeparture && !i.isNoshowWithFee).length}`,
+                                            },
+                                            {
+                                                key: 'early',
+                                                label: `중도퇴실 ${cancelledBookingItems.filter((i) => i.isEarlyDeparture).length}`,
+                                            },
+                                        ] as { key: 'all' | 'noshow' | 'free' | 'early'; label: string }[]
+                                    ).map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setCancelledFilter(tab.key)}
+                                            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer border ${
+                                                cancelledFilter === tab.key
+                                                    ? 'bg-rose-600 text-white border-rose-600'
+                                                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+                                    {cancelledBookingItems
+                                        .filter((item) => {
+                                            if (cancelledFilter === 'noshow') return !item.isEarlyDeparture && item.isNoshowWithFee;
+                                            if (cancelledFilter === 'free') return !item.isEarlyDeparture && !item.isNoshowWithFee;
+                                            if (cancelledFilter === 'early') return Boolean(item.isEarlyDeparture);
+                                            return true;
+                                        })
+                                        .map((item) => {
                                     const b = item.booking;
                                     const unit = getUnitForBooking(b);
                                     const ch = getChannelStyle(b.apiSourceId);
@@ -1037,6 +1078,7 @@ export default function DailyPickupReportSection({
                                         </div>
                                     );
                                 })}
+                                </div>
                             </div>
                         )}
                     </div>
