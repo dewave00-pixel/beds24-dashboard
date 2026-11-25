@@ -26,6 +26,11 @@ import {
     calculateAdSpendBreakdown,
     calculateRevenueAfterAdSpend,
 } from '../../utils/adCostCalculations';
+import {
+    analyze28DayWindowAndOneNight,
+    generateStrategyRecommendations,
+} from '../../utils/strategyAnalytics';
+import type { OperatingExpenseItem } from '../../api/expenses/route';
 import AppSidebar from '../layout/AppSidebar';
 import DailyPickupReportSection from '../analytics/DailyPickupReportSection';
 import InventoryIssuesModal from '../modals/InventoryIssuesModal';
@@ -70,6 +75,7 @@ export default function AdminDashboardView() {
 
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [expenses, setExpenses] = useState<OperatingExpenseItem[]>([]);
     const [bookingNotes, setBookingNotes] = useState<BookingNotesMap>({});
     const [arrivalDetailsMap, setArrivalDetailsMap] = useState<Record<number, GuestArrivalDetailSummary>>({});
     const [todayAssignments, setTodayAssignments] = useState<Record<string, unknown>>({});
@@ -99,18 +105,20 @@ export default function AdminDashboardView() {
         setError(null);
 
         try {
-            const [resRes, notesRes, checkinRes, calendarRes] = await Promise.all([
+            const [resRes, notesRes, checkinRes, calendarRes, expRes] = await Promise.all([
                 fetch('/api/reservations?scope=home', { cache: 'no-store' }),
                 fetch('/api/notes', { cache: 'no-store' }),
                 fetch(`/api/checkin/logs?arrivalDate=${todayStr}`, { cache: 'no-store' }),
                 fetch(`/api/beds24/calendar?startDate=${todayStr}&endDate=${addDaysToDateStr(todayStr, 30)}`, { cache: 'no-store' }),
+                fetch('/api/expenses', { cache: 'no-store' }),
             ]);
 
-            const [resData, notesData, checkinData, calendarData] = await Promise.all([
+            const [resData, notesData, checkinData, calendarData, expData] = await Promise.all([
                 resRes.json(),
                 notesRes.json(),
                 checkinRes.json().catch(() => ({ success: false })),
                 calendarRes.json().catch(() => ({ success: false })),
+                expRes.json().catch(() => ({ success: false })),
             ]);
 
             let loadedBookings: Booking[] = [];
@@ -119,6 +127,10 @@ export default function AdminDashboardView() {
                 setBookings(loadedBookings);
             } else {
                 setError(resData.error || '예약 데이터를 불러오지 못했습니다.');
+            }
+
+            if (expData.success && Array.isArray(expData.data)) {
+                setExpenses(expData.data);
             }
 
             if (notesData.success && notesData.data) {
@@ -212,6 +224,20 @@ export default function AdminDashboardView() {
         () => calculateRevenueAfterAdSpend(overallSummary.totalRevenue, adSpendBreakdown.settlementDeductedSpend),
         [overallSummary.totalRevenue, adSpendBreakdown.settlementDeductedSpend]
     );
+
+    const periodOperatingExpense = useMemo(() => {
+        return expenses
+            .filter((e) => e.expenseDate >= startDate && e.expenseDate <= endDate)
+            .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    }, [expenses, startDate, endDate]);
+
+    const operatingProfit = netRevenueAfterAd - periodOperatingExpense;
+
+    const strategyInsights = useMemo(() => {
+        if (revenueBookings.length === 0) return [];
+        const analysis = analyze28DayWindowAndOneNight(revenueBookings, 'all');
+        return generateStrategyRecommendations(analysis, 1).filter((r) => r.severity !== 'good').slice(0, 2);
+    }, [revenueBookings]);
 
     const totalAvailableNights = ALL_UNITS.length * overallSummary.periodDays;
     const revPar = Math.round((overallSummary.adr * overallSummary.occupancyRate) / 100);
@@ -337,6 +363,13 @@ export default function AdminDashboardView() {
                             <span>💸</span>
                             <span>비용 관리</span>
                         </Link>
+                        <Link
+                            href="/strategy"
+                            className="hidden sm:flex px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-800 transition items-center gap-1"
+                        >
+                            <span>🧠</span>
+                            <span>전략/제안</span>
+                        </Link>
                         <button
                             type="button"
                             onClick={fetchDashboardData}
@@ -410,6 +443,27 @@ export default function AdminDashboardView() {
                         </div>
                     </div>
 
+                    {/* 2-1. 전략 개선 제안 알림 바 */}
+                    {strategyInsights.length > 0 && (
+                        <div className="bg-amber-50/80 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/70 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                                <span className="font-black text-amber-900 dark:text-amber-200">🧠 전략 알림:</span>
+                                {strategyInsights.map((ins, idx) => (
+                                    <span key={ins.id} className="font-bold text-amber-800 dark:text-amber-300">
+                                        {idx > 0 ? ' · ' : ''}
+                                        {ins.title}
+                                    </span>
+                                ))}
+                            </div>
+                            <Link
+                                href="/strategy"
+                                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-extrabold transition shrink-0"
+                            >
+                                상세 분석·제안 →
+                            </Link>
+                        </div>
+                    )}
+
                     {/* 3. 핵심 KPI 4대 카드 (총매출 · 가동률 · ADR · 리드타임) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {/* 총매출 */}
@@ -425,10 +479,25 @@ export default function AdminDashboardView() {
                             </div>
                             <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-slate-400">
                                 <span>광고비 차감 후</span>
-                                <span className="text-emerald-600 dark:text-emerald-400 font-mono">
+                                <span className="text-blue-600 dark:text-blue-400 font-mono">
                                     {netRevenueAfterAd.toLocaleString()}원
                                 </span>
                             </div>
+                            <Link
+                                href="/expenses"
+                                className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-slate-400 pt-1 border-t border-gray-100 dark:border-slate-800 hover:opacity-80"
+                            >
+                                <span>영업순이익 (비용 -{periodOperatingExpense.toLocaleString()})</span>
+                                <span
+                                    className={`font-mono font-extrabold ${
+                                        operatingProfit >= 0
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : 'text-rose-600 dark:text-rose-400'
+                                    }`}
+                                >
+                                    {operatingProfit.toLocaleString()}원
+                                </span>
+                            </Link>
                         </div>
 
                         {/* 가동률 */}
