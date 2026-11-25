@@ -176,10 +176,11 @@ export async function syncAllBookingsWithSupabase(
                     .filter((id) => id > 0)
             );
 
-            // 해당 기간 동안 Supabase DB에 저장되어 있는 모든 예약 ID 조회
+            // 해당 기간 동안 Supabase DB에 저장되어 있는 활성 예약 ID 조회 (cancelled는 대시보드 취소 이력 보존을 위해 자동 삭제에서 제외)
             const query = supabase
                 .from('bookings')
                 .select('id')
+                .neq('status', 'cancelled')
                 .gte('arrival', arrivalFrom)
                 .lte('arrival', arrivalTo);
 

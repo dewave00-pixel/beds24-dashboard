@@ -31,7 +31,7 @@ export async function POST() {
             let hasNextPage = true;
 
             while (hasNextPage) {
-                const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&limit=100&page=${page}&includeInfoItems=true&includeInvoice=true`;
+                const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&arrivalFrom=${arrivalFrom}&arrivalTo=${arrivalTo}&status=confirmed&status=new&status=cancelled&limit=100&page=${page}&includeInfoItems=true&includeInvoice=true`;
 
                 let res = await fetch(url, {
                     method: 'GET',

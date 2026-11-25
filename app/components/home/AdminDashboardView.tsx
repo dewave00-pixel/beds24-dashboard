@@ -330,6 +330,13 @@ export default function AdminDashboardView() {
                             <span>📈</span>
                             <span>상세 통계</span>
                         </Link>
+                        <Link
+                            href="/expenses"
+                            className="hidden sm:flex px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-xs rounded-xl border border-rose-200 dark:border-rose-800 transition items-center gap-1"
+                        >
+                            <span>💸</span>
+                            <span>비용 관리</span>
+                        </Link>
                         <button
                             type="button"
                             onClick={fetchDashboardData}

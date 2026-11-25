@@ -27,6 +27,7 @@ export interface UnitPropertyInfo {
 
 export function useDashboard() {
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [allBookingsWithCancelled, setAllBookingsWithCancelled] = useState<Booking[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -87,12 +88,13 @@ export function useDashboard() {
         if (!forceSync) setLoading(true);
         setError(null);
         try {
-            const url = forceSync ? '/api/reservations?sync=true' : '/api/reservations';
+            const url = forceSync ? '/api/reservations?sync=true&includeCancelled=true' : '/api/reservations?includeCancelled=true';
             const res = await fetch(url, { cache: 'no-store' });
             const data = await res.json();
 
             if (data.success) {
                 const list = Array.isArray(data.data) ? data.data : [];
+                setAllBookingsWithCancelled(list);
                 setBookings(list.filter((b: Booking) => isValidBooking(b)));
                 lastReservationsFetchAtRef.current = Date.now();
             } else {
@@ -692,6 +694,7 @@ export function useDashboard() {
 
     return {
         bookings,
+        allBookingsWithCancelled,
         loading,
         isSyncing,
         error,

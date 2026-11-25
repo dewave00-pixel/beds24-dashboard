@@ -239,10 +239,17 @@ export default function DailyPickupReportSection({
         return source.filter((b) => {
             if ((b.status || '').toLowerCase().trim() !== 'cancelled') return false;
             const unit = getUnitForBooking(b);
-            if (!unit || !activeUnitKeySet.has(unit.key)) return false;
+            if (unit) {
+                if (!activeUnitKeySet.has(unit.key)) return false;
+            } else {
+                // 취소 시 호실 배정이 해제된 경우 전체 조회('all')일 때만 포함
+                if ((selectedProperty && selectedProperty !== 'all') || (selectedUnitKey && selectedUnitKey !== 'all')) {
+                    return false;
+                }
+            }
             return b.arrival <= endDate && b.departure > startDate;
         });
-    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, startDate, endDate]);
+    }, [allBookingsWithCancelled, bookings, activeUnitKeySet, selectedProperty, selectedUnitKey, startDate, endDate]);
 
     const matchingEarlyDepartures = useMemo(() => {
         const source = allBookingsWithCancelled || bookings;
@@ -414,6 +421,7 @@ export default function DailyPickupReportSection({
 
     // 🚫 기간 내 취소/노쇼/중도퇴실된 예약 상세 리스트 (가동률 하락 원인 추적용)
     const [showCancelledList, setShowCancelledList] = useState<boolean>(true);
+    const [cancelledFilter, setCancelledFilter] = useState<'all' | 'noshow' | 'free' | 'early'>('all');
     const cancelledBookingItems = useMemo(() => {
         const items: {
             booking: Booking;
@@ -489,6 +497,13 @@ export default function DailyPickupReportSection({
 
         return items.sort((a, b) => b.cancelDate.localeCompare(a.cancelDate));
     }, [matchingCancelledBookings, matchingEarlyDepartures, startDate, endDate, totalCapacityNights]);
+
+    const totalCancelledSummary = useMemo(() => {
+        const nights = cancelledBookingItems.reduce((acc, i) => acc + i.overlapNights, 0);
+        const ppt = cancelledBookingItems.reduce((acc, i) => acc + i.occDropPpt, 0);
+        const count = cancelledBookingItems.length;
+        return { nights, ppt, count };
+    }, [cancelledBookingItems]);
 
     // 기준일 퀵 프리셋 핸들러
     const handleSetPreset = (type: 'currentMonth' | 'start' | 'd7' | 'd30' | 'yesterday' | 'today') => {
@@ -820,9 +835,9 @@ export default function DailyPickupReportSection({
                             <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 font-mono font-bold">
                                 {asOfDateStr.slice(5)} 이전 {paceSummary.preOccRate.toFixed(1)}% ➔ 최종 {paceSummary.finalOccRate.toFixed(1)}%
                             </span>
-                            {totalCancelledInTimeline.nights > 0 && (
+                            {totalCancelledSummary.nights > 0 && (
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 font-mono font-bold">
-                                    취소 하락 -{totalCancelledInTimeline.ppt.toFixed(1)}%p (-{totalCancelledInTimeline.nights}박 / {totalCancelledInTimeline.count}건)
+                                    취소·단축 -{totalCancelledSummary.ppt.toFixed(1)}%p (-{totalCancelledSummary.nights}박 / {totalCancelledSummary.count}건)
                                 </span>
                             )}
                         </h4>
@@ -952,8 +967,48 @@ export default function DailyPickupReportSection({
                         </div>
 
                         {showCancelledList && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
-                                {cancelledBookingItems.map((item) => {
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {(
+                                        [
+                                            { key: 'all', label: `전체 ${cancelledBookingItems.length}` },
+                                            {
+                                                key: 'noshow',
+                                                label: `노쇼·위약금 ${cancelledBookingItems.filter((i) => !i.isEarlyDeparture && i.isNoshowWithFee).length}`,
+                                            },
+                                            {
+                                                key: 'free',
+                                                label: `아예 취소 ${cancelledBookingItems.filter((i) => !i.isEarlyDeparture && !i.isNoshowWithFee).length}`,
+                                            },
+                                            {
+                                                key: 'early',
+                                                label: `중도퇴실 ${cancelledBookingItems.filter((i) => i.isEarlyDeparture).length}`,
+                                            },
+                                        ] as { key: 'all' | 'noshow' | 'free' | 'early'; label: string }[]
+                                    ).map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setCancelledFilter(tab.key)}
+                                            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer border ${
+                                                cancelledFilter === tab.key
+                                                    ? 'bg-rose-600 text-white border-rose-600'
+                                                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+                                    {cancelledBookingItems
+                                        .filter((item) => {
+                                            if (cancelledFilter === 'noshow') return !item.isEarlyDeparture && item.isNoshowWithFee;
+                                            if (cancelledFilter === 'free') return !item.isEarlyDeparture && !item.isNoshowWithFee;
+                                            if (cancelledFilter === 'early') return Boolean(item.isEarlyDeparture);
+                                            return true;
+                                        })
+                                        .map((item) => {
                                     const b = item.booking;
                                     const unit = getUnitForBooking(b);
                                     const ch = getChannelStyle(b.apiSourceId);
@@ -1023,6 +1078,7 @@ export default function DailyPickupReportSection({
                                         </div>
                                     );
                                 })}
+                                </div>
                             </div>
                         )}
                     </div>

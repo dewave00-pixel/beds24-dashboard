@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         let errors: any[] = [];
 
         for (const propId of PROPERTY_IDS) {
-            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&modifiedFrom=${encodeURIComponent(modifiedFrom)}&includeInfoItems=true&includeInvoice=true`;
+            const url = `https://api.beds24.com/v2/bookings?propertyId=${propId}&modifiedFrom=${encodeURIComponent(modifiedFrom)}&status=confirmed&status=new&status=cancelled&includeInfoItems=true&includeInvoice=true`;
 
             let res = await fetch(url, {
                 method: 'GET',
