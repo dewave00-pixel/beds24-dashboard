@@ -159,14 +159,26 @@ export function isValidBooking(booking?: Booking | null): boolean {
 }
 
 /**
- * 💰 통계/매출 집계용 예약 검증 (활성 투숙 예약 + 위약금이 발생한 취소 예약 포함)
+ * 🚫 관리자가 대시보드에서 직접 '노쇼/위약금 보존' 처리한 취소 예약인지 판별
+ * (외부 OTA 일반 취소/환불 건에 원래 price가 남아있는 경우와 구분하기 위함)
+ */
+export function isExplicitNoshowBooking(booking?: Booking | null): boolean {
+    if (!booking) return false;
+    const status = (booking.status || '').toLowerCase().trim();
+    if (status !== 'cancelled') return false;
+    if ((Number(booking.price) || 0) <= 0) return false;
+    return (booking.notes || '').includes('[노쇼위약금]');
+}
+
+/**
+ * 💰 통계/매출 집계용 예약 검증 (활성 투숙 예약 + 관리자가 명시적으로 노쇼 처리한 예약만 포함)
  */
 export function isRevenueBooking(booking?: Booking | null): boolean {
     if (!booking) return false;
     const status = (booking.status || '').toLowerCase().trim();
     if (status === 'deleted' || status === 'inquiry') return false;
     if (status === 'cancelled') {
-        return (Number(booking.price) || 0) > 0;
+        return isExplicitNoshowBooking(booking);
     }
     return true;
 }

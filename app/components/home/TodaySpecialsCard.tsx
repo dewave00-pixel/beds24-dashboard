@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Booking } from '../../types';
 import { getChannelStyle, parseBookingTag } from '../../config';
-import { calculateNetPayout, getUnitForBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
+import { calculateNetPayout, getUnitForBooking, isExplicitNoshowBooking, isUnallocatedBooking } from '../../utils/bookingUtils';
 
 export type BookingNotesMap = Record<number, { note: string; tags: string[] }>;
 
@@ -71,7 +71,7 @@ export default function TodaySpecialsCard({
             if (!isCheckIn && !isCheckOut) continue;
 
             const isCancelled = status === 'cancelled';
-            const isNoshowWithFee = isCancelled && (Number(b.price) || 0) > 0;
+            const isNoshowWithFee = isExplicitNoshowBooking(b);
             const noteInfo = bookingNotes[Number(b.id)];
             const tags = noteInfo?.tags || [];
             const note = (noteInfo?.note || '').trim();
