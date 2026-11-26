@@ -17,6 +17,7 @@ import TotalNotesModal from './components/modals/TotalNotesModal';
 import SearchModal from './components/modals/SearchModal';
 import UnallocatedBookingsModal from './components/modals/UnallocatedBookingsModal';
 import InventoryIssuesModal from './components/modals/InventoryIssuesModal';
+import CreateBookingModal from './components/modals/CreateBookingModal';
 import ZoomableTimelineWrapper from './components/timeline/ZoomableTimelineWrapper';
 
 const ROW_HEIGHT = 65;
@@ -86,6 +87,8 @@ export default function HomePage() {
               onMoveDays={d.moveDays}
               onGoToday={d.goToday}
               onOpenTotalNotes={() => d.setIsTotalNotesOpen(true)}
+              isAdmin={auth.isAdmin}
+              onOpenCreateBooking={() => d.setIsCreateModalOpen(true)}
             />
 
             {/* 예약 로딩 중 상단 슬림 프로그레스 바 */}
@@ -209,6 +212,15 @@ export default function HomePage() {
         onClose={() => d.setIsInventoryIssuesModalOpen(false)}
         onSelectDate={d.handleDateClick}
       />
+
+      {/* ➕ 직접/수동 신규 예약 생성 모달 (최고관리자 admin 전용) */}
+      {d.isCreateModalOpen && auth.isAdmin && (
+        <CreateBookingModal
+          allBookings={d.bookings}
+          onClose={() => d.setIsCreateModalOpen(false)}
+          onCreateBooking={d.handleCreateBooking}
+        />
+      )}
     </div>
   );
 }
