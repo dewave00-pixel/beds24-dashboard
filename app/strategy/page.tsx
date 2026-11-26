@@ -55,6 +55,55 @@ const CHANNEL_OPTIONS = [
     { id: '53', label: 'Trip.com' },
 ];
 
+function StrategySkeleton() {
+    return (
+        <div className="flex flex-col gap-4 animate-pulse" aria-busy="true" aria-label="전략 분석 데이터 불러오는 중">
+            <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl px-4 py-3 flex items-center gap-2.5 text-xs font-extrabold text-indigo-800 dark:text-indigo-200">
+                <span className="inline-block w-4 h-4 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>예약 · 스냅샷 · 광고/비용 데이터를 불러와 28일 룰과 전후 성적표를 분석하는 중입니다...</span>
+            </div>
+
+            {/* 1. 개선 제안 스켈레톤 */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 md:p-5 shadow-xs flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                    <div className="h-5 w-52 rounded bg-gray-200 dark:bg-slate-800" />
+                    <div className="h-3.5 w-36 rounded bg-gray-100 dark:bg-slate-800/70" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[0, 1].map((i) => (
+                        <div
+                            key={i}
+                            className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-800 flex flex-col gap-2.5"
+                        >
+                            <div className="h-4 w-28 rounded bg-gray-200 dark:bg-slate-700" />
+                            <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-700" />
+                            <div className="h-3 w-full rounded bg-gray-100 dark:bg-slate-700/60" />
+                            <div className="h-10 w-full rounded-lg bg-gray-200/70 dark:bg-slate-700/50" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* 2. 28일 분석 스켈레톤 */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 md:p-5 shadow-xs flex flex-col gap-3">
+                <div className="h-5 w-64 rounded bg-gray-200 dark:bg-slate-800" />
+                <div className="h-44 rounded-xl bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-800" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="h-24 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-800" />
+                    ))}
+                </div>
+            </div>
+
+            {/* 3. 설정·광고 변경 이력 2열 스켈레톤 */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div className="lg:col-span-4 h-80 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800" />
+                <div className="lg:col-span-8 h-80 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800" />
+            </div>
+        </div>
+    );
+}
+
 export default function StrategyPage() {
     const router = useRouter();
     const { isAdmin, loading: authLoading } = useAuth();
@@ -335,7 +384,7 @@ export default function StrategyPage() {
                             ✅ {notice}
                         </div>
                     )}
-                    {!snapshotTableReady && (
+                    {!snapshotTableReady && !loading && (
                         <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold">
                             ℹ️ 일별 가격·최소박수 스냅샷 자동 축적을 위해 Supabase SQL Editor에서{' '}
                             <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded">
@@ -344,6 +393,11 @@ export default function StrategyPage() {
                             을 실행해 주세요. *(전략 변경 이력 기록은 테이블 생성 전에도 즉시 동작합니다.)*
                         </div>
                     )}
+
+                    {loading && bookings.length === 0 ? (
+                        <StrategySkeleton />
+                    ) : (
+                        <>
 
                     {/* 1. 데이터 기반 자동 개선 제안 */}
                     <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-4 md:p-5 shadow-xs flex flex-col gap-3">
@@ -807,6 +861,8 @@ export default function StrategyPage() {
                             </div>
                         )}
                     </section>
+                        </>
+                    )}
                 </main>
             </div>
         </div>
