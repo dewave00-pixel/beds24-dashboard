@@ -252,6 +252,157 @@ export async function deleteBeds24Booking(bookingId: number) {
     return data;
 }
 
+export interface CreateBeds24BookingInput {
+    roomId: number;
+    unitId: number; // 호실 배정 시 고유 unitId(1, 2...), 미배정 등록 시 반드시 0
+    arrival: string;
+    departure: string;
+    numAdult: number;
+    status?: 'confirmed';
+    firstName: string;
+    lastName: string;
+    mobile?: string;
+    phone?: string;
+    price: number;
+    apiSourceId?: number;
+    notes?: string;
+}
+
+export type CreateBeds24BookingResult =
+    | {
+          status: 'SUCCESS';
+          bookingId: number;
+          rawBooking: Record<string, unknown>;
+          rawResponse: unknown;
+      }
+    | {
+          status: 'AMBIGUOUS';
+          error: string;
+      }
+    | {
+          status: 'FAILED';
+          error: string;
+          details?: unknown;
+      };
+
+/**
+ * ➕ Beds24 신규 예약 단일 안전 생성 함수 (중복 생성 방어를 위해 자동 재시도 금지)
+ * - Beds24 API V2: POST https://api.beds24.com/v2/bookings
+ * - 미배정 등록 시 unitId: 0 전달 필수
+ * - 타임아웃/429/5xx 응답 시 자동 재호출하지 않고 status: 'AMBIGUOUS' 반환
+ */
+export async function createBeds24Booking(
+    input: CreateBeds24BookingInput
+): Promise<CreateBeds24BookingResult> {
+    const token = await getValidBeds24Token();
+
+    const payloadItem: Record<string, unknown> = {
+        roomId: Number(input.roomId),
+        unitId: Number(input.unitId),
+        arrival: input.arrival,
+        departure: input.departure,
+        numAdult: Number(input.numAdult) || 1,
+        status: input.status || 'confirmed',
+        firstName: input.firstName,
+        lastName: input.lastName,
+        price: Math.round(Number(input.price) || 0),
+        apiSourceId: input.apiSourceId ?? 0,
+    };
+
+    if (input.mobile) payloadItem.mobile = input.mobile;
+    if (input.phone) payloadItem.phone = input.phone;
+    if (input.notes) payloadItem.notes = input.notes;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    let res: Response;
+    try {
+        res = await fetch('https://api.beds24.com/v2/bookings', {
+            method: 'POST',
+            headers: {
+                token: token,
+                'Content-Type': 'application/json',
+                accept: 'application/json',
+            },
+            body: JSON.stringify([payloadItem]),
+            cache: 'no-store',
+            signal: controller.signal,
+        });
+    } catch (netErr: unknown) {
+        clearTimeout(timeoutId);
+        console.warn('⚠️ [createBeds24Booking] 통신 타임아웃/네트워크 오류 (중복 방지를 위해 재시도 중단):', netErr);
+        return {
+            status: 'AMBIGUOUS',
+            error: 'Beds24 응답 지연으로 인해 중복 등록을 방지하고자 자동 재시도하지 않았습니다. Beds24 원본 캘린더를 먼저 확인해 주세요.',
+        };
+    } finally {
+        clearTimeout(timeoutId);
+    }
+
+    if (res.status === 429 || res.status >= 500) {
+        console.warn(`⚠️ [createBeds24Booking] HTTP ${res.status} 감지 (중복 방지를 위해 재시도 중단)`);
+        return {
+            status: 'AMBIGUOUS',
+            error: 'Beds24 응답 지연으로 인해 중복 등록을 방지하고자 자동 재시도하지 않았습니다. Beds24 원본 캘린더를 먼저 확인해 주세요.',
+        };
+    }
+
+    if (!res.ok) {
+        const errText = await res.text();
+        return {
+            status: 'FAILED',
+            error: `Beds24 예약 생성 실패 (HTTP ${res.status}): ${errText}`,
+        };
+    }
+
+    let data: unknown;
+    try {
+        data = await res.json();
+    } catch {
+        return {
+            status: 'AMBIGUOUS',
+            error: 'Beds24 응답 파싱 중 오류가 발생했습니다. 중복 등록 방지를 위해 Beds24 원본 캘린더를 먼저 확인해 주세요.',
+        };
+    }
+
+    const item = Array.isArray(data)
+        ? (data[0] as Record<string, unknown> | undefined)
+        : (data as { data?: Record<string, unknown>[] } | null)?.data?.[0] ?? (data as Record<string, unknown> | undefined);
+
+    const errors = item?.errors as unknown[] | undefined;
+    if (!item || item.success === false || (Array.isArray(errors) && errors.length > 0)) {
+        const errMsg = Array.isArray(errors) && errors.length > 0
+            ? errors.map((e) => (typeof e === 'string' ? e : JSON.stringify(e))).join(', ')
+            : 'Beds24 본사에서 예약 생성을 거부했습니다.';
+        return {
+            status: 'FAILED',
+            error: `Beds24 예약 생성 거부: ${errMsg}`,
+            details: data,
+        };
+    }
+
+    const newObj = (item.new as Record<string, unknown> | undefined)
+        || (item.modified as Record<string, unknown> | undefined)
+        || item;
+    const bookingId = Number(newObj?.id || item.id || item.bookId || 0);
+
+    if (!bookingId || bookingId <= 0) {
+        return {
+            status: 'FAILED',
+            error: 'Beds24 응답에서 발급된 예약 ID(bookingId)를 확인할 수 없습니다.',
+            details: data,
+        };
+    }
+
+    return {
+        status: 'SUCCESS',
+        bookingId,
+        rawBooking: newObj,
+        rawResponse: data,
+    };
+}
+
 export const ALL_BEDS24_PROPERTY_IDS = [267332, 265909, 269337, 269340, 269386, 269419, 267335];
 
 /**

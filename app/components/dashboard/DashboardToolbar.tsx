@@ -12,6 +12,8 @@ interface DashboardToolbarProps {
     onMoveDays: (days: number) => void;
     onGoToday: () => void;
     onOpenTotalNotes: () => void;
+    isAdmin?: boolean;
+    onOpenCreateBooking?: () => void;
 }
 
 export default function DashboardToolbar({
@@ -26,6 +28,8 @@ export default function DashboardToolbar({
     onMoveDays,
     onGoToday,
     onOpenTotalNotes,
+    isAdmin = false,
+    onOpenCreateBooking,
 }: DashboardToolbarProps) {
     return (
         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-gray-200 dark:border-slate-800">
@@ -49,10 +53,21 @@ export default function DashboardToolbar({
 
                 <button
                     onClick={onOpenSearch}
-                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1"
+                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm transition flex items-center gap-1 cursor-pointer"
                 >
                     🔍 검색
                 </button>
+
+                {isAdmin && onOpenCreateBooking && (
+                    <button
+                        type="button"
+                        onClick={onOpenCreateBooking}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-md shadow-sm transition flex items-center gap-1 cursor-pointer"
+                        title="Beds24 직접/수동 예약 생성 (최고관리자 전용)"
+                    >
+                        ➕ 새 예약
+                    </button>
+                )}
 
                 {/* 🔍 구글 시트형 배율 조절 컨트롤러 */}
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-gray-300 dark:border-slate-700 text-xs font-bold shadow-2xs">
