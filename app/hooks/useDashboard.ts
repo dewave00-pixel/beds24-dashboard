@@ -58,6 +58,7 @@ export function useDashboard() {
     const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
     const [isUnallocatedModalOpen, setIsUnallocatedModalOpen] = useState<boolean>(false);
     const [isInventoryIssuesModalOpen, setIsInventoryIssuesModalOpen] = useState<boolean>(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
     // 날짜 계산 기준 (기본값: 한국 시간 오늘 기준 이틀 전부터)
     const [startDate, setStartDate] = useState<Date>(() => getKSTDateOffset(-2));
@@ -692,6 +693,73 @@ export function useDashboard() {
         }
     };
 
+    // ➕ 신규 예약 생성 처리 (Beds24 API + Supabase DB + 로컬 상태 즉시 동기화)
+    const handleCreateBooking = async (payload: {
+        roomId: number;
+        unitId: number;
+        arrival: string;
+        departure: string;
+        numAdult: number;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        price: number;
+        channelType: 'direct' | 'other';
+        notes: string;
+    }): Promise<{
+        success: boolean;
+        partialSuccess?: boolean;
+        status?: 'SUCCESS' | 'AMBIGUOUS' | 'FAILED';
+        bookingId?: number;
+        warning?: string;
+        error?: string;
+    }> => {
+        try {
+            const res = await fetch('/api/bookings/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                const createdBooking: Booking | undefined = result.data;
+                if (createdBooking && createdBooking.id) {
+                    setBookings((prev) => {
+                        const filtered = prev.filter((b) => Number(b.id) !== Number(createdBooking.id));
+                        return [...filtered, createdBooking];
+                    });
+                    setAllBookingsWithCancelled((prev) => {
+                        const filtered = prev.filter((b) => Number(b.id) !== Number(createdBooking.id));
+                        return [...filtered, createdBooking];
+                    });
+                    if (result.note) {
+                        setBookingNotes((prev) => ({
+                            ...prev,
+                            [createdBooking.id]: { note: result.note, tags: [] },
+                        }));
+                    }
+                }
+                return {
+                    success: true,
+                    partialSuccess: Boolean(result.partialSuccess),
+                    bookingId: result.bookingId,
+                    warning: result.warning,
+                };
+            } else {
+                return {
+                    success: false,
+                    status: result.status,
+                    error: result.error || '예약 생성에 실패했습니다.',
+                };
+            }
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : '네트워크 오류가 발생했습니다.';
+            console.error('예약 생성 API 호출 에러:', err);
+            return { success: false, error: errorMsg };
+        }
+    };
+
     return {
         bookings,
         allBookingsWithCancelled,
@@ -717,6 +785,8 @@ export function useDashboard() {
         setIsSearchOpen,
         isUnallocatedModalOpen,
         setIsUnallocatedModalOpen,
+        isCreateModalOpen,
+        setIsCreateModalOpen,
         displayDaysCount,
         todayStr,
         tomorrowStr,
@@ -747,6 +817,7 @@ export function useDashboard() {
         handleAssignUnit,
         handleExtendStay,
         handleCancelBooking,
+        handleCreateBooking,
         isRealtimeConnected,
         inventoryMap,
         inventoryIssues,
